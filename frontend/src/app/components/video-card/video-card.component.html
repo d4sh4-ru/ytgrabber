@@ -1,0 +1,11 @@
+<div class="video-card" (click)="onClick()">
+  @if (thumbnailSrc) {
+    <img class="video-card__thumbnail" [src]="thumbnailSrc" [alt]="item.title" />
+  } @else {
+    <div class="video-card__thumbnail video-card__thumbnail--placeholder"></div>
+  }
+  <p class="video-card__title" [title]="item.title">{{ item.title }}</p>
+  @if (durationLabel) {
+    <span class="video-card__duration">{{ durationLabel }}</span>
+  }
+</div>

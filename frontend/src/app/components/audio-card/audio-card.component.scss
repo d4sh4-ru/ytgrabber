@@ -1,0 +1,35 @@
+@use '../../../styles/variables' as v;
+
+.audio-card {
+  border: 1px solid v.$border-subtle;
+  border-radius: v.$radius-md;
+  background: v.$bg-surface;
+  cursor: pointer;
+  overflow: hidden;
+
+  &__icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 90px;
+    background: v.$bg-elevated;
+    color: v.$text-secondary;
+    font-size: 28px;
+  }
+
+  &__title {
+    margin: 0;
+    padding: 6px 8px 2px;
+    font-size: 13px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  &__duration {
+    display: block;
+    padding: 0 8px 6px;
+    color: v.$text-secondary;
+    font-size: 12px;
+  }
+}

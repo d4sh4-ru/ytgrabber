@@ -1,0 +1,63 @@
+@use '../../../styles/variables' as v;
+
+.download-form {
+  display: flex;
+  gap: 8px;
+
+  &__input {
+    flex: 1;
+    padding: 8px 10px;
+    border: 1px solid v.$border-subtle;
+    border-radius: v.$radius-sm;
+    background: v.$bg-surface;
+    color: v.$text-primary;
+    font-size: 14px;
+
+    &:focus {
+      outline: none;
+      border-color: v.$accent;
+    }
+
+    &--invalid {
+      border-color: v.$error;
+    }
+  }
+
+  &__quality {
+    padding: 8px 10px;
+    border: 1px solid v.$border-subtle;
+    border-radius: v.$radius-sm;
+    background: v.$bg-surface;
+    color: v.$text-primary;
+    font-size: 14px;
+
+    &:focus {
+      outline: none;
+      border-color: v.$accent;
+    }
+  }
+
+  &__submit {
+    padding: 8px 16px;
+    border: 1px solid v.$accent;
+    border-radius: v.$radius-sm;
+    background: v.$accent;
+    // Dark text, not $text-primary: white-on-$accent only hits ~3.7:1
+    // contrast, below the WCAG AA 4.5:1 floor for normal-size text.
+    color: v.$bg-primary;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+
+    &:hover {
+      background: v.$accent-hover;
+      border-color: v.$accent-hover;
+    }
+  }
+}
+
+.download-form__error {
+  margin: 6px 0 0;
+  color: v.$error;
+  font-size: 12px;
+}

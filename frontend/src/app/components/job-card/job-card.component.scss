@@ -1,0 +1,134 @@
+@use '../../../styles/variables' as v;
+
+.job-card {
+  padding: 10px 12px;
+  border: 1px solid v.$border-subtle;
+  border-radius: v.$radius-md;
+  background: v.$bg-surface;
+
+  &--error {
+    border-color: v.$error;
+  }
+
+  &__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    margin-bottom: 8px;
+  }
+
+  &__title {
+    margin: 0;
+    font-size: 14px;
+    font-weight: 600;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  &__remove {
+    flex-shrink: 0;
+    padding: 3px 8px;
+    border: 1px solid v.$border-subtle;
+    border-radius: v.$radius-sm;
+    background: v.$bg-elevated;
+    color: v.$text-secondary;
+    font-size: 11px;
+    cursor: pointer;
+
+    &:hover {
+      color: v.$error;
+      border-color: v.$error;
+    }
+
+    &--compact {
+      padding: 3px 6px;
+      line-height: 1;
+    }
+  }
+
+  &__track {
+    margin-bottom: 6px;
+
+    &:last-child {
+      margin-bottom: 0;
+    }
+  }
+
+  &__track-header {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 2px;
+    font-size: 12px;
+    color: v.$text-secondary;
+  }
+
+  &__progress {
+    width: 100%;
+    height: 6px;
+    appearance: none;
+    border: none;
+    border-radius: v.$radius-sm;
+    overflow: hidden;
+
+    &::-webkit-progress-bar {
+      background: v.$bg-primary;
+      border-radius: v.$radius-sm;
+    }
+
+    &::-webkit-progress-value {
+      background: v.$accent;
+    }
+
+    &::-moz-progress-bar {
+      background: v.$accent;
+    }
+  }
+
+  &__processing {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 12px;
+    color: v.$text-secondary;
+  }
+
+  &__spinner {
+    width: 12px;
+    height: 12px;
+    border: 2px solid v.$border-subtle;
+    border-top-color: v.$accent;
+    border-radius: 50%;
+    animation: job-card-spin 0.6s linear infinite;
+  }
+
+  &__footer {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 6px;
+    font-size: 12px;
+    color: v.$text-secondary;
+  }
+
+  &__error {
+    margin: 6px 0 0;
+    padding: 6px 8px;
+    border-radius: v.$radius-sm;
+    background: v.$bg-elevated;
+    color: v.$error;
+    font-family: monospace;
+    font-size: 12px;
+    white-space: pre-wrap;
+    word-break: break-word;
+  }
+}
+
+@keyframes job-card-spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}

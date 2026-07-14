@@ -1,0 +1,38 @@
+<div class="job-card" [class.job-card--error]="isError">
+  <div class="job-card__header">
+    <p class="job-card__title" [title]="displayTitle">{{ displayTitle }}</p>
+    <button
+      type="button"
+      class="job-card__remove"
+      [class.job-card__remove--compact]="isError"
+      (click)="onRemove()"
+    >
+      {{ removeButtonLabel }}
+    </button>
+  </div>
+
+  @if (isProcessing) {
+    <div class="job-card__processing">
+      <span class="job-card__spinner"></span>
+      <span>Обработка...</span>
+    </div>
+  } @else {
+    @for (track of job.tracks; track track.filename) {
+      <div class="job-card__track">
+        <div class="job-card__track-header">
+          <span>{{ trackLabel(track.kind) }}</span>
+          <span>{{ trackPercent(track.progress) }}%</span>
+        </div>
+        <progress class="job-card__progress" [value]="trackPercent(track.progress)" max="100"></progress>
+      </div>
+    }
+  }
+
+  <div class="job-card__footer">
+    <span class="job-card__status">{{ statusLabel }}</span>
+  </div>
+
+  @if (isError && job.error) {
+    <pre class="job-card__error">{{ job.error }}</pre>
+  }
+</div>

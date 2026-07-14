@@ -1,0 +1,9 @@
+build/bin
+node_modules
+frontend/dist
+data/
+downloads/
+*.db
+*.db-journal
+.claude/
+frontend/src/app/wailsjs/

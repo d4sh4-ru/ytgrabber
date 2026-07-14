@@ -1,0 +1,14 @@
+@if (item) {
+  <div class="video-modal-backdrop" (click)="onClose()">
+    <div class="video-modal" (click)="$event.stopPropagation()">
+      <div class="video-modal__header">
+        <span class="video-modal__title" [title]="item.title">{{ item.title }}</span>
+        <div class="video-modal__actions">
+          <button class="video-modal__action" type="button" (click)="onFullscreen()">Развернуть</button>
+          <button class="video-modal__action" type="button" (click)="onClose()">✕</button>
+        </div>
+      </div>
+      <video #videoElement class="video-modal__player" [src]="videoSrc" controls autoplay></video>
+    </div>
+  </div>
+}

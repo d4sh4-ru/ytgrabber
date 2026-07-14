@@ -1,0 +1,13 @@
+@use '../../../styles/variables' as v;
+
+.job-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.job-list__empty {
+  margin: 0;
+  color: v.$text-secondary;
+  font-size: 13px;
+}

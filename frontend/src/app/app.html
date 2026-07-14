@@ -1,0 +1,51 @@
+<div class="app">
+  <header class="app__header">
+    <h1 class="app__title">YT Grabber</h1>
+    <nav class="app__tabs">
+      <button
+        type="button"
+        class="app__tab"
+        [class.app__tab--active]="activeTab === 'add'"
+        (click)="setTab('add')"
+      >
+        Добавить
+      </button>
+      <button
+        type="button"
+        class="app__tab"
+        [class.app__tab--active]="activeTab === 'jobs'"
+        (click)="setTab('jobs')"
+      >
+        В процессе
+        @if (activeJobsCount > 0) {
+          <span class="app__tab-badge">{{ activeJobsCount }}</span>
+        }
+      </button>
+      <button
+        type="button"
+        class="app__tab"
+        [class.app__tab--active]="activeTab === 'library'"
+        (click)="setTab('library')"
+      >
+        Библиотека
+      </button>
+    </nav>
+  </header>
+
+  <section class="app__section">
+    @switch (activeTab) {
+      @case ('add') {
+        <app-download-form (downloadRequested)="onDownload($event)" />
+      }
+      @case ('jobs') {
+        <app-job-list [jobs]="jobs" />
+      }
+      @case ('library') {
+        <app-video-library [items]="library" (videoSelected)="onVideoSelected($event)" />
+      }
+    }
+  </section>
+</div>
+
+<app-video-player-modal [item]="selectedVideo" (closed)="onModalClosed()" />
+<app-audio-player-bar />

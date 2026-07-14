@@ -1,0 +1,23 @@
+@use 'variables' as v;
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+}
+
+body {
+  background: v.$bg-primary;
+  color: v.$text-primary;
+  font-family: v.$font-family;
+  font-size: 14px;
+}
+
+button {
+  font-family: inherit;
+}
