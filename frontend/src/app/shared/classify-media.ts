@@ -1,3 +1,3 @@
 export function isAudioFilename(filename: string): boolean {
-  return filename.toLowerCase().endsWith('.mp3');
+    return filename.toLowerCase().endsWith('.mp3');
 }

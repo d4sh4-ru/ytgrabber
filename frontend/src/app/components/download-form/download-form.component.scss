@@ -1,63 +1,77 @@
 @use '../../../styles/variables' as v;
 
+:host {
+    display: flex;
+    flex-direction: column;
+}
+
 .download-form {
-  display: flex;
-  gap: 8px;
+    display: flex;
+    gap: 8px;
 
-  &__input {
-    flex: 1;
-    padding: 8px 10px;
-    border: 1px solid v.$border-subtle;
-    border-radius: v.$radius-sm;
-    background: v.$bg-surface;
-    color: v.$text-primary;
-    font-size: 14px;
+    margin-left: -(v.$radius-sm);
+    margin-right: -(v.$radius-sm);
 
-    &:focus {
-      outline: none;
-      border-color: v.$accent;
+    &__input {
+        flex: 1;
+        padding: 8px 10px;
+        border: 1px solid v.$border-subtle;
+        border-radius: v.$radius-sm;
+        background: v.$bg-surface;
+        color: v.$text-primary;
+        font-size: 14px;
+
+        &:focus {
+            outline: none;
+            border-color: v.$accent;
+        }
+
+        &._invalid {
+            border-color: v.$error;
+
+            &::placeholder {
+                color: v.$error;
+            }
+        }
     }
 
-    &--invalid {
-      border-color: v.$error;
+    &__quality {
+        padding: 8px 10px;
+        border: 1px solid v.$border-subtle;
+        border-radius: v.$radius-sm;
+        background: v.$bg-surface;
+        color: v.$text-primary;
+        font-size: 14px;
+
+        &:focus {
+            outline: none;
+            border-color: v.$accent;
+        }
     }
-  }
 
-  &__quality {
-    padding: 8px 10px;
-    border: 1px solid v.$border-subtle;
-    border-radius: v.$radius-sm;
-    background: v.$bg-surface;
-    color: v.$text-primary;
-    font-size: 14px;
+    &__submit {
+        padding: 8px 16px;
+        border: 1px solid v.$accent;
+        border-radius: v.$radius-sm;
+        background: v.$accent;
+        // Dark text, not $text-primary: white-on-$accent only hits ~3.7:1
+        // contrast, below the WCAG AA 4.5:1 floor for normal-size text.
+        color: v.$bg-primary;
+        font-size: 14px;
+        font-weight: 600;
+        cursor: pointer;
 
-    &:focus {
-      outline: none;
-      border-color: v.$accent;
+        &:hover {
+            background: v.$accent-hover;
+            border-color: v.$accent-hover;
+        }
     }
-  }
-
-  &__submit {
-    padding: 8px 16px;
-    border: 1px solid v.$accent;
-    border-radius: v.$radius-sm;
-    background: v.$accent;
-    // Dark text, not $text-primary: white-on-$accent only hits ~3.7:1
-    // contrast, below the WCAG AA 4.5:1 floor for normal-size text.
-    color: v.$bg-primary;
-    font-size: 14px;
-    font-weight: 600;
-    cursor: pointer;
-
-    &:hover {
-      background: v.$accent-hover;
-      border-color: v.$accent-hover;
-    }
-  }
 }
 
-.download-form__error {
-  margin: 6px 0 0;
-  color: v.$error;
-  font-size: 12px;
+.vertical-divider {
+    height: 24px;
+    margin-bottom: 12px;
+    border-bottom: 1px solid v.$text-secondary;
+    width: 100%;
 }
+

@@ -1,58 +1,58 @@
 @use '../styles/variables' as v;
 
 .app {
-  max-width: 720px;
-  margin: 0 auto;
-  padding: 16px;
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
-
-  &__header {
+    max-width: 720px;
+    margin: 0 auto;
+    padding: 16px;
     display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 16px;
-  }
+    flex-direction: column;
+    gap: 20px;
 
-  &__title {
-    margin: 0;
-    font-size: 16px;
-    font-weight: 600;
-  }
-
-  &__tabs {
-    display: flex;
-    gap: 4px;
-  }
-
-  &__tab {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    padding: 8px 4px;
-    border: none;
-    border-bottom: 2px solid transparent;
-    background: transparent;
-    color: v.$text-secondary;
-    font-size: 13px;
-    cursor: pointer;
-
-    &--active {
-      border-bottom-color: v.$accent;
-      color: v.$text-primary;
+    &__header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
     }
-  }
 
-  &__tab-badge {
-    padding: 0 6px;
-    border-radius: v.$radius-sm;
-    background: v.$accent;
-    // Dark text, not $text-primary: white-on-$accent only hits ~3.7:1
-    // contrast, below the WCAG AA 4.5:1 floor for normal-size text.
-    color: v.$bg-primary;
-    font-size: 11px;
-    font-weight: 600;
-    line-height: 1.6;
-  }
+    &__title {
+        margin: 0;
+        font-size: 16px;
+        font-weight: 600;
+    }
+
+    &__tabs {
+        display: flex;
+        gap: 4px;
+    }
+
+    &__tab {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        padding: 8px 4px;
+        border: none;
+        border-bottom: 2px solid transparent;
+        background: transparent;
+        color: v.$text-secondary;
+        font-size: 13px;
+        cursor: pointer;
+
+        &--active {
+            border-bottom-color: v.$accent;
+            color: v.$text-primary;
+        }
+    }
+
+    &__tab-badge {
+        padding: 0 6px;
+        border-radius: v.$radius-sm;
+        background: v.$accent;
+        // Dark text, not $text-primary: white-on-$accent only hits ~3.7:1
+        // contrast, below the WCAG AA 4.5:1 floor for normal-size text.
+        color: v.$bg-primary;
+        font-size: 11px;
+        font-weight: 600;
+        line-height: 1.6;
+    }
 }

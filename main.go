@@ -22,9 +22,11 @@ func main() {
 
 	// Create application with options
 	err := wails.Run(&options.App{
-		Title:  "ytgrabber",
-		Width:  1024,
-		Height: 768,
+		Title:     "ytgrabber",
+		Width:     1024,
+		MinWidth:  720,
+		Height:    720,
+		MinHeight: 368,
 		AssetServer: &assetserver.Options{
 			// Assets serves the built frontend. Handler is Wails' fallback
 			// for any GET it can't satisfy from Assets — WKWebView blocks

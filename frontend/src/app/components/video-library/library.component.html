@@ -1,0 +1,39 @@
+<nav class="video-library__tabs">
+    <button type="button"
+            class="video-library__tab"
+            [class.video-library__tab--active]="activeGroup === 'video'"
+            (click)="setGroup('video')">
+        Видео ({{ videoItems.length }})
+    </button>
+    <button type="button"
+            class="video-library__tab"
+            [class.video-library__tab--active]="activeGroup === 'audio'"
+            (click)="setGroup('audio')">
+        Аудио ({{ audioItems.length }})
+    </button>
+</nav>
+
+@switch (activeGroup) {
+    @case ('video') {
+        @if (videoItems.length === 0) {
+            <p class="video-library__empty">Нет скачанных видео</p>
+        } @else {
+            <div class="video-library__grid">
+                @for (item of videoItems; track item.id) {
+                    <app-video-card [item]="item" (opened)="videoSelected.emit($event)"/>
+                }
+            </div>
+        }
+    }
+    @case ('audio') {
+        @if (audioItems.length === 0) {
+            <p class="video-library__empty">Нет скачанного аудио</p>
+        } @else {
+            <div class="video-library__grid">
+                @for (item of audioItems; track item.id) {
+                    <app-audio-card [item]="item"/>
+                }
+            </div>
+        }
+    }
+}

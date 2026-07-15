@@ -1,19 +1,17 @@
 <form class="download-form" (submit)="onSubmit($event)">
-  <input
-    class="download-form__input"
-    type="text"
-    placeholder="Ссылка на видео YouTube"
-    [formControl]="urlControl"
-    [class.download-form__input--invalid]="isInvalid"
-  />
-  <select class="download-form__quality" [formControl]="qualityControl">
-    @for (option of qualityOptions; track option.value) {
-      <option [value]="option.value">{{ option.label }}</option>
-    }
-  </select>
-  <button class="download-form__submit" type="submit">Добавить</button>
+    <input class="download-form__input"
+           type="text"
+           [placeholder]="placeholder"
+           [formControl]="urlControl"
+           [class._invalid]="isInvalid"/>
+    <select class="download-form__quality" [formControl]="qualityControl">
+        @for (option of qualityOptions; track option.value) {
+            <option [value]="option.value">{{ option.label }}</option>
+        }
+    </select>
+    <button class="download-form__submit" type="submit">Добавить</button>
 </form>
 
-@if (isInvalid) {
-  <p class="download-form__error">Введите непустую ссылку, похожую на URL</p>
-}
+<div class="vertical-divider"></div>
+
+<app-job-list [jobs]="jobs"></app-job-list>

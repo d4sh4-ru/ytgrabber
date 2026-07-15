@@ -7,5 +7,5 @@
  * to build a same-origin URL.
  */
 export function buildAssetSrc(filename: string): string {
-  return `/videos/${encodeURIComponent(filename)}`;
+    return `/videos/${encodeURIComponent(filename)}`;
 }

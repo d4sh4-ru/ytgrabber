@@ -7,3 +7,4 @@ downloads/
 *.db-journal
 .claude/
 frontend/src/app/wailsjs/
+.idea/
