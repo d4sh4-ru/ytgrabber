@@ -56,3 +56,12 @@
         line-height: 1.6;
     }
 }
+
+.app__tab-badge--warning {
+    background: v.$warning;
+}
+
+.app__section {
+    // Room for the fixed audio player bar.
+    padding-bottom: 88px;
+}

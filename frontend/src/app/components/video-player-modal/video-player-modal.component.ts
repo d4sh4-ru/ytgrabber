@@ -3,12 +3,12 @@ import {
     Component,
     ElementRef,
     EventEmitter,
+    HostListener,
     Input,
     Output,
     ViewChild,
 } from '@angular/core';
-import { main } from '../../wailsjs/wailsjs/go/models';
-import { buildAssetSrc } from '../../shared/asset-src';
+import { model } from '../../wailsjs/wailsjs/go/models';
 
 @Component({
     selector: 'app-video-player-modal',
@@ -20,7 +20,7 @@ import { buildAssetSrc } from '../../shared/asset-src';
 })
 export class VideoPlayerModalComponent {
     @Input()
-    public item: main.VideoRecord | null = null;
+    public item: model.VideoRecord | null = null;
 
     @Output()
     public readonly closed = new EventEmitter<void>();
@@ -28,15 +28,27 @@ export class VideoPlayerModalComponent {
     @ViewChild('videoElement')
     public videoElementRef?: ElementRef<HTMLVideoElement>;
 
-    protected get videoSrc(): string {
-        return this.item ? buildAssetSrc(this.item.filename) : '';
+    protected playbackError = false;
+
+    @HostListener('document:keydown.escape')
+    public onEscape(): void {
+        // In fullscreen, Escape belongs to the browser (it exits fullscreen).
+        if (this.item && !document.fullscreenElement) {
+            this.onClose();
+        }
     }
 
     protected onClose(): void {
+        this.videoElementRef?.nativeElement.pause();
+        this.playbackError = false;
         this.closed.emit();
     }
 
     protected onFullscreen(): void {
         void this.videoElementRef?.nativeElement.requestFullscreen();
+    }
+
+    protected onPlaybackError(): void {
+        this.playbackError = true;
     }
 }

@@ -1,0 +1,164 @@
+<section class="settings__section">
+    <h2 class="settings__heading">Загрузки</h2>
+    @if (settings) {
+        <div class="settings__row">
+            <div class="settings__label">
+                <span>Папка</span>
+                <code class="settings__path" [title]="settings.downloadsDir">{{
+                    settings.downloadsDir
+                }}</code>
+            </div>
+            <div class="settings__buttons">
+                <button type="button" class="btn" (click)="onOpenDownloadsDir()">Открыть</button>
+                <button type="button" class="btn" (click)="onChooseDownloadsDir()">
+                    Изменить…
+                </button>
+            </div>
+        </div>
+        <div class="settings__row">
+            <label class="settings__label" for="concurrency">Одновременных загрузок</label>
+            <select
+                id="concurrency"
+                class="settings__select"
+                [value]="settings.maxConcurrentDownloads"
+                (change)="onConcurrencyChange($event)"
+            >
+                @for (option of concurrencyOptions; track option) {
+                    <option
+                        [value]="option"
+                        [selected]="option === settings.maxConcurrentDownloads"
+                    >
+                        {{ option }}
+                    </option>
+                }
+            </select>
+        </div>
+    }
+</section>
+
+<section class="settings__section">
+    <div class="settings__heading-row">
+        <h2 class="settings__heading">Внешние программы</h2>
+        <button type="button" class="btn" [disabled]="isCheckingDependencies" (click)="onRecheck()">
+            {{ isCheckingDependencies ? 'Проверка…' : 'Проверить снова' }}
+        </button>
+    </div>
+
+    @for (tool of dependencies?.tools ?? []; track tool.name) {
+        <div class="settings__tool" [class.settings__tool--missing]="!tool.found && tool.required">
+            <div class="settings__label">
+                <span>
+                    <strong>{{ tool.name }}</strong>
+                    @if (tool.version) {
+                        <span class="settings__muted settings__inline">{{ tool.version }}</span>
+                    }
+                    @if (!tool.required) {
+                        <span class="settings__muted settings__inline">· необязательно</span>
+                    }
+                </span>
+                <span class="settings__muted">{{ tool.purpose }}</span>
+                @if (tool.found) {
+                    <code class="settings__path" [title]="tool.path">{{ tool.path }}</code>
+                } @else if (tool.custom) {
+                    <span class="settings__problem">Указанный файл не найден: {{ tool.path }}</span>
+                } @else {
+                    <span class="settings__problem">
+                        Не найден.
+                        @if (tool.hint) {
+                            Установка: <code>{{ tool.hint }}</code>
+                        }
+                    </span>
+                }
+            </div>
+            <div class="settings__buttons">
+                @if (tool.name === 'yt-dlp' && tool.found) {
+                    <button
+                        type="button"
+                        class="btn"
+                        [disabled]="isUpdatingYtDlp"
+                        (click)="onUpdateYtDlp()"
+                    >
+                        {{ isUpdatingYtDlp ? 'Обновление…' : 'Обновить' }}
+                    </button>
+                }
+                @if (isConfigurable(tool)) {
+                    <button type="button" class="btn" (click)="onChooseTool(tool)">Указать…</button>
+                    @if (tool.custom) {
+                        <button type="button" class="btn" (click)="onResetTool(tool)">Авто</button>
+                    }
+                }
+            </div>
+        </div>
+    } @empty {
+        <p class="settings__muted">Проверка…</p>
+    }
+
+    @if (updateOutput) {
+        <pre class="settings__output">{{ updateOutput }}</pre>
+    }
+</section>
+
+@if (appInfo) {
+    <section class="settings__section">
+        <h2 class="settings__heading">О программе</h2>
+        <dl class="settings__info">
+            <dt>Версия</dt>
+            <dd>{{ appInfo.version }} ({{ appInfo.platform }})</dd>
+            <dt>Данные</dt>
+            <dd>
+                <code class="settings__path">{{ appInfo.dataDir }}</code>
+            </dd>
+            <dt>Журнал</dt>
+            <dd>
+                <code class="settings__path">{{ appInfo.logPath }}</code>
+            </dd>
+        </dl>
+    </section>
+}
+
+<section class="settings__section settings__section--danger">
+    <h2 class="settings__heading">Удаление данных</h2>
+    <div class="settings__row">
+        <div class="settings__label">
+            <span>Удалить все данные приложения и закрыть его</span>
+            <span class="settings__muted">
+                База, настройки, журнал и кэш: {{ dataSizeLabel }}. Скачанные файлы:
+                {{ storage?.mediaFiles ?? 0 }} шт., {{ mediaSizeLabel }}.
+            </span>
+        </div>
+        <button type="button" class="btn btn--destructive" (click)="onResetRequested()">
+            Удалить всё…
+        </button>
+    </div>
+</section>
+
+@switch (resetStep) {
+    @case ('choose') {
+        <app-confirm-dialog
+            title="Удалить все данные приложения?"
+            confirmLabel="Далее"
+            [optionLabel]="mediaOptionLabel"
+            [option]="false"
+            (confirmed)="onResetChosen($event)"
+            (cancelled)="onResetCancelled()"
+        >
+            <ul class="settings__reset-list">
+                <li>библиотека и список загрузок</li>
+                <li>настройки</li>
+                <li>журнал и кэш встроенного браузера</li>
+                <li>недокачанные файлы</li>
+            </ul>
+        </app-confirm-dialog>
+    }
+    @case ('confirm') {
+        <app-confirm-dialog
+            title="Вы точно хотите удалить все данные?"
+            [message]="resetConfirmMessage"
+            [confirmLabel]="isResetting ? 'Удаление…' : 'Удалить и закрыть'"
+            [danger]="true"
+            [busy]="isResetting"
+            (confirmed)="onResetConfirmed()"
+            (cancelled)="onResetCancelled()"
+        />
+    }
+}

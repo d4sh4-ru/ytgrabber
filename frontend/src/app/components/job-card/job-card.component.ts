@@ -1,5 +1,5 @@
 import { ChangeDetectionStrategy, Component, EventEmitter, Input, Output } from '@angular/core';
-import { main } from '../../wailsjs/wailsjs/go/models';
+import { model } from '../../wailsjs/wailsjs/go/models';
 
 const STATUS_LABELS: Record<string, string> = {
     pending: 'в очереди',
@@ -24,10 +24,13 @@ const TRACK_LABELS: Record<string, string> = {
 })
 export class JobCardComponent {
     @Input({ required: true })
-    public job!: main.DownloadJob;
+    public job!: model.DownloadJob;
 
     @Output()
     public readonly removed = new EventEmitter<string>();
+
+    @Output()
+    public readonly retried = new EventEmitter<string>();
 
     protected get displayTitle(): string {
         return this.job.title || this.job.url;
@@ -46,7 +49,7 @@ export class JobCardComponent {
     }
 
     protected get removeButtonLabel(): string {
-        return this.isError ? '✕' : 'Отменить';
+        return this.isError ? 'Убрать' : 'Отменить';
     }
 
     protected trackLabel(kind: string): string {
@@ -59,5 +62,9 @@ export class JobCardComponent {
 
     protected onRemove(): void {
         this.removed.emit(this.job.id);
+    }
+
+    protected onRetry(): void {
+        this.retried.emit(this.job.id);
     }
 }

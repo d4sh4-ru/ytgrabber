@@ -1,21 +1,12 @@
 @use '../../../styles/variables' as v;
 
-.video-modal-backdrop {
-    position: fixed;
-    inset: 0;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background: rgba(v.$bg-primary, 0.75);
-    animation: fade-in 0.15s ease-out;
-}
-
 .video-modal {
     width: min(720px, 90vw);
     border: 1px solid v.$border-subtle;
     border-radius: v.$radius-md;
     background: v.$bg-elevated;
     overflow: hidden;
+    animation: fade-in 0.15s ease-out;
 
     &__header {
         display: flex;
@@ -39,18 +30,11 @@
         gap: 6px;
     }
 
-    &__action {
-        padding: 2px 8px;
-        border: 1px solid v.$border-subtle;
-        border-radius: v.$radius-sm;
-        background: v.$bg-elevated;
-        color: v.$text-primary;
+    &__error {
+        margin: 0;
+        padding: 8px 10px;
+        color: v.$error;
         font-size: 12px;
-        cursor: pointer;
-
-        &:hover {
-            border-color: v.$accent;
-        }
     }
 
     &__player {

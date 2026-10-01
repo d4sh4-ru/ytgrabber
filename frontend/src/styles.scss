@@ -1,23 +1,114 @@
 @use 'variables' as v;
 
 * {
-  box-sizing: border-box;
+    box-sizing: border-box;
 }
 
 html,
 body {
-  margin: 0;
-  padding: 0;
-  height: 100%;
+    margin: 0;
+    padding: 0;
+    height: 100%;
 }
 
 body {
-  background: v.$bg-primary;
-  color: v.$text-primary;
-  font-family: v.$font-family;
-  font-size: 14px;
+    background: v.$bg-primary;
+    color: v.$text-primary;
+    font-family: v.$font-family;
+    font-size: 14px;
 }
 
 button {
-  font-family: inherit;
+    font-family: inherit;
+}
+
+// ---- Shared controls ----
+
+.btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 5px 10px;
+    border: 1px solid v.$border-subtle;
+    border-radius: v.$radius-sm;
+    background: v.$bg-elevated;
+    color: v.$text-primary;
+    font-size: 12px;
+    white-space: nowrap;
+    cursor: pointer;
+
+    &:hover:not(:disabled) {
+        border-color: v.$accent;
+    }
+
+    &:disabled {
+        opacity: 0.5;
+        cursor: default;
+    }
+
+    &--primary {
+        border-color: v.$accent;
+        background: v.$accent;
+        // Dark text, not $text-primary: white-on-$accent only hits ~3.7:1
+        // contrast, below the WCAG AA 4.5:1 floor for normal-size text.
+        color: v.$bg-primary;
+        font-weight: 600;
+
+        &:hover:not(:disabled) {
+            background: v.$accent-hover;
+            border-color: v.$accent-hover;
+        }
+    }
+
+    &--destructive {
+        border-color: v.$error;
+        background: v.$error;
+        color: v.$bg-primary;
+        font-weight: 600;
+
+        &:hover:not(:disabled) {
+            border-color: v.$error;
+            filter: brightness(0.9);
+        }
+    }
+
+    &--danger:hover:not(:disabled) {
+        border-color: v.$error;
+        color: v.$error;
+    }
+}
+
+.banner {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 10px 12px;
+    border: 1px solid v.$border-subtle;
+    border-radius: v.$radius-md;
+    background: v.$bg-surface;
+    font-size: 13px;
+
+    &--error {
+        flex-direction: column;
+        align-items: flex-start;
+        border-color: v.$error;
+        color: v.$error;
+    }
+
+    &--warning {
+        border-color: v.$warning;
+    }
+}
+
+.backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 20;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(v.$bg-primary, 0.75);
 }

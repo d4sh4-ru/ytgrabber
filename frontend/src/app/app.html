@@ -2,35 +2,73 @@
     <header class="app__header">
         <h1 class="app__title">YT Grabber</h1>
         <nav class="app__tabs">
-            <button type="button"
-                    class="app__tab"
-                    [class.app__tab--active]="activeTab === 'add'"
-                    (click)="setTab('add')">
+            <button
+                type="button"
+                class="app__tab"
+                [class.app__tab--active]="activeTab === 'add'"
+                (click)="setTab('add')"
+            >
                 Загрузки
                 @if (activeJobsCount > 0) {
                     <span class="app__tab-badge">{{ activeJobsCount }}</span>
                 }
             </button>
-            <button type="button"
-                    class="app__tab"
-                    [class.app__tab--active]="activeTab === 'library'"
-                    (click)="setTab('library')">
+            <button
+                type="button"
+                class="app__tab"
+                [class.app__tab--active]="activeTab === 'library'"
+                (click)="setTab('library')"
+            >
                 Библиотека
+            </button>
+            <button
+                type="button"
+                class="app__tab"
+                [class.app__tab--active]="activeTab === 'settings'"
+                (click)="setTab('settings')"
+            >
+                Настройки
+                @if (missingRequiredTools.length > 0) {
+                    <span class="app__tab-badge app__tab-badge--warning">!</span>
+                }
             </button>
         </nav>
     </header>
 
-    <section class="app__section">
-        @switch (activeTab) {
-            @case ('add') {
-                <app-download-form [jobs]="jobs" (downloadRequested)="onDownload($event)"/>
-            }
-            @case ('library') {
-                <app-library [items]="library" (videoSelected)="onVideoSelected($event)"/>
-            }
+    @if (startupError) {
+        <div class="banner banner--error">
+            <strong>Приложение не смогло запуститься.</strong>
+            <span>{{ startupError }}</span>
+            <span>Если база данных повреждена, начните с чистого листа: «Удалить всё…» ниже.</span>
+        </div>
+        <app-settings />
+    } @else {
+        @if (missingRequiredTools.length > 0 && activeTab !== 'settings') {
+            <div class="banner banner--warning">
+                <span
+                    >Не найдено: {{ missingRequiredTools.join(', ') }}. Без этого загрузка не
+                    работает.</span
+                >
+                <button type="button" class="btn" (click)="setTab('settings')">Подробнее</button>
+            </div>
         }
-    </section>
+
+        <section class="app__section">
+            @switch (activeTab) {
+                @case ('add') {
+                    <app-download-form [jobs]="jobs" />
+                }
+                @case ('library') {
+                    <app-library [items]="library" (videoSelected)="onVideoSelected($event)" />
+                }
+                @case ('settings') {
+                    <app-settings />
+                }
+            }
+        </section>
+    }
 </div>
 
-<app-video-player-modal [item]="selectedVideo" (closed)="onModalClosed()"/>
-<app-audio-player-bar/>
+<app-video-player-modal [item]="selectedVideo" (closed)="onModalClosed()" />
+<app-audio-player-bar />
+<app-toast-host />

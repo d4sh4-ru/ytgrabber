@@ -12,6 +12,7 @@
 
 .audio-player-bar {
     max-width: 720px;
+    margin: 0 auto;
 
     border-radius: v.$radius-md * 2;
 
@@ -38,6 +39,14 @@
         &:hover {
             border-color: v.$accent;
         }
+    }
+
+    &__cover {
+        flex-shrink: 0;
+        width: 44px;
+        height: 44px;
+        border-radius: v.$radius-sm;
+        object-fit: cover;
     }
 
     &__body {
@@ -69,6 +78,12 @@
 
     &__range {
         flex: 1;
+        accent-color: v.$accent;
+    }
+
+    &__volume {
+        flex-shrink: 0;
+        width: 80px;
         accent-color: v.$accent;
     }
 }

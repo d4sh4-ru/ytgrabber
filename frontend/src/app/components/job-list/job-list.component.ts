@@ -1,16 +1,7 @@
-import {
-    ChangeDetectionStrategy,
-    Component,
-    inject,
-    Input,
-    OnChanges,
-    OnDestroy,
-    OnInit,
-    SimpleChanges,
-} from '@angular/core';
-import { Subject, takeUntil } from 'rxjs';
-import { main } from '../../wailsjs/wailsjs/go/models';
+import { ChangeDetectionStrategy, Component, inject, Input } from '@angular/core';
+import { model } from '../../wailsjs/wailsjs/go/models';
 import { DownloadService } from '../../services/download.service';
+import { NotificationService } from '../../services/notification.service';
 import { JobCardComponent } from '../job-card/job-card.component';
 
 @Component({
@@ -21,35 +12,26 @@ import { JobCardComponent } from '../job-card/job-card.component';
     styleUrl: './job-list.component.scss',
     changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class JobListComponent implements OnChanges, OnInit, OnDestroy {
-    @Input()
-    public jobs: main.DownloadJob[] = [];
-
+export class JobListComponent {
     private readonly downloadService = inject(DownloadService);
-    private readonly destroy$ = new Subject<void>();
+    private readonly notificationService = inject(NotificationService);
 
-    protected displayJobs: main.DownloadJob[] = [];
+    @Input()
+    public jobs: model.DownloadJob[] = [];
 
-    public ngOnChanges(changes: SimpleChanges): void {
-        if (changes['jobs']) {
-            this.displayJobs = this.jobs;
+    protected async onRemove(id: string): Promise<void> {
+        try {
+            await this.downloadService.removeJob(id);
+        } catch (error: unknown) {
+            this.notificationService.error(error);
         }
     }
 
-    public ngOnInit(): void {
-        this.downloadService.jobRemoved$
-            .pipe(takeUntil(this.destroy$))
-            .subscribe((id: string): void => {
-                this.displayJobs = this.displayJobs.filter((job) => job.id !== id);
-            });
-    }
-
-    public ngOnDestroy(): void {
-        this.destroy$.next();
-        this.destroy$.complete();
-    }
-
-    protected onRemove(id: string): void {
-        void this.downloadService.removeJob(id);
+    protected async onRetry(id: string): Promise<void> {
+        try {
+            await this.downloadService.retryJob(id);
+        } catch (error: unknown) {
+            this.notificationService.error(error);
+        }
     }
 }

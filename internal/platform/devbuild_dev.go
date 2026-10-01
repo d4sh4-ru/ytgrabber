@@ -1,8 +1,8 @@
 //go:build dev
 
-package main
+package platform
 
-// isDevBuild is true exactly when compiled via `wails dev`, which always
+// IsDevBuild is true exactly when compiled via `wails dev`, which always
 // passes the "dev" build tag (see wails' own internal app_dev.go — this
 // mirrors that mechanism rather than inventing a new one).
-const isDevBuild = true
+const IsDevBuild = true
