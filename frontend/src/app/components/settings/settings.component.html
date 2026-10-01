@@ -39,9 +39,25 @@
 <section class="settings__section">
     <div class="settings__heading-row">
         <h2 class="settings__heading">Внешние программы</h2>
-        <button type="button" class="btn" [disabled]="isCheckingDependencies" (click)="onRecheck()">
-            {{ isCheckingDependencies ? 'Проверка…' : 'Проверить снова' }}
-        </button>
+        <div class="settings__buttons">
+            @if (installState.isRunning) {
+                <button type="button" class="btn" (click)="onCancelInstall()">
+                    Отменить установку
+                </button>
+            } @else if (installableMissingCount > 0) {
+                <button type="button" class="btn btn--primary" (click)="onInstall([])">
+                    Установить недостающие ({{ installableMissingCount }})
+                </button>
+            }
+            <button
+                type="button"
+                class="btn"
+                [disabled]="isCheckingDependencies || installState.isRunning"
+                (click)="onRecheck()"
+            >
+                {{ isCheckingDependencies ? 'Проверка…' : 'Проверить снова' }}
+            </button>
+        </div>
     </div>
 
     @for (tool of dependencies?.tools ?? []; track tool.name) {
@@ -55,6 +71,11 @@
                     @if (!tool.required) {
                         <span class="settings__muted settings__inline">· необязательно</span>
                     }
+                    @if (tool.managed) {
+                        <span class="settings__muted settings__inline"
+                            >· установлено приложением</span
+                        >
+                    }
                 </span>
                 <span class="settings__muted">{{ tool.purpose }}</span>
                 @if (tool.found) {
@@ -62,12 +83,30 @@
                 } @else if (tool.custom) {
                     <span class="settings__problem">Указанный файл не найден: {{ tool.path }}</span>
                 } @else {
-                    <span class="settings__problem">
-                        Не найден.
-                        @if (tool.hint) {
-                            Установка: <code>{{ tool.hint }}</code>
-                        }
+                    <span class="settings__problem">Не найден.</span>
+                    @if (tool.installable) {
+                        <span class="settings__muted">
+                            Можно установить отсюда (источник: {{ tool.installSource }})
+                            @if (tool.hint) {
+                                или вручную: <code>{{ tool.hint }}</code>
+                            }
+                        </span>
+                    } @else if (tool.hint) {
+                        <span class="settings__muted"
+                            >Установка: <code>{{ tool.hint }}</code></span
+                        >
+                    }
+                }
+                @if (installProgress(tool); as progress) {
+                    <span
+                        class="settings__install"
+                        [class.settings__problem]="progress.stage === 'failed'"
+                    >
+                        {{ installProgressLabel(progress) }}
                     </span>
+                    @if (installPercent(progress); as percent) {
+                        <progress class="settings__progress" [value]="percent" max="100"></progress>
+                    }
                 }
             </div>
             <div class="settings__buttons">
@@ -79,6 +118,11 @@
                         (click)="onUpdateYtDlp()"
                     >
                         {{ isUpdatingYtDlp ? 'Обновление…' : 'Обновить' }}
+                    </button>
+                }
+                @if (!tool.found && !tool.custom && tool.installable && !installState.isRunning) {
+                    <button type="button" class="btn" (click)="onInstall([tool.name])">
+                        Установить
                     </button>
                 }
                 @if (isConfigurable(tool)) {
@@ -146,6 +190,7 @@
                 <li>библиотека и список загрузок</li>
                 <li>настройки</li>
                 <li>журнал и кэш встроенного браузера</li>
+                <li>программы, установленные приложением (yt-dlp, ffmpeg, deno)</li>
                 <li>недокачанные файлы</li>
             </ul>
         </app-confirm-dialog>

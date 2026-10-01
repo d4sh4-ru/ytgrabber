@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=YT Grabber
+Comment=Загрузка видео через yt-dlp
+Exec=ytgrabber
+Icon=ytgrabber
+Terminal=false
+Categories=AudioVideo;Network;
+StartupWMClass=ytgrabber

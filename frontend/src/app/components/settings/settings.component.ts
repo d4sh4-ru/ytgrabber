@@ -9,6 +9,11 @@ import {
 import { Subject, takeUntil } from 'rxjs';
 import { ConfigurableTool, SettingsService } from '../../services/settings.service';
 import { NotificationService } from '../../services/notification.service';
+import {
+    ToolInstallProgress,
+    ToolInstallService,
+    ToolInstallState,
+} from '../../services/tool-install.service';
 import { app, tools } from '../../wailsjs/wailsjs/go/models';
 import { formatBytes } from '../../shared/format-bytes';
 import {
@@ -33,6 +38,7 @@ type ResetStep = 'idle' | 'choose' | 'confirm';
 export class SettingsComponent implements OnInit, OnDestroy {
     // --- DI / lifecycle ---
     private readonly settingsService = inject(SettingsService);
+    private readonly toolInstallService = inject(ToolInstallService);
     private readonly notificationService = inject(NotificationService);
     private readonly changeDetectorRef = inject(ChangeDetectorRef);
     private readonly destroy$ = new Subject<void>();
@@ -47,6 +53,9 @@ export class SettingsComponent implements OnInit, OnDestroy {
     protected isUpdatingYtDlp = false;
     protected updateOutput = '';
 
+    // --- Installing tools ---
+    protected installState: ToolInstallState = { isRunning: false, progress: {} };
+
     // --- App info ---
     protected appInfo: app.AppInfo | null = null;
 
@@ -55,6 +64,12 @@ export class SettingsComponent implements OnInit, OnDestroy {
     protected resetStep: ResetStep = 'idle';
     protected resetDeleteMedia = false;
     protected isResetting = false;
+
+    protected get installableMissingCount(): number {
+        return (this.dependencies?.tools ?? []).filter(
+            (tool) => !tool.found && !tool.custom && tool.installable,
+        ).length;
+    }
 
     protected get dataSizeLabel(): string {
         return formatBytes(this.storage?.dataBytes ?? 0);
@@ -82,6 +97,13 @@ export class SettingsComponent implements OnInit, OnDestroy {
             .pipe(takeUntil(this.destroy$))
             .subscribe((report: tools.Report | null): void => {
                 this.dependencies = report;
+                this.changeDetectorRef.markForCheck();
+            });
+
+        this.toolInstallService.state$
+            .pipe(takeUntil(this.destroy$))
+            .subscribe((state: ToolInstallState): void => {
+                this.installState = state;
                 this.changeDetectorRef.markForCheck();
             });
 
@@ -163,6 +185,53 @@ export class SettingsComponent implements OnInit, OnDestroy {
         await this.applySettings(this.settingsService.resetToolPath(tool.name as ConfigurableTool));
     }
 
+    // --- Installing tools ---
+    protected installProgress(tool: tools.Status): ToolInstallProgress | null {
+        // ffprobe is installed together with ffmpeg.
+        const key = tool.name === 'ffprobe' ? 'ffmpeg' : tool.name;
+        return this.installState.progress[key] ?? null;
+    }
+
+    protected installProgressLabel(progress: ToolInstallProgress): string {
+        switch (progress.stage) {
+            case 'downloading':
+                return progress.total > 0
+                    ? `Скачивание: ${formatBytes(progress.downloaded)} из ${formatBytes(progress.total)}`
+                    : `Скачивание: ${formatBytes(progress.downloaded)}`;
+            case 'verifying':
+                return 'Проверка контрольной суммы…';
+            case 'extracting':
+                return 'Распаковка…';
+            case 'done':
+                return 'Установлено';
+            case 'failed':
+                return `Ошибка: ${progress.error ?? 'неизвестная'}`;
+        }
+    }
+
+    protected installPercent(progress: ToolInstallProgress): number | null {
+        return progress.stage === 'downloading' && progress.total > 0
+            ? Math.round((progress.downloaded / progress.total) * 100)
+            : null;
+    }
+
+    protected async onInstall(names: string[]): Promise<void> {
+        try {
+            await this.toolInstallService.install(names);
+        } catch (error: unknown) {
+            this.notificationService.error(error);
+        }
+    }
+
+    protected async onCancelInstall(): Promise<void> {
+        try {
+            await this.toolInstallService.cancel();
+        } catch (error: unknown) {
+            this.notificationService.error(error);
+        }
+    }
+
+    // --- Updating yt-dlp ---
     protected async onUpdateYtDlp(): Promise<void> {
         this.isUpdatingYtDlp = true;
         this.updateOutput = '';

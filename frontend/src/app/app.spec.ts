@@ -3,6 +3,7 @@ import { BehaviorSubject, Observable, Subject } from 'rxjs';
 import { App } from './app';
 import { DownloadService } from './services/download.service';
 import { SettingsService } from './services/settings.service';
+import { ToolInstallService, ToolInstallState } from './services/tool-install.service';
 import { app, model, tools } from './wailsjs/wailsjs/go/models';
 
 class DownloadServiceStub {
@@ -55,6 +56,23 @@ class SettingsServiceStub {
     }
 }
 
+class ToolInstallServiceStub {
+    public readonly state$ = new BehaviorSubject<ToolInstallState>({
+        isRunning: false,
+        progress: {},
+    });
+    public readonly installCalls: (readonly string[])[] = [];
+
+    public install(names: readonly string[] = []): Promise<void> {
+        this.installCalls.push(names);
+        return Promise.resolve();
+    }
+
+    public cancel(): Promise<void> {
+        return Promise.resolve();
+    }
+}
+
 function job(id: string, status: string): model.DownloadJob {
     return model.DownloadJob.createFrom({ id, url: `https://x/${id}`, status, tracks: [] });
 }
@@ -62,16 +80,19 @@ function job(id: string, status: string): model.DownloadJob {
 describe('App', () => {
     let downloadService: DownloadServiceStub;
     let settingsService: SettingsServiceStub;
+    let toolInstallService: ToolInstallServiceStub;
 
     beforeEach(async () => {
         downloadService = new DownloadServiceStub();
         settingsService = new SettingsServiceStub();
+        toolInstallService = new ToolInstallServiceStub();
 
         await TestBed.configureTestingModule({
             imports: [App],
             providers: [
                 { provide: DownloadService, useValue: downloadService },
                 { provide: SettingsService, useValue: settingsService },
+                { provide: ToolInstallService, useValue: toolInstallService },
             ],
         }).compileComponents();
     });
@@ -104,18 +125,31 @@ describe('App', () => {
         expect(compiled.querySelector('app-download-form')).toBeNull();
     });
 
-    it('warns about missing required tools', async () => {
+    it('warns about missing required tools and installs them from the banner', async () => {
         settingsService.report = tools.Report.createFrom({
             ready: false,
             tools: [
-                { name: 'yt-dlp', required: true, found: false },
-                { name: 'deno', required: false, found: false },
+                { name: 'yt-dlp', required: true, found: false, installable: true },
+                { name: 'deno', required: false, found: false, installable: true },
             ],
         });
-        const compiled = await render();
-        const banner = compiled.querySelector('.banner--warning')?.textContent ?? '';
-        expect(banner).toContain('yt-dlp');
-        expect(banner).not.toContain('deno');
+        const fixture = TestBed.createComponent(App);
+        fixture.detectChanges();
+        await settle(fixture);
+        const compiled = fixture.nativeElement as HTMLElement;
+
+        const banner = compiled.querySelector('.banner--warning');
+        expect(banner?.textContent).toContain('yt-dlp');
+        expect(banner?.textContent).not.toContain('deno');
+
+        const install = Array.from(banner!.querySelectorAll('button')).find((button) =>
+            button.textContent?.includes('Установить автоматически'),
+        );
+        install!.click();
+        await settle(fixture);
+
+        expect(toolInstallService.installCalls).toEqual([[]]);
+        expect(compiled.querySelector('app-settings')).not.toBeNull();
     });
 
     it('lists loaded jobs and drops removed ones', async () => {

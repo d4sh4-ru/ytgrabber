@@ -57,9 +57,10 @@ func loadSettings(db *storage.DB, defaultDownloadsDir string) (Settings, error) 
 	return settings, nil
 }
 
-// resolveTools locates the external tools, honouring paths set by the user.
-func (s Settings) resolveTools() tools.Set {
-	return tools.Resolve(s.YtDlpPath, s.FfmpegPath)
+// resolveTools locates the external tools, honouring paths set by the
+// user and copies installed by the app (see InstallTools).
+func (a *App) resolveTools(s Settings) tools.Set {
+	return tools.Resolve(s.YtDlpPath, s.FfmpegPath, a.paths.ToolsDir())
 }
 
 func clampConcurrency(n int) int {
@@ -192,7 +193,7 @@ func (a *App) updateSettings(apply func(*Settings), key string, value string) (S
 
 	a.mu.Lock()
 	apply(&a.settings)
-	a.tools = a.settings.resolveTools()
+	a.tools = a.resolveTools(a.settings)
 	settings := a.settings
 	a.mu.Unlock()
 	return settings, nil

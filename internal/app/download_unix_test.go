@@ -57,7 +57,7 @@ func newAppWithFakeTools(t *testing.T) (*App, *recordedEvents) {
 
 	app.settings.YtDlpPath = ytDlp
 	app.settings.FfmpegPath = ffmpeg
-	app.tools = app.settings.resolveTools()
+	app.tools = app.resolveTools(app.settings)
 	app.tools.Ffprobe.Found = false // keep the test independent of a real ffprobe
 	return app, events
 }

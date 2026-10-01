@@ -42,8 +42,12 @@ export class SettingsService {
 
     public async refreshDependencies(): Promise<tools.Report> {
         const report = await GetDependencies();
-        this.dependenciesSubject$.next(report);
+        this.setDependencies(report);
         return report;
+    }
+
+    public setDependencies(report: tools.Report): void {
+        this.dependenciesSubject$.next(report);
     }
 
     public chooseDownloadsDir(): Promise<app.Settings> {

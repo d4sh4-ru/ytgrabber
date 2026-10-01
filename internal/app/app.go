@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"net/http"
 	"os"
 	"sync"
 	"sync/atomic"
@@ -16,16 +17,18 @@ import (
 
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 
+	"ytgrabber/internal/installer"
 	"ytgrabber/internal/logging"
 	"ytgrabber/internal/platform"
 	"ytgrabber/internal/storage"
 	"ytgrabber/internal/tools"
 )
 
-// Version is shown in the settings screen. Keep it in sync with
-// info.productVersion in wails.json, which feeds the platform bundle
-// metadata (Info.plist, Windows version resource).
-const Version = "1.0.0"
+// Version is shown in the settings screen. Release builds set it from the
+// git tag (see .github/workflows/release.yml):
+//
+//	wails build -ldflags "-X ytgrabber/internal/app.Version=1.2.3"
+var Version = "dev"
 
 const shutdownTimeout = 10 * time.Second
 
@@ -46,6 +49,12 @@ type App struct {
 	// cleanupPipe is held open until exit for it.
 	startHelper func(paths []string) error
 	cleanupPipe io.Closer
+
+	// installer downloads missing tools (see InstallTools); cancelInstall
+	// stops the running install, if any.
+	installer     installer.Installer
+	installMu     sync.Mutex
+	cancelInstall context.CancelFunc
 
 	mu       sync.RWMutex // guards everything below
 	settings Settings
@@ -77,6 +86,11 @@ func New(paths platform.Paths) *App {
 		cancels: make(map[string]context.CancelCauseFunc),
 	}
 	a.startHelper = a.startCleanupHelper
+	a.installer = installer.Installer{
+		Dir:       paths.ToolsDir(),
+		Client:    &http.Client{Timeout: installTimeout},
+		UserAgent: "ytgrabber/" + Version,
+	}
 	return a
 }
 
@@ -140,7 +154,7 @@ func (a *App) init() error {
 		return fmt.Errorf("не удалось загрузить задачи: %w", err)
 	}
 
-	toolSet := settings.resolveTools()
+	toolSet := a.resolveTools(settings)
 	for _, status := range toolSet.List() {
 		log.Printf("ytgrabber: %s found=%v path=%q", status.Name, status.Found, status.Path)
 	}
@@ -175,6 +189,7 @@ func (a *App) shutdown(context.Context) {
 // No new jobs are scheduled and no events are sent afterwards.
 func (a *App) stopAllDownloads(cause error) {
 	a.shuttingDown.Store(true)
+	a.CancelToolInstall()
 
 	a.mu.Lock()
 	a.queue = nil
@@ -231,12 +246,12 @@ func (a *App) GetAppInfo() AppInfo {
 // установить их, не перезапуская приложение) и определяет их версии.
 func (a *App) GetDependencies() tools.Report {
 	a.mu.Lock()
-	a.tools = a.settings.resolveTools()
+	a.tools = a.resolveTools(a.settings)
 	toolSet := a.tools
 	a.mu.Unlock()
 
 	toolSet.FillVersions()
-	return toolSet.Report()
+	return withInstallInfo(toolSet.Report())
 }
 
 // UpdateYtDlp запускает самообновление yt-dlp и возвращает его вывод.

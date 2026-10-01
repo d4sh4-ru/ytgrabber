@@ -10,6 +10,7 @@ import { merge, Subject, takeUntil } from 'rxjs';
 import { DownloadService } from './services/download.service';
 import { NotificationService } from './services/notification.service';
 import { SettingsService } from './services/settings.service';
+import { ToolInstallService, ToolInstallState } from './services/tool-install.service';
 import { model, tools } from './wailsjs/wailsjs/go/models';
 import { DownloadFormComponent } from './components/download-form/download-form.component';
 import { LibraryComponent } from './components/video-library/library.component';
@@ -41,6 +42,7 @@ export class App implements OnInit, OnDestroy {
     // --- DI / lifecycle ---
     private readonly downloadService = inject(DownloadService);
     private readonly settingsService = inject(SettingsService);
+    private readonly toolInstallService = inject(ToolInstallService);
     private readonly notificationService = inject(NotificationService);
     private readonly changeDetectorRef = inject(ChangeDetectorRef);
     private readonly destroy$ = new Subject<void>();
@@ -51,6 +53,7 @@ export class App implements OnInit, OnDestroy {
     // --- App state ---
     protected startupError = '';
     protected dependencies: tools.Report | null = null;
+    protected isInstallingTools = false;
 
     // --- Jobs ---
     protected jobs: model.DownloadJob[] = [];
@@ -62,6 +65,12 @@ export class App implements OnInit, OnDestroy {
 
     protected get activeJobsCount(): number {
         return this.jobs.filter((job) => ACTIVE_JOB_STATUSES.has(job.status)).length;
+    }
+
+    protected get canInstallMissing(): boolean {
+        return (this.dependencies?.tools ?? []).some(
+            (tool) => tool.required && !tool.found && !tool.custom && tool.installable,
+        );
     }
 
     protected get missingRequiredTools(): string[] {
@@ -113,6 +122,13 @@ export class App implements OnInit, OnDestroy {
         this.downloadService.libraryChanged$.pipe(takeUntil(this.destroy$)).subscribe((): void => {
             void this.refreshLibrary();
         });
+
+        this.toolInstallService.state$
+            .pipe(takeUntil(this.destroy$))
+            .subscribe((state: ToolInstallState): void => {
+                this.isInstallingTools = state.isRunning;
+                this.changeDetectorRef.markForCheck();
+            });
 
         this.settingsService.dependencies$
             .pipe(takeUntil(this.destroy$))
@@ -180,6 +196,16 @@ export class App implements OnInit, OnDestroy {
     }
 
     // --- Dependencies ---
+    protected async onInstallMissing(): Promise<void> {
+        // The settings screen shows the progress.
+        this.activeTab = 'settings';
+        try {
+            await this.toolInstallService.install();
+        } catch (error: unknown) {
+            this.notificationService.error(error);
+        }
+    }
+
     private async refreshDependencies(): Promise<void> {
         try {
             await this.settingsService.refreshDependencies();

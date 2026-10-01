@@ -49,7 +49,21 @@
                     >Не найдено: {{ missingRequiredTools.join(', ') }}. Без этого загрузка не
                     работает.</span
                 >
-                <button type="button" class="btn" (click)="setTab('settings')">Подробнее</button>
+                <div class="banner__actions">
+                    @if (canInstallMissing) {
+                        <button
+                            type="button"
+                            class="btn btn--primary"
+                            [disabled]="isInstallingTools"
+                            (click)="onInstallMissing()"
+                        >
+                            {{ isInstallingTools ? 'Установка…' : 'Установить автоматически' }}
+                        </button>
+                    }
+                    <button type="button" class="btn" (click)="setTab('settings')">
+                        Подробнее
+                    </button>
+                </div>
             </div>
         }
 

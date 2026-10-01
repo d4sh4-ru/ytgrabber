@@ -101,6 +101,11 @@ button {
     &--warning {
         border-color: v.$warning;
     }
+
+    &__actions {
+        display: flex;
+        gap: 6px;
+    }
 }
 
 .backdrop {
