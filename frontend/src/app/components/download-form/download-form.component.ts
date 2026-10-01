@@ -1,4 +1,10 @@
-import { ChangeDetectionStrategy, Component, EventEmitter, Input, Output } from '@angular/core';
+import {
+    ChangeDetectionStrategy,
+    ChangeDetectorRef,
+    Component,
+    inject,
+    Input,
+} from '@angular/core';
 import {
     AbstractControl,
     FormControl,
@@ -6,8 +12,9 @@ import {
     ValidationErrors,
     Validators,
 } from '@angular/forms';
-import { DownloadQuality } from '../../services/download.service';
-import { main } from '../../wailsjs/wailsjs/go/models';
+import { DownloadQuality, DownloadService } from '../../services/download.service';
+import { NotificationService } from '../../services/notification.service';
+import { model } from '../../wailsjs/wailsjs/go/models';
 import { JobListComponent } from '../job-list/job-list.component';
 
 const URL_LIKE_PATTERN = /^(https?:\/\/)?([\w-]+\.)+[a-zA-Z]{2,}([/?#]\S*)?$/;
@@ -15,11 +22,6 @@ const URL_LIKE_PATTERN = /^(https?:\/\/)?([\w-]+\.)+[a-zA-Z]{2,}([/?#]\S*)?$/;
 function urlLikeValidator(control: AbstractControl<string>): ValidationErrors | null {
     const value = control.value.trim();
     return URL_LIKE_PATTERN.test(value) ? null : { urlLike: true };
-}
-
-export interface DownloadRequest {
-    readonly url: string;
-    readonly quality: DownloadQuality;
 }
 
 interface QualityOption {
@@ -43,11 +45,12 @@ const QUALITY_OPTIONS: readonly QualityOption[] = [
     changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class DownloadFormComponent {
-    @Input()
-    public jobs: main.DownloadJob[] = [];
+    private readonly downloadService = inject(DownloadService);
+    private readonly notificationService = inject(NotificationService);
+    private readonly changeDetectorRef = inject(ChangeDetectorRef);
 
-    @Output()
-    public readonly downloadRequested = new EventEmitter<DownloadRequest>();
+    @Input()
+    public jobs: model.DownloadJob[] = [];
 
     public readonly qualityOptions = QUALITY_OPTIONS;
 
@@ -60,28 +63,43 @@ export class DownloadFormComponent {
         nonNullable: true,
     });
 
+    protected isSubmitting = false;
+    // Validation is shown only after a submit attempt: flagging the empty
+    // field as soon as it loses focus reads as an error the user didn't make.
+    protected isSubmitAttempted = false;
+
     protected get isInvalid(): boolean {
-        return this.urlControl.invalid && this.urlControl.touched;
+        return this.urlControl.invalid && this.isSubmitAttempted;
     }
 
     protected get placeholder(): string {
         return this.isInvalid
             ? 'Введите непустую ссылку, похожую на URL'
-            : 'Ссылка на видео YouTube';
+            : 'Ссылка на видео (YouTube и другие сайты)';
     }
 
-    protected onSubmit(event: Event): void {
+    protected async onSubmit(event: Event): Promise<void> {
         event.preventDefault();
 
         if (this.urlControl.invalid) {
-            this.urlControl.markAsTouched();
+            this.isSubmitAttempted = true;
             return;
         }
 
-        this.downloadRequested.emit({
-            url: this.urlControl.value.trim(),
-            quality: this.qualityControl.value,
-        });
-        this.urlControl.reset('');
+        this.isSubmitting = true;
+        try {
+            await this.downloadService.download(
+                this.urlControl.value.trim(),
+                this.qualityControl.value,
+            );
+            // Only clear the field once the backend accepted the link, so a
+            // rejected one can be corrected instead of retyped.
+            this.urlControl.reset('');
+            this.isSubmitAttempted = false;
+        } catch (error: unknown) {
+            this.notificationService.error(error);
+        }
+        this.isSubmitting = false;
+        this.changeDetectorRef.markForCheck();
     }
 }

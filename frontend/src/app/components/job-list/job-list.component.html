@@ -1,9 +1,9 @@
-@if (displayJobs.length === 0) {
+@if (jobs.length === 0) {
     <p class="job-list__empty">Нет активных загрузок</p>
 } @else {
     <div class="job-list">
-        @for (job of displayJobs; track job.id) {
-            <app-job-card [job]="job" (removed)="onRemove($event)"/>
+        @for (job of jobs; track job.id) {
+            <app-job-card [job]="job" (removed)="onRemove($event)" (retried)="onRetry($event)" />
         }
     </div>
 }

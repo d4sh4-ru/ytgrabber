@@ -1,0 +1,33 @@
+<div class="backdrop" (click)="onCancel()">
+    <div class="confirm-dialog" role="dialog" aria-modal="true" (click)="$event.stopPropagation()">
+        <p class="confirm-dialog__title">{{ title }}</p>
+        @if (message) {
+            <p class="confirm-dialog__message">{{ message }}</p>
+        }
+        <ng-content />
+        @if (optionLabel) {
+            <label class="confirm-dialog__option">
+                <input
+                    type="checkbox"
+                    [checked]="option"
+                    [disabled]="busy"
+                    (change)="onOptionChange($event)"
+                />
+                {{ optionLabel }}
+            </label>
+        }
+        <div class="confirm-dialog__actions">
+            <button type="button" class="btn" [disabled]="busy" (click)="onCancel()">Отмена</button>
+            <button
+                type="button"
+                class="btn"
+                [class.btn--primary]="!danger"
+                [class.btn--destructive]="danger"
+                [disabled]="busy"
+                (click)="onConfirm()"
+            >
+                {{ confirmLabel }}
+            </button>
+        </div>
+    </div>
+</div>

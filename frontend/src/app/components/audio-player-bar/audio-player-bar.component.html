@@ -10,25 +10,53 @@
             (play)="onPlay()"
             (pause)="onPause()"
             (ended)="onPause()"
+            (error)="onError()"
         ></audio>
 
-        <button type="button" class="audio-player-bar__toggle" (click)="onTogglePlay()">
+        @if (currentTrack.coverSrc) {
+            <img class="audio-player-bar__cover" [src]="currentTrack.coverSrc" alt="" />
+        }
+
+        <button
+            type="button"
+            class="audio-player-bar__toggle"
+            [attr.aria-label]="isPlaying ? 'Пауза' : 'Воспроизвести'"
+            (click)="onTogglePlay()"
+        >
             {{ isPlaying ? '⏸' : '▶' }}
         </button>
 
         <div class="audio-player-bar__body">
-            <p class="audio-player-bar__title" [title]="currentTrack.title">{{ currentTrack.title }}</p>
+            <p class="audio-player-bar__title" [title]="currentTrack.title">
+                {{ currentTrack.title }}
+            </p>
             <div class="audio-player-bar__scrubber">
                 <span class="audio-player-bar__time">{{ currentTimeLabel }}</span>
-                <input class="audio-player-bar__range"
-                       type="range"
-                       min="0"
-                       max="100"
-                       step="0.1"
-                       [value]="progressPercent"
-                       (input)="onSeek($event)"/>
+                <input
+                    class="audio-player-bar__range"
+                    type="range"
+                    min="0"
+                    max="100"
+                    step="0.1"
+                    aria-label="Позиция"
+                    [value]="progressPercent"
+                    (input)="onSeek($event)"
+                />
                 <span class="audio-player-bar__time">{{ durationLabel }}</span>
             </div>
         </div>
+
+        <input
+            class="audio-player-bar__volume"
+            type="range"
+            min="0"
+            max="1"
+            step="0.01"
+            aria-label="Громкость"
+            [value]="volume"
+            (input)="onVolumeChange($event)"
+        />
+
+        <button type="button" class="btn" aria-label="Закрыть плеер" (click)="onClose()">✕</button>
     </div>
 }

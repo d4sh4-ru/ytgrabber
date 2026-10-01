@@ -1,0 +1,15 @@
+<div class="toast-host" aria-live="polite">
+    @for (notification of notificationService.notifications$ | async; track notification.id) {
+        <div class="toast" [class.toast--error]="notification.kind === 'error'" role="status">
+            <span class="toast__message">{{ notification.message }}</span>
+            <button
+                type="button"
+                class="toast__close"
+                aria-label="Закрыть"
+                (click)="notificationService.dismiss(notification.id)"
+            >
+                ✕
+            </button>
+        </div>
+    }
+</div>

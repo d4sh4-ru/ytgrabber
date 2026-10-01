@@ -1,0 +1,36 @@
+@use '../../../styles/variables' as v;
+
+.confirm-dialog {
+    width: min(400px, 90vw);
+    padding: 16px;
+    border: 1px solid v.$border-subtle;
+    border-radius: v.$radius-md;
+    background: v.$bg-elevated;
+
+    &__title {
+        margin: 0 0 8px;
+        font-weight: 600;
+        word-break: break-word;
+    }
+
+    &__message {
+        margin: 0 0 12px;
+        color: v.$text-secondary;
+        font-size: 13px;
+    }
+
+    &__option {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        margin-bottom: 16px;
+        font-size: 13px;
+        cursor: pointer;
+    }
+
+    &__actions {
+        display: flex;
+        justify-content: flex-end;
+        gap: 8px;
+    }
+}

@@ -1,0 +1,46 @@
+<div
+    class="media-card"
+    [class.media-card--missing]="item.fileMissing"
+    role="button"
+    tabindex="0"
+    (click)="onOpen()"
+    (keydown.enter)="onOpen()"
+>
+    <div class="media-card__cover">
+        @if (item.thumbnailUrl) {
+            <img
+                class="media-card__image"
+                [src]="item.thumbnailUrl"
+                [alt]="item.title"
+                loading="lazy"
+            />
+        } @else if (isAudio) {
+            <span class="media-card__icon">♪</span>
+        }
+        @if (item.fileMissing) {
+            <span class="media-card__badge">Файл не найден</span>
+        }
+        <div class="media-card__actions">
+            @if (!item.fileMissing) {
+                <button
+                    type="button"
+                    class="btn"
+                    title="Показать в папке"
+                    (click)="onReveal($event)"
+                >
+                    📂
+                </button>
+            }
+            <button
+                type="button"
+                class="btn btn--danger"
+                title="Удалить"
+                (click)="onDelete($event)"
+            >
+                🗑
+            </button>
+        </div>
+    </div>
+    <p class="media-card__title" [title]="item.title">{{ item.title }}</p>
+    <span class="media-card__duration">{{ durationLabel ?? '&nbsp;' }}</span>
+</div>

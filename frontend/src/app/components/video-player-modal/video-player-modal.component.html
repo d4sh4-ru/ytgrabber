@@ -1,14 +1,29 @@
 @if (item) {
-    <div class="video-modal-backdrop" (click)="onClose()">
-        <div class="video-modal" (click)="$event.stopPropagation()">
+    <div class="backdrop" (click)="onClose()">
+        <div class="video-modal" role="dialog" aria-modal="true" (click)="$event.stopPropagation()">
             <div class="video-modal__header">
                 <span class="video-modal__title" [title]="item.title">{{ item.title }}</span>
                 <div class="video-modal__actions">
-                    <button class="video-modal__action" type="button" (click)="onFullscreen()">Развернуть</button>
-                    <button class="video-modal__action" type="button" (click)="onClose()">✕</button>
+                    <button class="btn" type="button" (click)="onFullscreen()">Развернуть</button>
+                    <button class="btn" type="button" aria-label="Закрыть" (click)="onClose()">
+                        ✕
+                    </button>
                 </div>
             </div>
-            <video #videoElement class="video-modal__player" [src]="videoSrc" controls autoplay></video>
+            @if (playbackError) {
+                <p class="video-modal__error">
+                    Не удалось воспроизвести файл. Он мог быть удалён или использует кодек, который
+                    не поддерживает встроенный плеер — откройте его через «Показать в папке».
+                </p>
+            }
+            <video
+                #videoElement
+                class="video-modal__player"
+                [src]="item.mediaUrl"
+                controls
+                autoplay
+                (error)="onPlaybackError()"
+            ></video>
         </div>
     </div>
 }

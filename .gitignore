@@ -8,3 +8,5 @@ downloads/
 .claude/
 frontend/src/app/wailsjs/
 .idea/
+/ytgrabber
+/ytgrabber.exe

@@ -1,15 +1,17 @@
 <form class="download-form" (submit)="onSubmit($event)">
-    <input class="download-form__input"
-           type="text"
-           [placeholder]="placeholder"
-           [formControl]="urlControl"
-           [class._invalid]="isInvalid"/>
+    <input
+        class="download-form__input"
+        type="text"
+        [placeholder]="placeholder"
+        [formControl]="urlControl"
+        [class._invalid]="isInvalid"
+    />
     <select class="download-form__quality" [formControl]="qualityControl">
         @for (option of qualityOptions; track option.value) {
             <option [value]="option.value">{{ option.label }}</option>
         }
     </select>
-    <button class="download-form__submit" type="submit">Добавить</button>
+    <button class="download-form__submit" type="submit" [disabled]="isSubmitting">Добавить</button>
 </form>
 
 <div class="vertical-divider"></div>

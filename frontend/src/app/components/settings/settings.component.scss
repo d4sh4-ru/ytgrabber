@@ -1,0 +1,131 @@
+@use '../../../styles/variables' as v;
+
+:host {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.settings {
+    &__section {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        padding: 12px;
+        border: 1px solid v.$border-subtle;
+        border-radius: v.$radius-md;
+        background: v.$bg-surface;
+    }
+
+    &__section--danger {
+        border-color: rgba(v.$error, 0.5);
+    }
+
+    &__reset-list {
+        margin: 0 0 12px;
+        padding-left: 20px;
+        color: v.$text-secondary;
+        font-size: 13px;
+    }
+
+    &__heading-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+    }
+
+    &__heading {
+        margin: 0;
+        font-size: 14px;
+        font-weight: 600;
+    }
+
+    &__row,
+    &__tool {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+    }
+
+    &__tool {
+        padding: 8px 0;
+        border-top: 1px solid v.$border-subtle;
+
+        &--missing strong {
+            color: v.$error;
+        }
+    }
+
+    &__label {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+        min-width: 0;
+        font-size: 13px;
+    }
+
+    &__buttons {
+        display: flex;
+        flex-shrink: 0;
+        gap: 6px;
+    }
+
+    &__path {
+        overflow: hidden;
+        color: v.$text-secondary;
+        font-size: 12px;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    &__muted {
+        color: v.$text-secondary;
+        font-size: 12px;
+    }
+
+    &__inline {
+        margin-left: 6px;
+    }
+
+    &__problem {
+        color: v.$error;
+        font-size: 12px;
+    }
+
+    &__select {
+        padding: 4px 8px;
+        border: 1px solid v.$border-subtle;
+        border-radius: v.$radius-sm;
+        background: v.$bg-elevated;
+        color: v.$text-primary;
+    }
+
+    &__output {
+        margin: 0;
+        padding: 8px;
+        border-radius: v.$radius-sm;
+        background: v.$bg-primary;
+        font-size: 12px;
+        white-space: pre-wrap;
+        word-break: break-word;
+    }
+
+    &__info {
+        display: grid;
+        grid-template-columns: max-content 1fr;
+        gap: 4px 12px;
+        margin: 0;
+        font-size: 13px;
+
+        dt {
+            color: v.$text-secondary;
+        }
+
+        dd {
+            min-width: 0;
+            margin: 0;
+            overflow: hidden;
+        }
+    }
+}

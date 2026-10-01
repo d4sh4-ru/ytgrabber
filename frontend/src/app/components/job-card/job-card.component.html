@@ -1,14 +1,14 @@
 <div class="job-card" [class.job-card--error]="isError">
     <div class="job-card__header">
         <p class="job-card__title" [title]="displayTitle">{{ displayTitle }}</p>
-        <button
-            type="button"
-            class="job-card__remove"
-            [class.job-card__remove--compact]="isError"
-            (click)="onRemove()"
-        >
-            {{ removeButtonLabel }}
-        </button>
+        <div class="job-card__actions">
+            @if (isError) {
+                <button type="button" class="btn" (click)="onRetry()">Повторить</button>
+            }
+            <button type="button" class="btn btn--danger" (click)="onRemove()">
+                {{ removeButtonLabel }}
+            </button>
+        </div>
     </div>
 
     @if (isProcessing) {
@@ -23,13 +23,20 @@
                     <span>{{ trackLabel(track.kind) }}</span>
                     <span>{{ trackPercent(track.progress) }}%</span>
                 </div>
-                <progress class="job-card__progress" [value]="trackPercent(track.progress)" max="100"></progress>
+                <progress
+                    class="job-card__progress"
+                    [value]="trackPercent(track.progress)"
+                    max="100"
+                ></progress>
             </div>
         }
     }
 
     <div class="job-card__footer">
         <span class="job-card__status">{{ statusLabel }}</span>
+        @if (job.title) {
+            <span class="job-card__url" [title]="job.url">{{ job.url }}</span>
+        }
     </div>
 
     @if (isError && job.error) {

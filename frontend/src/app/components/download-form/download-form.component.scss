@@ -75,3 +75,7 @@
     width: 100%;
 }
 
+.download-form__submit:disabled {
+    opacity: 0.6;
+    cursor: default;
+}
