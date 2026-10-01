@@ -1,5 +1,4 @@
 import { Injectable } from '@angular/core';
-import { Observable } from 'rxjs';
 import {
     DeleteVideo,
     DownloadVideo,
@@ -9,18 +8,10 @@ import {
     RetryJob,
     RevealVideo,
 } from '../wailsjs/wailsjs/go/app/App';
-import { EventsOn } from '../wailsjs/wailsjs/runtime';
 import { model } from '../wailsjs/wailsjs/go/models';
+import { fromWailsEvent } from '../shared/wails-event';
 
 export type DownloadQuality = 'best' | '1080p' | '720p' | 'audio';
-
-function fromWailsEvent<T>(name: string): Observable<T> {
-    return new Observable<T>((subscriber) => {
-        return EventsOn(name, (payload: T): void => {
-            subscriber.next(payload);
-        });
-    });
-}
 
 @Injectable({ providedIn: 'root' })
 export class DownloadService {

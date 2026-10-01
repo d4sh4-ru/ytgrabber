@@ -84,6 +84,17 @@
         font-size: 12px;
     }
 
+    &__install {
+        font-size: 12px;
+    }
+
+    &__progress {
+        width: 100%;
+        max-width: 280px;
+        height: 4px;
+        accent-color: v.$accent;
+    }
+
     &__inline {
         margin-left: 6px;
     }

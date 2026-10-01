@@ -32,6 +32,12 @@ func (p Paths) LogPath() string {
 	return filepath.Join(p.DataDir, "ytgrabber.log")
 }
 
+// ToolsDir is where tools installed from the app live (see package
+// installer); inside DataDir, so deleting all data removes them too.
+func (p Paths) ToolsDir() string {
+	return filepath.Join(p.DataDir, "bin")
+}
+
 // WebviewDataDir is where WebView2 keeps its profile on Windows (see
 // main.go); inside DataDir so deleting all data has one place to wipe.
 func (p Paths) WebviewDataDir() string {

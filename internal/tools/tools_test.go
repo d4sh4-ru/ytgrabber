@@ -16,12 +16,12 @@ func TestLocateToolOverride(t *testing.T) {
 	tool := filepath.Join(dir, platform.ExecutableName("my-yt-dlp"))
 	os.WriteFile(tool, []byte("#!/bin/sh\n"), 0o755)
 
-	status := locate(YtDlp, tool)
+	status := locate(YtDlp, tool, "")
 	if !status.Found || !status.Custom || status.Path != tool {
 		t.Errorf("override not used: %+v", status)
 	}
 
-	missing := locate(YtDlp, filepath.Join(dir, "missing"))
+	missing := locate(YtDlp, filepath.Join(dir, "missing"), "")
 	if missing.Found || !missing.Custom {
 		t.Errorf("missing override reported as found: %+v", missing)
 	}
@@ -35,14 +35,14 @@ func TestResolveToolsFindsFfprobeNextToCustomFfmpeg(t *testing.T) {
 		os.WriteFile(path, []byte("#!/bin/sh\n"), 0o755)
 	}
 
-	tools := Resolve(filepath.Join(dir, "none"), ffmpeg)
+	tools := Resolve(filepath.Join(dir, "none"), ffmpeg, "")
 	if tools.Ffprobe.Path != ffprobe {
 		t.Errorf("ffprobe = %+v", tools.Ffprobe)
 	}
 	if tools.Ready() {
 		t.Error("ready without yt-dlp")
 	}
-	if auto := locate("definitely-not-installed-tool", ""); auto.Found {
+	if auto := locate("definitely-not-installed-tool", "", ""); auto.Found {
 		t.Errorf("found nonexistent tool: %+v", auto)
 	}
 }
@@ -82,5 +82,28 @@ func TestParseVersion(t *testing.T) {
 		if got := parseVersion(name, tt[0]); got != tt[1] {
 			t.Errorf("parseVersion(%s) = %q, want %q", name, got, tt[1])
 		}
+	}
+}
+
+func TestManagedCopyPreferredOverPath(t *testing.T) {
+	managed := t.TempDir()
+	path := filepath.Join(managed, platform.ExecutableName(Deno))
+	os.WriteFile(path, []byte("#!/bin/sh\n"), 0o755)
+
+	status := locate(Deno, "", managed)
+	if !status.Found || !status.Managed || status.Path != path {
+		t.Errorf("status = %+v", status)
+	}
+
+	override := filepath.Join(t.TempDir(), "my-deno")
+	os.WriteFile(override, []byte("#!/bin/sh\n"), 0o755)
+	if status := locate(Deno, override, managed); status.Managed || status.Path != override {
+		t.Errorf("override must win: %+v", status)
+	}
+}
+
+func TestParseVersionStripsBuildOrigin(t *testing.T) {
+	if got := parseVersion(Ffmpeg, "ffmpeg version 9.0.2-https://www.martin-riedl.de Copyright"); got != "9.0.2" {
+		t.Errorf("got %q", got)
 	}
 }

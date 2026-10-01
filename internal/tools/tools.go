@@ -35,9 +35,15 @@ type Status struct {
 	Required bool   `json:"required"`
 	Found    bool   `json:"found"`
 	Custom   bool   `json:"custom"`
-	Path     string `json:"path"`
-	Version  string `json:"version"`
-	Hint     string `json:"hint"`
+	// Managed means the app installed this copy itself (see package installer).
+	Managed bool `json:"managed"`
+	// Installable is set by the app when it can download the tool for this
+	// platform; InstallSource says from where.
+	Installable   bool   `json:"installable"`
+	InstallSource string `json:"installSource"`
+	Path          string `json:"path"`
+	Version       string `json:"version"`
+	Hint          string `json:"hint"`
 }
 
 // Report is what the UI shows on the settings screen and uses to decide
@@ -72,13 +78,13 @@ func (s *Set) all() []*Status {
 }
 
 // Resolve locates every tool. A path chosen by the user in settings wins;
-// otherwise PATH is searched, then well-known install locations (see
-// SearchDirs).
-func Resolve(ytDlpPath string, ffmpegPath string) Set {
+// then a copy the app installed into managedDir; then PATH, then
+// well-known install locations (see SearchDirs).
+func Resolve(ytDlpPath string, ffmpegPath string, managedDir string) Set {
 	set := Set{
-		YtDlp:  locate(YtDlp, ytDlpPath),
-		Ffmpeg: locate(Ffmpeg, ffmpegPath),
-		Deno:   locate(Deno, ""),
+		YtDlp:  locate(YtDlp, ytDlpPath, managedDir),
+		Ffmpeg: locate(Ffmpeg, ffmpegPath, managedDir),
+		Deno:   locate(Deno, "", managedDir),
 	}
 	set.YtDlp.Required = true
 	set.YtDlp.Purpose = "Загрузка видео"
@@ -97,7 +103,7 @@ func Resolve(ytDlpPath string, ffmpegPath string) Set {
 		}
 	}
 	if !set.Ffprobe.Found {
-		set.Ffprobe = locate(Ffprobe, "")
+		set.Ffprobe = locate(Ffprobe, "", managedDir)
 	}
 	set.Ffprobe.Purpose = "Определение длительности"
 
@@ -109,7 +115,7 @@ func Resolve(ytDlpPath string, ffmpegPath string) Set {
 	return set
 }
 
-func locate(name string, override string) Status {
+func locate(name string, override string, managedDir string) Status {
 	status := Status{Name: name}
 
 	if override != "" {
@@ -117,6 +123,16 @@ func locate(name string, override string) Status {
 		status.Path = override
 		status.Found = platform.IsExecutableFile(override)
 		return status
+	}
+
+	if managedDir != "" {
+		managed := filepath.Join(managedDir, platform.ExecutableName(name))
+		if platform.IsExecutableFile(managed) {
+			status.Found = true
+			status.Managed = true
+			status.Path = managed
+			return status
+		}
 	}
 
 	if path, err := exec.LookPath(name); err == nil {
@@ -306,7 +322,9 @@ func parseVersion(name string, output string) string {
 	switch name {
 	case Ffmpeg, Ffprobe:
 		if len(fields) >= 3 && fields[1] == "version" {
-			return fields[2]
+			// Some builds append their origin: "9.0.2-https://…".
+			version, _, _ := strings.Cut(fields[2], "-http")
+			return version
 		}
 	case Deno:
 		if len(fields) >= 2 {

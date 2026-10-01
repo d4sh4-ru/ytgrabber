@@ -2,6 +2,7 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { BehaviorSubject } from 'rxjs';
 import { SettingsComponent } from './settings.component';
 import { SettingsService } from '../../services/settings.service';
+import { ToolInstallService, ToolInstallState } from '../../services/tool-install.service';
 import { app, tools } from '../../wailsjs/wailsjs/go/models';
 
 class SettingsServiceStub {
@@ -29,6 +30,23 @@ class SettingsServiceStub {
     public resetAllData(deleteMedia: boolean): Promise<void> {
         this.resetCalls.push(deleteMedia);
         return new Promise<void>(() => undefined); // the app quits; never resolves
+    }
+}
+
+class ToolInstallServiceStub {
+    public readonly state$ = new BehaviorSubject<ToolInstallState>({
+        isRunning: false,
+        progress: {},
+    });
+    public readonly installCalls: (readonly string[])[] = [];
+
+    public install(names: readonly string[] = []): Promise<void> {
+        this.installCalls.push(names);
+        return Promise.resolve();
+    }
+
+    public cancel(): Promise<void> {
+        return Promise.resolve();
     }
 }
 
@@ -60,7 +78,10 @@ describe('SettingsComponent: delete all data', () => {
         service = new SettingsServiceStub();
         await TestBed.configureTestingModule({
             imports: [SettingsComponent],
-            providers: [{ provide: SettingsService, useValue: service }],
+            providers: [
+                { provide: SettingsService, useValue: service },
+                { provide: ToolInstallService, useValue: new ToolInstallServiceStub() },
+            ],
         }).compileComponents();
 
         fixture = TestBed.createComponent(SettingsComponent);
@@ -105,5 +126,78 @@ describe('SettingsComponent: delete all data', () => {
 
         expect(element().querySelector('app-confirm-dialog')).toBeNull();
         expect(service.resetCalls).toEqual([]);
+    });
+});
+
+describe('SettingsComponent: installing tools', () => {
+    let fixture: ComponentFixture<SettingsComponent>;
+    let service: SettingsServiceStub;
+    let installer: ToolInstallServiceStub;
+
+    beforeEach(async () => {
+        service = new SettingsServiceStub();
+        installer = new ToolInstallServiceStub();
+        await TestBed.configureTestingModule({
+            imports: [SettingsComponent],
+            providers: [
+                { provide: SettingsService, useValue: service },
+                { provide: ToolInstallService, useValue: installer },
+            ],
+        }).compileComponents();
+
+        fixture = TestBed.createComponent(SettingsComponent);
+        fixture.detectChanges();
+        service.dependencies$.next(
+            tools.Report.createFrom({
+                ready: false,
+                tools: [
+                    { name: 'yt-dlp', required: true, found: true, path: '/bin/yt-dlp' },
+                    {
+                        name: 'ffmpeg',
+                        required: true,
+                        found: false,
+                        installable: true,
+                        installSource: 'example.org',
+                    },
+                    { name: 'ffprobe', required: false, found: false, installable: true },
+                ],
+            }),
+        );
+        await new Promise((resolve) => setTimeout(resolve));
+        fixture.detectChanges();
+    });
+
+    function text(): string {
+        return (fixture.nativeElement as HTMLElement).textContent ?? '';
+    }
+
+    it('offers to install what is missing', () => {
+        expect(text()).toContain('Установить недостающие (2)');
+        expect(text()).toContain('источник: example.org');
+
+        const button = Array.from(
+            (fixture.nativeElement as HTMLElement).querySelectorAll('button'),
+        ).find((candidate) => candidate.textContent?.trim() === 'Установить');
+        button!.click();
+        expect(installer.installCalls).toEqual([['ffmpeg']]);
+    });
+
+    it('shows progress, with ffprobe following ffmpeg', () => {
+        installer.state$.next({
+            isRunning: true,
+            progress: {
+                ffmpeg: {
+                    tool: 'ffmpeg',
+                    stage: 'downloading',
+                    downloaded: 1024 * 1024,
+                    total: 4 * 1024 * 1024,
+                },
+            },
+        });
+        fixture.detectChanges();
+
+        expect(text().match(/Скачивание: 1\.0 МБ из 4\.0 МБ/g)?.length).toBe(2);
+        expect(text()).toContain('Отменить установку');
+        expect(text()).not.toContain('Установить недостающие');
     });
 });
