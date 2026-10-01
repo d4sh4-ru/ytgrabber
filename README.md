@@ -10,9 +10,11 @@
 
 | Система | Файл |
 |---|---|
-| macOS (Apple Silicon и Intel) | `ytgrabber-<версия>-macos-universal.zip`: распакуйте и перенесите `ytgrabber.app` в «Программы» |
+| macOS (Apple Silicon) | `ytgrabber-<версия>-macos-arm64.zip`: распакуйте и перенесите `ytgrabber.app` в «Программы» |
 | Windows x64 / ARM | `…-windows-amd64-setup.exe` (установщик) или `…-portable.exe`, для ARM — `…-windows-arm64-…` |
 | Linux x64 / ARM | `…-linux-amd64.tar.gz` / `…-linux-arm64.tar.gz`: распакуйте и запустите `./install.sh` (ставит в `~/.local`, без root) |
+
+Готовой сборки для Mac на Intel нет, её можно собрать из исходников (см. «Сборка»).
 
 Сборки не подписаны. На macOS при первом запуске нужно снять карантин: `xattr -dr com.apple.quarantine /Applications/ytgrabber.app`. На Windows SmartScreen пропускает так: «Подробнее → Выполнить в любом случае». Контрольные суммы файлов лежат в `SHA256SUMS.txt` рядом со сборками.
 
@@ -114,7 +116,7 @@ git tag v1.2.0
 git push origin v1.2.0
 ```
 
-Workflow прогоняет CI, собирает macOS universal, Windows amd64/arm64 (portable и NSIS-установщик) и Linux amd64/arm64. Затем он публикует релиз с файлами и `SHA256SUMS.txt`. Версия берётся из тега: она подставляется в приложение (`-ldflags -X ytgrabber/internal/app.Version=…`) и в метаданные пакетов. Тег с суффиксом (`v1.2.0-rc.1`) публикуется как pre-release. В локальных сборках вместо версии написано `dev`.
+Workflow прогоняет CI, собирает macOS arm64, Windows amd64/arm64 (portable и NSIS-установщик) и Linux amd64/arm64. Затем он публикует релиз с файлами и `SHA256SUMS.txt`. Версия берётся из тега: она подставляется в приложение (`-ldflags -X ytgrabber/internal/app.Version=…`) и в метаданные пакетов. Тег с суффиксом (`v1.2.0-rc.1`) публикуется как pre-release. В локальных сборках вместо версии написано `dev`.
 
 ### Где лежат данные
 

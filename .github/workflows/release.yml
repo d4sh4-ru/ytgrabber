@@ -31,9 +31,11 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - name: macos-universal
+          # Apple Silicon only: Intel Macs are not supported by release builds
+          # (they can still build from source, see README).
+          - name: macos-arm64
             os: macos-latest
-            platform: darwin/universal
+            platform: darwin/arm64
           - name: windows-amd64
             os: windows-latest
             platform: windows/amd64
@@ -166,7 +168,7 @@ jobs:
 
           | Система | Файл |
           |---|---|
-          | macOS (Apple Silicon и Intel) | `…-macos-universal.zip` — распакуйте и перенесите `ytgrabber.app` в «Программы» |
+          | macOS (Apple Silicon) | `…-macos-arm64.zip` — распакуйте и перенесите `ytgrabber.app` в «Программы» |
           | Windows | `…-windows-amd64-setup.exe` (установщик) или `…-portable.exe`; для ARM — `…-windows-arm64-…` |
           | Linux | `…-linux-amd64.tar.gz` / `…-linux-arm64.tar.gz` — распакуйте и запустите `./install.sh` |
 
