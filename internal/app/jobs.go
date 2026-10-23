@@ -55,8 +55,10 @@ const (
 	stderrTailLines      = 50
 )
 
-// DownloadVideo ставит загрузку в очередь и возвращает id задачи.
-func (a *App) DownloadVideo(rawURL string, quality string) (string, error) {
+// DownloadVideo ставит загрузку в очередь и возвращает id задачи. С
+// useAccount=true загрузка идёт через подключённый аккаунт сайта, если он
+// есть; false — «скачать без аккаунта».
+func (a *App) DownloadVideo(rawURL string, quality string, useAccount bool) (string, error) {
 	if err := a.ensureReady(); err != nil {
 		return "", err
 	}
@@ -73,12 +75,14 @@ func (a *App) DownloadVideo(rawURL string, quality string) (string, error) {
 	}
 
 	j := &job{DownloadJob: model.DownloadJob{
-		ID:        uuid.NewString(),
-		URL:       sourceURL,
-		Quality:   quality,
-		Status:    model.StatusPending,
-		Tracks:    []model.DownloadTrack{},
-		CreatedAt: time.Now().UTC().Format(time.RFC3339Nano),
+		ID:         uuid.NewString(),
+		URL:        sourceURL,
+		Quality:    quality,
+		Status:     model.StatusPending,
+		Tracks:     []model.DownloadTrack{},
+		CreatedAt:  time.Now().UTC().Format(time.RFC3339Nano),
+		UseAccount: useAccount,
+		Site:       siteOfURL(sourceURL),
 	}}
 
 	a.mu.Lock()
@@ -96,8 +100,10 @@ func (a *App) DownloadVideo(rawURL string, quality string) (string, error) {
 	return j.ID, nil
 }
 
-// RetryJob перезапускает задачу, завершившуюся ошибкой.
-func (a *App) RetryJob(id string) error {
+// RetryJob перезапускает задачу, завершившуюся ошибкой. useAccount
+// заменяет выбор, сделанный при добавлении: после входа на сайт повтор
+// идёт через аккаунт, даже если задача добавлялась «без аккаунта».
+func (a *App) RetryJob(id string, useAccount bool) error {
 	if err := a.ensureReady(); err != nil {
 		return err
 	}
@@ -117,6 +123,9 @@ func (a *App) RetryJob(id string) error {
 	}
 	j.Status = model.StatusPending
 	j.Error = ""
+	j.ErrorKind = model.ErrorGeneric
+	j.AccountUsed = false
+	j.UseAccount = useAccount
 	j.FilePath = ""
 	j.Tracks = []model.DownloadTrack{}
 	a.queue = append(a.queue, id)
@@ -248,15 +257,42 @@ func (a *App) runDownload(ctx context.Context, j *job) {
 		return
 	}
 
+	a.mu.Lock()
+	if j.Site == "" {
+		j.Site = siteOfURL(j.URL) // jobs saved before accounts existed
+	}
+	site, useAccount := j.Site, j.UseAccount
+	a.mu.Unlock()
+
+	var session *accountSession
+	if useAccount {
+		session = a.startAccountSession(site, j.ID)
+	}
+	a.mu.Lock()
+	j.AccountUsed = session != nil
+	a.mu.Unlock()
+
 	a.setStatus(j, model.StatusDownloading)
 
-	err := a.execYtDlp(ctx, j, toolSet, downloadsDir)
+	cookiesPath := ""
+	if session != nil {
+		cookiesPath = session.path
+	}
+	err := a.execYtDlp(ctx, j, toolSet, downloadsDir, cookiesPath)
+	loginRequired := err != nil && ctx.Err() == nil && ytdlp.IsLoginRequired(err.Error())
+	if session != nil {
+		a.finishAccountSession(session, ctx.Err() == nil, loginRequired)
+	}
 	if ctx.Err() != nil {
 		a.handleCancelled(ctx, j)
 		return
 	}
 	if err != nil {
-		a.setError(j, err.Error())
+		kind := model.ErrorGeneric
+		if loginRequired {
+			kind = model.ErrorLoginRequired
+		}
+		a.setErrorKind(j, err.Error(), kind)
 		return
 	}
 
@@ -281,9 +317,9 @@ func (a *App) handleCancelled(ctx context.Context, j *job) {
 	a.setError(j, interruptedMessage)
 }
 
-func (a *App) execYtDlp(ctx context.Context, j *job, toolSet tools.Set, downloadsDir string) error {
+func (a *App) execYtDlp(ctx context.Context, j *job, toolSet tools.Set, downloadsDir string, cookiesPath string) error {
 	cmd := toolSet.Command(ctx, toolSet.YtDlp.Path,
-		ytdlp.BuildArgs(j.URL, j.Quality, downloadsDir, toolSet.Ffmpeg.Path)...)
+		ytdlp.BuildArgs(j.URL, j.Quality, downloadsDir, toolSet.Ffmpeg.Path, cookiesPath)...)
 
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
@@ -471,9 +507,14 @@ func (a *App) setStatus(j *job, status model.DownloadStatus) {
 }
 
 func (a *App) setError(j *job, message string) {
+	a.setErrorKind(j, message, model.ErrorGeneric)
+}
+
+func (a *App) setErrorKind(j *job, message string, kind model.ErrorKind) {
 	a.mu.Lock()
 	j.Status = model.StatusError
 	j.Error = message
+	j.ErrorKind = kind
 	a.mu.Unlock()
 	a.saveAndPublish(j, "download-status")
 }

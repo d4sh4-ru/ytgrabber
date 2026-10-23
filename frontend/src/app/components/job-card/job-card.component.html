@@ -2,6 +2,11 @@
     <div class="job-card__header">
         <p class="job-card__title" [title]="displayTitle">{{ displayTitle }}</p>
         <div class="job-card__actions">
+            @if (isLoginRequired && job.site) {
+                <button type="button" class="btn btn--primary" (click)="onLogin()">
+                    {{ loginButtonLabel }}
+                </button>
+            }
             @if (isError) {
                 <button type="button" class="btn" (click)="onRetry()">Повторить</button>
             }
@@ -33,11 +38,20 @@
     }
 
     <div class="job-card__footer">
-        <span class="job-card__status">{{ statusLabel }}</span>
+        <span class="job-card__status">
+            {{ statusLabel }}
+            @if (job.accountUsed) {
+                · через аккаунт {{ job.site }}
+            }
+        </span>
         @if (job.title) {
             <span class="job-card__url" [title]="job.url">{{ job.url }}</span>
         }
     </div>
+
+    @if (isLoginRequired) {
+        <p class="job-card__login">{{ loginHint }}</p>
+    }
 
     @if (isError && job.error) {
         <pre class="job-card__error">{{ job.error }}</pre>

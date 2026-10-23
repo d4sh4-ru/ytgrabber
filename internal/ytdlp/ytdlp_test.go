@@ -42,7 +42,7 @@ func TestNormalizeURL(t *testing.T) {
 }
 
 func TestBuildYtDlpArgs(t *testing.T) {
-	args := BuildArgs("https://example.com/v", "1080p", "/tmp/100% videos", "/opt/ffmpeg")
+	args := BuildArgs("https://example.com/v", "1080p", "/tmp/100% videos", "/opt/ffmpeg", "")
 
 	if n := len(args); n < 2 || args[n-2] != "--" || args[n-1] != "https://example.com/v" {
 		t.Fatalf("URL must be the last argument after \"--\", got tail %q", args[max(len(args)-2, 0):])
@@ -68,12 +68,39 @@ func TestBuildYtDlpArgs(t *testing.T) {
 		t.Errorf("1080p format selector missing: %q", args)
 	}
 
-	audio := BuildArgs("https://example.com/v", "audio", "/tmp", "")
+	if slices.Contains(args, "--cookies") {
+		t.Errorf("cookies passed without an account: %q", args)
+	}
+	withCookies := BuildArgs("https://example.com/v", "best", "/tmp", "", "/data/run/job.cookies")
+	if i := slices.Index(withCookies, "--cookies"); i == -1 || withCookies[i+1] != "/data/run/job.cookies" || i > slices.Index(withCookies, "--") {
+		t.Errorf("cookies file not passed before the URL: %q", withCookies)
+	}
+
+	audio := BuildArgs("https://example.com/v", "audio", "/tmp", "", "")
 	if !slices.Contains(audio, "-x") || slices.Contains(audio, "--merge-output-format") {
 		t.Errorf("audio args wrong: %q", audio)
 	}
 	if slices.Contains(audio, "--ffmpeg-location") {
 		t.Errorf("empty ffmpeg path must not be passed: %q", audio)
+	}
+}
+
+func TestIsLoginRequired(t *testing.T) {
+	cases := map[string]bool{
+		"[youtube] abc: Sign in to confirm you’re not a bot. Use --cookies-from-browser or --cookies for the authentication.": true,
+		"[youtube] abc: Sign in to confirm your age. This video may be inappropriate for some users.":                         true,
+		"[youtube] abc: Private video. Sign in if you've been granted access to this video":                                   true,
+		"[youtube] abc: Join this channel to get access to members-only content like this video":                              true,
+		"[Instagram] abc: Requested content is not available, rate-limit reached or login required":                           true,
+		"[instagram] abc: You need to log in to access this content":                                                          true,
+		"[generic] Unsupported URL: https://example.com/":                                                                     false,
+		"Unable to download webpage: HTTP Error 404: Not Found":                                                               false,
+		"[youtube] abc: Video unavailable":                                                                                    false,
+	}
+	for message, want := range cases {
+		if got := IsLoginRequired(message); got != want {
+			t.Errorf("IsLoginRequired(%q) = %v, want %v", message, got, want)
+		}
 	}
 }
 

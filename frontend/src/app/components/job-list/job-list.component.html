@@ -3,7 +3,20 @@
 } @else {
     <div class="job-list">
         @for (job of jobs; track job.id) {
-            <app-job-card [job]="job" (removed)="onRemove($event)" (retried)="onRetry($event)" />
+            <app-job-card
+                [job]="job"
+                (removed)="onRemove($event)"
+                (retried)="onRetry($event)"
+                (loginRequested)="onLoginRequested($event)"
+            />
         }
     </div>
+}
+
+@if (loginJob) {
+    <app-account-connect-dialog
+        [site]="loginJob.site"
+        (connected)="onLoginConnected()"
+        (cancelled)="onLoginCancelled()"
+    />
 }

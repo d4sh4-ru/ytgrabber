@@ -1,0 +1,39 @@
+@use '../../../styles/variables' as v;
+
+.account-connect {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-bottom: 16px;
+    font-size: 13px;
+
+    &__input {
+        padding: 6px 8px;
+        border: 1px solid v.$border-subtle;
+        border-radius: v.$radius-sm;
+        background: v.$bg-surface;
+        color: v.$text-primary;
+        font-size: 13px;
+
+        &:focus {
+            outline: none;
+            border-color: v.$accent;
+        }
+    }
+
+    &__text {
+        margin: 0;
+    }
+
+    &__list {
+        margin: 0;
+        padding-left: 20px;
+        color: v.$text-secondary;
+    }
+
+    &__note {
+        margin: 0;
+        color: v.$warning;
+        font-size: 12px;
+    }
+}

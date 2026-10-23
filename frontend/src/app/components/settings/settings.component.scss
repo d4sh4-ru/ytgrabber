@@ -99,6 +99,15 @@
         margin-left: 6px;
     }
 
+    &__hint {
+        margin: 0;
+    }
+
+    &__ok {
+        color: v.$success;
+        font-size: 12px;
+    }
+
     &__problem {
         color: v.$error;
         font-size: 12px;

@@ -85,8 +85,10 @@ func NormalizeURL(raw string) (string, error) {
 //   - --print implies --quiet and --simulate, so both are switched back.
 //   - video qualities force an mp4 container and every quality asks for a
 //     jpg thumbnail: WebKit (macOS/Linux) can't play webm or show webp.
+//   - cookiesPath, when set, is a cookies.txt yt-dlp reads and, on exit,
+//     writes the updated cookies back to (see package accounts).
 //   - "--" ends option parsing, so the URL can never be read as a flag.
-func BuildArgs(sourceURL string, quality string, downloadsDir string, ffmpegPath string) []string {
+func BuildArgs(sourceURL string, quality string, downloadsDir string, ffmpegPath string, cookiesPath string) []string {
 	// The directory is part of the -o template, where "%" is special.
 	dir := strings.ReplaceAll(downloadsDir, "%", "%%")
 
@@ -106,6 +108,9 @@ func BuildArgs(sourceURL string, quality string, downloadsDir string, ffmpegPath
 
 	if ffmpegPath != "" {
 		args = append(args, "--ffmpeg-location", ffmpegPath)
+	}
+	if cookiesPath != "" {
+		args = append(args, "--cookies", cookiesPath)
 	}
 
 	switch quality {
@@ -213,6 +218,40 @@ func ExtractErrorMessage(stderrLines []string) string {
 
 	tailStart := max(len(nonEmpty)-3, 0)
 	return truncateMessage(strings.Join(nonEmpty[tailStart:], "\n"))
+}
+
+// loginRequiredMarkers are fragments of yt-dlp errors (lowercased) that
+// mean the content needs a signed-in user: YouTube's bot and age checks,
+// private and members-only videos, Instagram's login wall and checkpoint.
+var loginRequiredMarkers = []string{
+	"sign in to confirm",
+	"login required",
+	"login is required",
+	"requires login",
+	"log in to",
+	"logged-in",
+	"--cookies",
+	"private video",
+	"video is private",
+	"this post is private",
+	"members-only",
+	"members only",
+	"join this channel",
+	"checkpoint",
+	"authentication",
+	"rate-limit reached or login",
+}
+
+// IsLoginRequired reports whether a yt-dlp error message (see
+// ExtractErrorMessage) says the download needs a login.
+func IsLoginRequired(message string) bool {
+	lower := strings.ToLower(message)
+	for _, marker := range loginRequiredMarkers {
+		if strings.Contains(lower, marker) {
+			return true
+		}
+	}
+	return false
 }
 
 func truncateMessage(message string) string {

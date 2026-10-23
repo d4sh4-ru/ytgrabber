@@ -38,6 +38,18 @@ func (p Paths) ToolsDir() string {
 	return filepath.Join(p.DataDir, "bin")
 }
 
+// AccountsDir holds the encrypted cookie snapshots of connected accounts
+// and their key (see package accounts).
+func (p Paths) AccountsDir() string {
+	return filepath.Join(p.DataDir, "accounts")
+}
+
+// RunDir holds the decrypted cookies of running downloads; it is emptied
+// on startup in case the app crashed mid-download.
+func (p Paths) RunDir() string {
+	return filepath.Join(p.DataDir, "run")
+}
+
 // WebviewDataDir is where WebView2 keeps its profile on Windows (see
 // main.go); inside DataDir so deleting all data has one place to wipe.
 func (p Paths) WebviewDataDir() string {

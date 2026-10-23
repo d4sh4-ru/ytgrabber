@@ -4,6 +4,8 @@ import {
     Component,
     inject,
     Input,
+    OnDestroy,
+    OnInit,
 } from '@angular/core';
 import {
     AbstractControl,
@@ -12,6 +14,8 @@ import {
     ValidationErrors,
     Validators,
 } from '@angular/forms';
+import { Subject, takeUntil } from 'rxjs';
+import { AccountsService } from '../../services/accounts.service';
 import { DownloadQuality, DownloadService } from '../../services/download.service';
 import { NotificationService } from '../../services/notification.service';
 import { model } from '../../wailsjs/wailsjs/go/models';
@@ -44,10 +48,12 @@ const QUALITY_OPTIONS: readonly QualityOption[] = [
     styleUrl: './download-form.component.scss',
     changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class DownloadFormComponent {
+export class DownloadFormComponent implements OnInit, OnDestroy {
     private readonly downloadService = inject(DownloadService);
+    private readonly accountsService = inject(AccountsService);
     private readonly notificationService = inject(NotificationService);
     private readonly changeDetectorRef = inject(ChangeDetectorRef);
+    private readonly destroy$ = new Subject<void>();
 
     @Input()
     public jobs: model.DownloadJob[] = [];
@@ -63,6 +69,13 @@ export class DownloadFormComponent {
         nonNullable: true,
     });
 
+    /** "Download without an account": less risk for the account on public videos. */
+    public readonly withoutAccountControl = new FormControl<boolean>(false, {
+        nonNullable: true,
+    });
+
+    /** The opt-out is only offered once some site is connected. */
+    protected hasAccounts = false;
     protected isSubmitting = false;
     // Validation is shown only after a submit attempt: flagging the empty
     // field as soon as it loses focus reads as an error the user didn't make.
@@ -78,6 +91,21 @@ export class DownloadFormComponent {
             : 'Ссылка на видео (YouTube и другие сайты)';
     }
 
+    public ngOnInit(): void {
+        this.accountsService.accounts$
+            .pipe(takeUntil(this.destroy$))
+            .subscribe((accounts: model.Account[]): void => {
+                this.hasAccounts = accounts.length > 0;
+                this.changeDetectorRef.markForCheck();
+            });
+        void this.accountsService.refresh().catch((): void => undefined);
+    }
+
+    public ngOnDestroy(): void {
+        this.destroy$.next();
+        this.destroy$.complete();
+    }
+
     protected async onSubmit(event: Event): Promise<void> {
         event.preventDefault();
 
@@ -91,6 +119,7 @@ export class DownloadFormComponent {
             await this.downloadService.download(
                 this.urlControl.value.trim(),
                 this.qualityControl.value,
+                !(this.hasAccounts && this.withoutAccountControl.value),
             );
             // Only clear the field once the backend accepted the link, so a
             // rejected one can be corrected instead of retyped.

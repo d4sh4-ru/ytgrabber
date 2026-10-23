@@ -17,6 +17,7 @@ import (
 
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 
+	"ytgrabber/internal/accounts"
 	"ytgrabber/internal/installer"
 	"ytgrabber/internal/logging"
 	"ytgrabber/internal/platform"
@@ -56,6 +57,9 @@ type App struct {
 	installMu     sync.Mutex
 	cancelInstall context.CancelFunc
 
+	// accounts holds the encrypted cookies of connected sites.
+	accounts *accounts.Store
+
 	mu       sync.RWMutex // guards everything below
 	settings Settings
 	tools    tools.Set
@@ -79,11 +83,12 @@ type AppInfo struct {
 
 func New(paths platform.Paths) *App {
 	a := &App{
-		paths:   paths,
-		emit:    func(string, ...interface{}) {},
-		quit:    func() {},
-		jobs:    make(map[string]*job),
-		cancels: make(map[string]context.CancelCauseFunc),
+		paths:    paths,
+		emit:     func(string, ...interface{}) {},
+		quit:     func() {},
+		jobs:     make(map[string]*job),
+		cancels:  make(map[string]context.CancelCauseFunc),
+		accounts: accounts.NewStore(paths.AccountsDir()),
 	}
 	a.startHelper = a.startCleanupHelper
 	a.installer = installer.Installer{
@@ -144,6 +149,8 @@ func (a *App) init() error {
 		db.Close()
 		return fmt.Errorf("не удалось загрузить настройки: %w", err)
 	}
+
+	a.cleanRunDir()
 
 	if err := db.MarkInterruptedJobs(interruptedMessage); err != nil {
 		log.Printf("ytgrabber: failed to mark interrupted jobs: %v", err)

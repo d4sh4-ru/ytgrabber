@@ -65,7 +65,7 @@ func newAppWithFakeTools(t *testing.T) (*App, *recordedEvents) {
 func TestDownloadEndToEnd(t *testing.T) {
 	app, events := newAppWithFakeTools(t)
 
-	id, err := app.DownloadVideo("https://example.com/watch?v=abc", "best")
+	id, err := app.DownloadVideo("https://example.com/watch?v=abc", "best", true)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -92,7 +92,7 @@ func TestDownloadEndToEnd(t *testing.T) {
 func TestDownloadFailureShowsYtDlpError(t *testing.T) {
 	app, _ := newAppWithFakeTools(t)
 
-	id, err := app.DownloadVideo("https://example.com/fail", "best")
+	id, err := app.DownloadVideo("https://example.com/fail", "best", true)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -112,7 +112,7 @@ func TestDownloadFailureShowsYtDlpError(t *testing.T) {
 func TestRemoveRunningJob(t *testing.T) {
 	app, _ := newAppWithFakeTools(t)
 
-	id, err := app.DownloadVideo("https://example.com/slow", "best")
+	id, err := app.DownloadVideo("https://example.com/slow", "best", true)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -146,8 +146,8 @@ func TestQueueRespectsConcurrencyLimit(t *testing.T) {
 	app, _ := newAppWithFakeTools(t)
 	app.settings.MaxConcurrentDownloads = 1
 
-	first, _ := app.DownloadVideo("https://example.com/slow1", "best")
-	second, _ := app.DownloadVideo("https://example.com/slow2", "best")
+	first, _ := app.DownloadVideo("https://example.com/slow1", "best", true)
+	second, _ := app.DownloadVideo("https://example.com/slow2", "best", true)
 
 	waitFor(t, "first job to start", func() bool {
 		app.mu.RLock()
@@ -176,7 +176,7 @@ func TestQueueRespectsConcurrencyLimit(t *testing.T) {
 func TestShutdownMarksRunningJobsInterrupted(t *testing.T) {
 	app, _ := newAppWithFakeTools(t)
 
-	id, _ := app.DownloadVideo("https://example.com/slow", "best")
+	id, _ := app.DownloadVideo("https://example.com/slow", "best", true)
 	waitFor(t, "download to start", func() bool {
 		app.mu.RLock()
 		defer app.mu.RUnlock()

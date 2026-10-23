@@ -32,6 +32,10 @@ export class JobCardComponent {
     @Output()
     public readonly retried = new EventEmitter<string>();
 
+    /** The site wants a login: connect or refresh its account, then retry. */
+    @Output()
+    public readonly loginRequested = new EventEmitter<model.DownloadJob>();
+
     protected get displayTitle(): string {
         return this.job.title || this.job.url;
     }
@@ -46,6 +50,23 @@ export class JobCardComponent {
 
     protected get isError(): boolean {
         return this.job.status === 'error';
+    }
+
+    protected get isLoginRequired(): boolean {
+        return this.isError && this.job.errorKind === 'login_required';
+    }
+
+    protected get loginHint(): string {
+        if (this.job.accountUsed) {
+            return `Сайт не принял вход через аккаунт ${this.job.site}: похоже, он истёк. Загрузите свежий cookies.txt.`;
+        }
+        return this.job.site
+            ? `Это видео доступно только после входа. Подключите аккаунт ${this.job.site}.`
+            : 'Это видео доступно только после входа.';
+    }
+
+    protected get loginButtonLabel(): string {
+        return this.job.accountUsed ? 'Обновить вход' : 'Войти…';
     }
 
     protected get removeButtonLabel(): string {
@@ -66,5 +87,9 @@ export class JobCardComponent {
 
     protected onRetry(): void {
         this.retried.emit(this.job.id);
+    }
+
+    protected onLogin(): void {
+        this.loginRequested.emit(this.job);
     }
 }

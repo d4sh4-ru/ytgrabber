@@ -1,0 +1,36 @@
+<app-confirm-dialog
+    [title]="title"
+    [confirmLabel]="isImporting ? 'Подключение…' : 'Выбрать cookies.txt…'"
+    [busy]="isImporting"
+    (confirmed)="onConfirm()"
+    (cancelled)="onCancel()"
+>
+    <div class="account-connect">
+        @if (!site) {
+            <input
+                class="account-connect__input"
+                type="text"
+                placeholder="Ссылка или домен, например instagram.com"
+                [value]="siteInput"
+                [disabled]="isImporting"
+                (input)="onSiteInput($event)"
+            />
+        }
+        <p class="account-connect__text">
+            Экспортируйте cookies в файл cookies.txt расширением браузера на странице
+            {{ siteLabel }}, где вы вошли в аккаунт, и выберите этот файл.
+        </p>
+        <ul class="account-connect__list">
+            <li>Из файла берутся только cookies {{ siteLabel }}, остальные отбрасываются.</li>
+            <li>
+                Они хранятся в папке данных приложения в зашифрованном виде и передаются только
+                yt-dlp при загрузках с этого сайта.
+            </li>
+            <li>Отключить аккаунт и удалить cookies можно в «Настройки → Аккаунты».</li>
+        </ul>
+        <p class="account-connect__note">
+            Шифрование защищает от копирования папки и резервных копий, но не от программ,
+            запущенных на этом компьютере. Сам файл cookies.txt после подключения лучше удалить.
+        </p>
+    </div>
+</app-confirm-dialog>
