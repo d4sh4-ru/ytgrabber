@@ -21,6 +21,48 @@
         }
     }
 
+    &__site {
+        display: flex;
+        gap: 6px;
+
+        .account-connect__input {
+            flex: 1;
+            min-width: 0;
+        }
+    }
+
+    &__match {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+        padding: 6px 0;
+        border-bottom: 1px solid v.$border-subtle;
+    }
+
+    &__match-info {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+        min-width: 0;
+    }
+
+    &__muted {
+        margin: 0;
+        color: v.$text-secondary;
+        font-size: 12px;
+    }
+
+    &__ok {
+        color: v.$success;
+        font-size: 12px;
+    }
+
+    &__problem {
+        color: v.$error;
+        font-size: 12px;
+    }
+
     &__text {
         margin: 0;
     }

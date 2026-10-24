@@ -74,8 +74,17 @@
                 >
                     {{ checkingAccountId === account.id ? 'Проверка…' : 'Проверить' }}
                 </button>
-                <button type="button" class="btn" (click)="onRefreshAccount(account)">
-                    Загрузить новый
+                <button
+                    type="button"
+                    class="btn"
+                    [disabled]="refreshingAccountId === account.id"
+                    (click)="onRefreshAccount(account)"
+                >
+                    {{
+                        refreshingAccountId === account.id
+                            ? 'Обновление…'
+                            : accountRefreshLabel(account)
+                    }}
                 </button>
                 <button
                     type="button"

@@ -18,7 +18,7 @@ import { AccountsService } from '../../services/accounts.service';
 import { app, model, tools } from '../../wailsjs/wailsjs/go/models';
 import { formatBytes } from '../../shared/format-bytes';
 import { formatRelativeTime } from '../../shared/format-relative-time';
-import { cookieCountLabel } from '../../shared/account-summary';
+import { connectedMessage, cookieCountLabel } from '../../shared/account-summary';
 import {
     ConfirmDialogComponent,
     ConfirmDialogResult,
@@ -57,6 +57,7 @@ export class SettingsComponent implements OnInit, OnDestroy {
     /** The site the connect dialog is open for; '' asks for one, null is closed. */
     protected connectSite: string | null = null;
     protected checkingAccountId = '';
+    protected refreshingAccountId = '';
     protected accountToRemove: model.Account | null = null;
 
     // --- Dependencies ---
@@ -183,7 +184,8 @@ export class SettingsComponent implements OnInit, OnDestroy {
     // --- Accounts ---
     protected accountSourceLabel(account: model.Account): string {
         if (account.source === 'browser') {
-            return account.profile ? `${account.browser} · ${account.profile}` : account.browser;
+            const browser = account.browserName || account.browser;
+            return account.profile ? `${browser} · ${account.profile}` : browser;
         }
         return 'cookies.txt';
     }
@@ -210,8 +212,28 @@ export class SettingsComponent implements OnInit, OnDestroy {
         this.connectSite = '';
     }
 
-    protected onRefreshAccount(account: model.Account): void {
-        this.connectSite = account.domain;
+    protected accountRefreshLabel(account: model.Account): string {
+        return account.source === 'browser' ? 'Обновить' : 'Загрузить новый';
+    }
+
+    /** Browser accounts re-read their profile in one click; files need a new file. */
+    protected async onRefreshAccount(account: model.Account): Promise<void> {
+        if (account.source !== 'browser') {
+            this.connectSite = account.domain;
+            return;
+        }
+        this.refreshingAccountId = account.id;
+        this.changeDetectorRef.markForCheck();
+        try {
+            const refreshed = await this.accountsService.refreshFromBrowser(account.id);
+            this.notificationService.info(connectedMessage(refreshed));
+        } catch (error: unknown) {
+            this.notificationService.error(error);
+            // The profile may be gone: let the user pick another source.
+            this.connectSite = account.domain;
+        }
+        this.refreshingAccountId = '';
+        this.changeDetectorRef.markForCheck();
     }
 
     protected onConnectClosed(): void {

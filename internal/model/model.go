@@ -82,12 +82,17 @@ const (
 // stored here and sent to the frontend; the cookies themselves live in an
 // encrypted snapshot (package accounts) and never leave the backend.
 type Account struct {
-	ID          string        `json:"id"`
-	Domain      string        `json:"domain"`
-	Source      AccountSource `json:"source"`
-	Browser     string        `json:"browser"`
-	Profile     string        `json:"profile"`
-	CookieCount int           `json:"cookieCount"`
+	ID     string        `json:"id"`
+	Domain string        `json:"domain"`
+	Source AccountSource `json:"source"`
+	// Browser is the browser id (package browsers), BrowserName its
+	// display name; Profile is the profile's display name and ProfileDir
+	// where its cookies are re-read from on refresh.
+	Browser     string `json:"browser"`
+	BrowserName string `json:"browserName"`
+	Profile     string `json:"profile"`
+	ProfileDir  string `json:"-"`
+	CookieCount int    `json:"cookieCount"`
 	// LoginKnown is set for sites whose session cookie the app knows;
 	// only then LoggedIn is meaningful.
 	LoginKnown  bool          `json:"loginKnown"`

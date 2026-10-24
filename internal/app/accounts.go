@@ -37,7 +37,7 @@ func (a *App) GetAccounts() ([]*model.Account, error) {
 		return []*model.Account{}, fmt.Errorf("не удалось загрузить аккаунты: %w", err)
 	}
 	for _, account := range list {
-		account.LoginKnown = accounts.IsKnownSite(account.Domain)
+		decorateAccount(account)
 	}
 	return list, nil
 }
@@ -87,6 +87,20 @@ func (a *App) importCookiesFromPath(domain string, path string) (*model.Account,
 		return nil, fmt.Errorf("в файле нет действующих cookies для %s. Экспортируйте cookies, открыв %s в браузере, где выполнен вход", domain, domain)
 	}
 
+	return a.saveAccountCookies(domain, cookies, accountOrigin{source: model.AccountFromFile})
+}
+
+// accountOrigin is where an account's cookies came from.
+type accountOrigin struct {
+	source     model.AccountSource
+	browser    string // browser id, see package browsers
+	profile    string // display name
+	profileDir string
+}
+
+// saveAccountCookies creates or refreshes the account of domain with
+// cookies already filtered to it.
+func (a *App) saveAccountCookies(domain string, cookies []accounts.Cookie, origin accountOrigin) (*model.Account, error) {
 	account, err := a.db.GetAccountByDomain(domain)
 	now := timestamp()
 	if errors.Is(err, storage.ErrAccountNotFound) {
@@ -94,9 +108,10 @@ func (a *App) importCookiesFromPath(domain string, path string) (*model.Account,
 	} else if err != nil {
 		return nil, fmt.Errorf("не удалось прочитать аккаунт: %w", err)
 	}
-	account.Source = model.AccountFromFile
-	account.Browser = ""
-	account.Profile = ""
+	account.Source = origin.source
+	account.Browser = origin.browser
+	account.Profile = origin.profile
+	account.ProfileDir = origin.profileDir
 	account.RefreshedAt = now
 	applyCookieStats(account, cookies)
 	account.Status = localStatus(account)
@@ -110,7 +125,8 @@ func (a *App) importCookiesFromPath(domain string, path string) (*model.Account,
 		return nil, fmt.Errorf("не удалось сохранить аккаунт: %w", err)
 	}
 
-	log.Printf("ytgrabber: account %s imported from file: %d cookies, logged in: %v", domain, account.CookieCount, account.LoggedIn)
+	log.Printf("ytgrabber: account %s connected (%s %s): %d cookies, logged in: %v",
+		domain, origin.source, origin.browser, account.CookieCount, account.LoggedIn)
 	a.publish("accounts-changed")
 	return account, nil
 }
@@ -176,7 +192,7 @@ func (a *App) CheckAccount(id string) (*model.Account, error) {
 		}
 	}
 
-	account.LoginKnown = accounts.IsKnownSite(account.Domain)
+	decorateAccount(account)
 	a.publish("accounts-changed")
 	return account, nil
 }

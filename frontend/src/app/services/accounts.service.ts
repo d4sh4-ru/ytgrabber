@@ -2,11 +2,14 @@ import { Injectable } from '@angular/core';
 import { BehaviorSubject, Observable } from 'rxjs';
 import {
     CheckAccount,
+    ConnectBrowserProfile,
     GetAccounts,
     ImportCookiesFile,
+    RefreshAccount,
     RemoveAccount,
+    ScanBrowsers,
 } from '../wailsjs/wailsjs/go/app/App';
-import { model } from '../wailsjs/wailsjs/go/models';
+import { browsers, model } from '../wailsjs/wailsjs/go/models';
 import { fromWailsEvent } from '../shared/wails-event';
 
 /**
@@ -44,6 +47,29 @@ export class AccountsService {
         const account = await ImportCookiesFile(site);
         await this.refresh();
         return account ?? null;
+    }
+
+    /** Browser profiles that have cookies of the site; reads names only. */
+    public scanBrowsers(site: string): Promise<browsers.Match[]> {
+        return ScanBrowsers(site);
+    }
+
+    public async connectProfile(site: string, match: browsers.Match): Promise<model.Account> {
+        const account = await ConnectBrowserProfile(site, match.browserId, match.profileDir);
+        await this.refresh();
+        return account;
+    }
+
+    /** Re-reads a browser account's cookies from the same profile. */
+    public async refreshFromBrowser(id: string): Promise<model.Account> {
+        const account = await RefreshAccount(id);
+        await this.refresh();
+        return account;
+    }
+
+    /** The account a site's downloads use, if one is connected. */
+    public findBySite(site: string): model.Account | null {
+        return this.accountsSubject$.value.find((account) => account.domain === site) ?? null;
     }
 
     public async check(id: string): Promise<model.Account> {

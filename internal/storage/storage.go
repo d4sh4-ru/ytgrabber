@@ -30,6 +30,7 @@ var migrations = []func(tx *sql.Tx, env MigrationEnv) error{
 	migrateInitialSchema,
 	migrateAbsolutePaths,
 	migrateAccounts,
+	migrateAccountProfileDir,
 }
 
 // Open opens the SQLite file with a single connection (so writes
@@ -208,6 +209,13 @@ CREATE TABLE accounts (
 	return err
 }
 
+// migrateAccountProfileDir remembers which browser profile an account was
+// taken from, so "refresh" can read it again in one click.
+func migrateAccountProfileDir(tx *sql.Tx, _ MigrationEnv) error {
+	_, err := tx.Exec(`ALTER TABLE accounts ADD COLUMN profile_dir TEXT NOT NULL DEFAULT ''`)
+	return err
+}
+
 func (d *DB) Close() error {
 	return d.conn.Close()
 }
@@ -374,11 +382,11 @@ func (d *DB) SetSetting(key string, value string) error {
 
 var ErrAccountNotFound = errors.New("аккаунт не найден")
 
-const accountColumns = `id, domain, source, browser, profile, cookie_count, logged_in, status, created_at, refreshed_at, last_used_at`
+const accountColumns = `id, domain, source, browser, profile, profile_dir, cookie_count, logged_in, status, created_at, refreshed_at, last_used_at`
 
 func scanAccount(scanner interface{ Scan(...any) error }) (*model.Account, error) {
 	account := &model.Account{}
-	err := scanner.Scan(&account.ID, &account.Domain, &account.Source, &account.Browser, &account.Profile, &account.CookieCount,
+	err := scanner.Scan(&account.ID, &account.Domain, &account.Source, &account.Browser, &account.Profile, &account.ProfileDir, &account.CookieCount,
 		&account.LoggedIn, &account.Status, &account.CreatedAt, &account.RefreshedAt, &account.LastUsedAt)
 	return account, err
 }
@@ -387,18 +395,19 @@ func scanAccount(scanner interface{ Scan(...any) error }) (*model.Account, error
 func (d *DB) SaveAccount(account *model.Account) error {
 	_, err := d.conn.Exec(
 		`INSERT INTO accounts (`+accountColumns+`)
-		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 		 ON CONFLICT(id) DO UPDATE SET
 			domain = excluded.domain,
 			source = excluded.source,
 			browser = excluded.browser,
 			profile = excluded.profile,
+			profile_dir = excluded.profile_dir,
 			cookie_count = excluded.cookie_count,
 			logged_in = excluded.logged_in,
 			status = excluded.status,
 			refreshed_at = excluded.refreshed_at,
 			last_used_at = excluded.last_used_at`,
-		account.ID, account.Domain, account.Source, account.Browser, account.Profile, account.CookieCount,
+		account.ID, account.Domain, account.Source, account.Browser, account.Profile, account.ProfileDir, account.CookieCount,
 		account.LoggedIn, account.Status, account.CreatedAt, account.RefreshedAt, account.LastUsedAt,
 	)
 	return err

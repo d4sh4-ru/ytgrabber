@@ -18,6 +18,7 @@ import (
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 
 	"ytgrabber/internal/accounts"
+	"ytgrabber/internal/browsers"
 	"ytgrabber/internal/installer"
 	"ytgrabber/internal/logging"
 	"ytgrabber/internal/platform"
@@ -57,8 +58,10 @@ type App struct {
 	installMu     sync.Mutex
 	cancelInstall context.CancelFunc
 
-	// accounts holds the encrypted cookies of connected sites.
-	accounts *accounts.Store
+	// accounts holds the encrypted cookies of connected sites;
+	// browserEnv says where to look for browser profiles.
+	accounts   *accounts.Store
+	browserEnv browsers.Env
 
 	mu       sync.RWMutex // guards everything below
 	settings Settings
@@ -83,12 +86,13 @@ type AppInfo struct {
 
 func New(paths platform.Paths) *App {
 	a := &App{
-		paths:    paths,
-		emit:     func(string, ...interface{}) {},
-		quit:     func() {},
-		jobs:     make(map[string]*job),
-		cancels:  make(map[string]context.CancelCauseFunc),
-		accounts: accounts.NewStore(paths.AccountsDir()),
+		paths:      paths,
+		emit:       func(string, ...interface{}) {},
+		quit:       func() {},
+		jobs:       make(map[string]*job),
+		cancels:    make(map[string]context.CancelCauseFunc),
+		accounts:   accounts.NewStore(paths.AccountsDir()),
+		browserEnv: browsers.CurrentEnv(),
 	}
 	a.startHelper = a.startCleanupHelper
 	a.installer = installer.Installer{

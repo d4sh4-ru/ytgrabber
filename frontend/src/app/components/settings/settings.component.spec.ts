@@ -5,7 +5,7 @@ import { SettingsService } from '../../services/settings.service';
 import { ToolInstallService, ToolInstallState } from '../../services/tool-install.service';
 import { AccountsService } from '../../services/accounts.service';
 import { NotificationService } from '../../services/notification.service';
-import { app, model, tools } from '../../wailsjs/wailsjs/go/models';
+import { app, browsers, model, tools } from '../../wailsjs/wailsjs/go/models';
 
 class SettingsServiceStub {
     public readonly dependencies$ = new BehaviorSubject<tools.Report | null>(null);
@@ -56,7 +56,10 @@ class AccountsServiceStub {
     public readonly accounts$ = new BehaviorSubject<model.Account[]>([]);
     public readonly removed: string[] = [];
     public readonly imported: string[] = [];
+    public readonly connected: string[] = [];
+    public readonly refreshed: string[] = [];
     public checkResult = model.Account.createFrom({});
+    public matches: browsers.Match[] = [];
 
     public refresh(): Promise<model.Account[]> {
         return Promise.resolve(this.accounts$.value);
@@ -65,6 +68,20 @@ class AccountsServiceStub {
     public importCookiesFile(site: string): Promise<model.Account | null> {
         this.imported.push(site);
         return Promise.resolve(null);
+    }
+
+    public scanBrowsers(): Promise<browsers.Match[]> {
+        return Promise.resolve(this.matches);
+    }
+
+    public connectProfile(site: string, match: browsers.Match): Promise<model.Account> {
+        this.connected.push(`${site} ${match.browserId} ${match.profileDir}`);
+        return Promise.resolve(model.Account.createFrom({ domain: site, cookieCount: 1 }));
+    }
+
+    public refreshFromBrowser(id: string): Promise<model.Account> {
+        this.refreshed.push(id);
+        return Promise.resolve(model.Account.createFrom({ domain: 'vk.com', cookieCount: 2 }));
     }
 
     public check(): Promise<model.Account> {
@@ -274,7 +291,42 @@ describe('SettingsComponent: accounts', () => {
                 loginKnown: false,
                 status: 'expired',
             }),
+            model.Account.createFrom({
+                id: 'a3',
+                domain: 'vk.com',
+                source: 'browser',
+                browser: 'firefox',
+                browserName: 'Firefox',
+                profile: 'default-release',
+                cookieCount: 5,
+                loginKnown: true,
+                loggedIn: true,
+                status: 'ok',
+            }),
         ]);
+        accounts.matches = [
+            browsers.Match.createFrom({
+                browserId: 'firefox',
+                browser: 'Firefox',
+                profile: 'default-release',
+                profileDir: '/home/u/.mozilla/firefox/abc',
+                cookieCount: 4,
+                loginKnown: true,
+                loggedIn: true,
+                connectable: true,
+            }),
+            browsers.Match.createFrom({
+                browserId: 'chrome',
+                browser: 'Chrome',
+                profile: 'Работа',
+                profileDir: '/home/u/.config/google-chrome/Profile 2',
+                cookieCount: 9,
+                loginKnown: true,
+                loggedIn: true,
+                connectable: false,
+                note: 'Подключение из этого браузера будет в следующей версии',
+            }),
+        ];
         await TestBed.configureTestingModule({
             imports: [SettingsComponent],
             providers: [
@@ -319,6 +371,8 @@ describe('SettingsComponent: accounts', () => {
 
     it('explains what is stored before the file is picked', async () => {
         await clickButton('Загрузить новый');
+        await new Promise((resolve) => setTimeout(resolve));
+        fixture.detectChanges();
         const dialog = element().querySelector('app-account-connect-dialog');
         expect(dialog?.textContent).toContain('Вход на instagram.com');
         expect(dialog?.textContent).toContain('в зашифрованном виде');
@@ -327,6 +381,36 @@ describe('SettingsComponent: accounts', () => {
 
         await clickButton('Выбрать cookies.txt');
         expect(accounts.imported).toEqual(['instagram.com']);
+    });
+
+    it('shows where the login was found and connects a Firefox profile', async () => {
+        await clickButton('Загрузить новый');
+        await new Promise((resolve) => setTimeout(resolve));
+        fixture.detectChanges();
+
+        const dialog = element().querySelector('app-account-connect-dialog')!;
+        expect(dialog.textContent).toContain('Firefox · default-release');
+        expect(dialog.textContent).toContain('Chrome · Работа');
+        expect(dialog.textContent).toContain('будет в следующей версии');
+        expect(dialog.textContent).toContain('только имена cookies');
+        // Only the Firefox profile can be connected directly.
+        const connect = Array.from(dialog.querySelectorAll('button')).filter(
+            (button) => button.textContent?.trim() === 'Подключить',
+        );
+        expect(connect.length).toBe(1);
+
+        connect[0].click();
+        await new Promise((resolve) => setTimeout(resolve));
+        fixture.detectChanges();
+        expect(accounts.connected).toEqual(['instagram.com firefox /home/u/.mozilla/firefox/abc']);
+        expect(element().querySelector('app-account-connect-dialog')).toBeNull();
+    });
+
+    it('refreshes a browser account in one click', async () => {
+        expect(element().textContent).toContain('Firefox · default-release');
+        await clickButton('Обновить');
+        expect(accounts.refreshed).toEqual(['a3']);
+        expect(element().querySelector('app-account-connect-dialog')).toBeNull();
     });
 
     it('requires a site when adding one', async () => {
