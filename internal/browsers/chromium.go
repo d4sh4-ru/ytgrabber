@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -47,12 +48,12 @@ func chromiumProfiles(browser Browser, dir string) []Profile {
 			if name == "" {
 				name = subdir
 			}
-			profiles = append(profiles, Profile{Browser: browser, Name: name, Dir: profileDir, CookiesPath: cookies})
+			profiles = append(profiles, Profile{Browser: browser, Name: name, Dir: profileDir, CookiesPath: cookies, RootDir: dir})
 		}
 	}
 	if len(profiles) == 0 {
 		if cookies := chromiumCookiesPath(dir); cookies != "" {
-			profiles = append(profiles, Profile{Browser: browser, Name: "Default", Dir: dir, CookiesPath: cookies})
+			profiles = append(profiles, Profile{Browser: browser, Name: "Default", Dir: dir, CookiesPath: cookies, RootDir: dir})
 		}
 	}
 	return profiles
@@ -97,4 +98,34 @@ func chromiumNames(db *sql.DB) ([]cookieName, error) {
 		names = append(names, c)
 	}
 	return names, rows.Err()
+}
+
+// chromiumMajorVersion reads the version the browser last ran with from
+// "Last Version" in its data directory; 0 if unknown.
+func chromiumMajorVersion(rootDir string) int {
+	data, err := os.ReadFile(filepath.Join(rootDir, "Last Version"))
+	if err != nil {
+		return 0
+	}
+	major, _, _ := strings.Cut(strings.TrimSpace(string(data)), ".")
+	n, err := strconv.Atoi(major)
+	if err != nil {
+		return 0
+	}
+	return n
+}
+
+// appBoundBrowsers encrypt cookies on Windows with a key bound to the
+// browser itself (App-Bound Encryption, since version 127), which no
+// other program — yt-dlp included — can decrypt.
+var appBoundBrowsers = map[string]bool{"chrome": true, "edge": true, "brave": true}
+
+const appBoundFirstVersion = 127
+
+// HasAppBoundEncryption reports whether yt-dlp can't decrypt profile's
+// cookies for that reason. An unknown version gets the benefit of the
+// doubt: the extraction itself then reports the failure.
+func HasAppBoundEncryption(profile Profile, goos string) bool {
+	return goos == "windows" && appBoundBrowsers[profile.Browser.ID] &&
+		chromiumMajorVersion(profile.RootDir) >= appBoundFirstVersion
 }

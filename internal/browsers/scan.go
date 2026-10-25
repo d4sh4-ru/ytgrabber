@@ -62,7 +62,7 @@ func Scan(env Env, site string, tmpDir string) []Match {
 			Profile:    profile.Name,
 			ProfileDir: profile.Dir,
 		}
-		match.Connectable, match.Note = connectable(profile.Browser)
+		match.Connectable, match.Note = Connectable(profile, env.GOOS)
 
 		names, err := readNames(profile, tmpDir)
 		if err != nil {
@@ -105,15 +105,21 @@ func Scan(env Env, site string, tmpDir string) []Match {
 	return matches
 }
 
-// connectable says whether the app can take cookies from browser now.
-func connectable(browser Browser) (bool, string) {
-	if browser.Engine == EngineFirefox {
+// Connectable says whether the app can take cookies from profile, and
+// what the user should know: why not, or what to expect.
+func Connectable(profile Profile, goos string) (bool, string) {
+	switch {
+	case profile.Browser.Engine == EngineFirefox:
 		return true, ""
-	}
-	if browser.YtDlpName == "" {
+	case profile.Browser.YtDlpName == "":
 		return false, "Из этого браузера cookies не читаются: экспортируйте cookies.txt"
+	case HasAppBoundEncryption(profile, goos):
+		return false, profile.Browser.Name + " на Windows шифрует cookies так, что их может прочитать только он сам. " +
+			"Войдите на сайт в Firefox или экспортируйте cookies.txt"
+	case goos == "darwin":
+		return true, "macOS один раз спросит доступ к Связке ключей"
 	}
-	return false, "Подключение из этого браузера будет в следующей версии, пока используйте cookies.txt"
+	return true, ""
 }
 
 // FindProfile returns the profile of browserID in dir, as a fresh

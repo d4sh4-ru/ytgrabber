@@ -324,7 +324,7 @@ describe('SettingsComponent: accounts', () => {
                 loginKnown: true,
                 loggedIn: true,
                 connectable: false,
-                note: 'Подключение из этого браузера будет в следующей версии',
+                note: 'Chrome на Windows шифрует cookies так, что их может прочитать только он сам',
             }),
         ];
         await TestBed.configureTestingModule({
@@ -391,7 +391,7 @@ describe('SettingsComponent: accounts', () => {
         const dialog = element().querySelector('app-account-connect-dialog')!;
         expect(dialog.textContent).toContain('Firefox · default-release');
         expect(dialog.textContent).toContain('Chrome · Работа');
-        expect(dialog.textContent).toContain('будет в следующей версии');
+        expect(dialog.textContent).toContain('может прочитать только он сам');
         expect(dialog.textContent).toContain('только имена cookies');
         // Only the Firefox profile can be connected directly.
         const connect = Array.from(dialog.querySelectorAll('button')).filter(

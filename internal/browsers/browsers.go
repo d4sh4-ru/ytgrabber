@@ -158,6 +158,16 @@ type Profile struct {
 	Dir string
 	// CookiesPath is the cookie database inside Dir.
 	CookiesPath string
+	// RootDir is the browser's data directory the profile belongs to
+	// (Chromium's "User Data"); for Opera it is Dir itself.
+	RootDir string
+}
+
+// YtDlpSpec is the --cookies-from-browser value for a Chromium profile.
+// The profile is passed as a path, which yt-dlp accepts in place of a
+// name and which also tells it where the browser's key (Local State) is.
+func (p Profile) YtDlpSpec() string {
+	return p.Browser.YtDlpName + ":" + p.Dir
 }
 
 // Profiles lists every profile of every known browser found in env.

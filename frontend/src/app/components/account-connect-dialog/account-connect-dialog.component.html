@@ -43,7 +43,7 @@
                                 <span class="account-connect__muted">· {{ activity }}</span>
                             }
                         </span>
-                        @if (!match.connectable && !match.error) {
+                        @if (match.note && !match.error) {
                             <span class="account-connect__muted">{{ match.note }}</span>
                         }
                     </div>
@@ -76,7 +76,9 @@
                 Поиск по браузерам читает только имена cookies и время активности, без значений.
             </li>
             <li>
-                Из профиля или файла берутся только cookies {{ siteLabel }}, остальные не читаются.
+                Из профиля или файла берутся только cookies {{ siteLabel }}, остальные не
+                сохраняются. Из Firefox они читаются напрямую, из Chrome и других Chromium-браузеров
+                их расшифровывает yt-dlp.
             </li>
             <li>
                 Они хранятся в папке данных приложения в зашифрованном виде и передаются только

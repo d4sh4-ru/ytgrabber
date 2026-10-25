@@ -117,7 +117,7 @@ func TestScan(t *testing.T) {
 	if ff.LastAccess != now.Add(-48*time.Hour).UTC().Format(time.RFC3339) {
 		t.Errorf("last access = %q", ff.LastAccess)
 	}
-	if chrome := matches[0]; !chrome.LoggedIn || chrome.Connectable || chrome.Note == "" {
+	if chrome := matches[0]; !chrome.LoggedIn || !chrome.Connectable || chrome.Error != "" {
 		t.Errorf("chrome match = %+v", chrome)
 	}
 	if work := matches[2]; work.LoggedIn || work.CookieCount != 1 {
@@ -181,4 +181,55 @@ func TestFindProfileRejectsUnknownDirs(t *testing.T) {
 	if _, err := FindProfile(env, "chrome", filepath.Join(env.Home, ".mozilla", "firefox", "abc.default-release")); err == nil {
 		t.Error("accepted a profile of another browser")
 	}
+}
+
+// TestAppBoundEncryption: on Windows, Chrome/Edge/Brave 127+ encrypt
+// cookies so only the browser can read them; the scan says so up front.
+func TestAppBoundEncryption(t *testing.T) {
+	local := t.TempDir()
+	env := Env{GOOS: "windows", Home: t.TempDir(), Vars: map[string]string{"LOCALAPPDATA": local}}
+
+	for _, tc := range []struct {
+		browser, dir, version string
+		blocked               bool
+	}{
+		{"chrome", "Google/Chrome/User Data", "130.0.6723.92", true},
+		{"edge", "Microsoft/Edge/User Data", "126.0.2592.87", false},
+		{"brave", "BraveSoftware/Brave-Browser/User Data", "", false}, // unknown version: let yt-dlp try
+		{"vivaldi", "Vivaldi/User Data", "131.0.0.0", false},
+	} {
+		root := filepath.Join(local, filepath.FromSlash(tc.dir))
+		createDB(t, filepath.Join(root, "Default", "Network", "Cookies"), chromiumCookiesSchema)
+		if tc.version != "" {
+			os.WriteFile(filepath.Join(root, "Last Version"), []byte(tc.version), 0o644)
+		}
+		profile, err := FindProfile(env, tc.browser, filepath.Join(root, "Default"))
+		if err != nil {
+			t.Fatal(err)
+		}
+		ok, note := Connectable(profile, env.GOOS)
+		if ok == tc.blocked || (tc.blocked && note == "") {
+			t.Errorf("%s %s: connectable = %v, %q", tc.browser, tc.version, ok, note)
+		}
+		if spec := profile.YtDlpSpec(); spec != profile.Browser.YtDlpName+":"+profile.Dir {
+			t.Errorf("spec = %q", spec)
+		}
+	}
+
+	// The same Chrome elsewhere is fine; on macOS with a Keychain prompt.
+	if ok, note := Connectable(Profile{Browser: mustFind(t, "chrome")}, "darwin"); !ok || note == "" {
+		t.Errorf("macOS chrome = %v, %q", ok, note)
+	}
+	if ok, _ := Connectable(Profile{Browser: mustFind(t, "yandex")}, "linux"); ok {
+		t.Error("yandex reported connectable")
+	}
+}
+
+func mustFind(t *testing.T, id string) Browser {
+	t.Helper()
+	browser, ok := Find(id)
+	if !ok {
+		t.Fatalf("no browser %q", id)
+	}
+	return browser
 }
