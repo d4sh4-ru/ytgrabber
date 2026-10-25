@@ -80,6 +80,11 @@ func NormalizeURL(raw string) (string, error) {
 //
 //   - --ignore-config: a user's yt-dlp config could change the output
 //     template or verbosity and break the parsing below.
+//   - --encoding utf-8: piped output is otherwise written in the locale's
+//     encoding — the ANSI code page on Windows, ASCII for an app started
+//     from Finder — which turns non-Latin titles and file paths into "?"
+//     or drops them. (PYTHONIOENCODING doesn't help: the standalone
+//     yt-dlp builds ignore PYTHON* variables.)
 //   - --no-playlist: a link to a video inside a playlist downloads just
 //     that video; one job always means one file.
 //   - --print implies --quiet and --simulate, so both are switched back.
@@ -94,6 +99,7 @@ func BuildArgs(sourceURL string, quality string, downloadsDir string, ffmpegPath
 
 	args := []string{
 		"--ignore-config",
+		"--encoding", "utf-8",
 		"--newline",
 		"--no-playlist",
 		"--no-quiet",
@@ -281,6 +287,44 @@ func (t *LineTail) Add(line string) {
 	if len(t.lines) > t.limit {
 		t.lines = t.lines[len(t.lines)-t.limit:]
 	}
+}
+
+// idSuffixRe matches the " [<id>].<ext>" outputTemplate ends a file name
+// with. The id is ASCII, so it survives where the title was mangled.
+var idSuffixRe = regexp.MustCompile(` \[[^\[\]/\\]+\]\.[^.\[\]/\\]+$`)
+
+// FindByID locates the file a download really produced when the recorded
+// path has a mangled title (output read in the wrong encoding, see
+// BuildArgs): the file in the same folder with the same " [<id>].<ext>"
+// ending, if there is exactly one.
+func FindByID(path string) (string, bool) {
+	suffix := idSuffixRe.FindString(filepath.Base(path))
+	if suffix == "" {
+		return "", false
+	}
+	entries, err := os.ReadDir(filepath.Dir(path))
+	if err != nil {
+		return "", false
+	}
+	found := ""
+	for _, entry := range entries {
+		if entry.Type().IsRegular() && strings.HasSuffix(entry.Name(), suffix) {
+			if found != "" {
+				return "", false // ambiguous
+			}
+			found = filepath.Join(filepath.Dir(path), entry.Name())
+		}
+	}
+	return found, found != ""
+}
+
+// TitleFromFilename recovers a title from a name made by outputTemplate.
+func TitleFromFilename(path string) string {
+	name := filepath.Base(path)
+	if suffix := idSuffixRe.FindString(name); suffix != "" {
+		return strings.TrimSpace(strings.TrimSuffix(name, suffix))
+	}
+	return StripExt(name)
 }
 
 func StripExt(path string) string {

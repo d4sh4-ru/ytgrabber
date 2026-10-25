@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"unicode/utf8"
 
 	"ytgrabber/internal/model"
 	"ytgrabber/internal/platform"
@@ -28,8 +29,41 @@ func (a *App) GetLibrary() ([]*model.VideoRecord, error) {
 
 	for _, video := range videos {
 		decorateVideo(video)
+		if video.FileMissing && a.repairVideo(video) {
+			decorateVideo(video)
+		}
 	}
 	return videos, nil
+}
+
+// repairVideo fixes an entry whose title and path were recorded mangled:
+// releases before yt-dlp got --encoding utf-8 read non-Latin titles in
+// the wrong encoding, so the path pointed at a file that doesn't exist
+// while the real one sits next to it. The " [<id>].<ext>" ending of the
+// name survives and finds it.
+func (a *App) repairVideo(video *model.VideoRecord) bool {
+	filePath, ok := ytdlp.FindByID(video.FilePath)
+	if !ok || a.isFileReferenced(filePath) {
+		return false
+	}
+	thumbnail := video.ThumbnailPath
+	if found, ok := ytdlp.FindByID(thumbnail); ok {
+		if _, err := os.Stat(thumbnail); err != nil {
+			thumbnail = found
+		}
+	}
+	title := video.Title
+	if !utf8.ValidString(title) || strings.Contains(title, "?") || strings.TrimSpace(title) == "" {
+		title = ytdlp.TitleFromFilename(filePath)
+	}
+
+	if err := a.db.RelocateVideo(video.ID, filePath, thumbnail, title); err != nil {
+		log.Printf("ytgrabber: failed to repair library entry %s: %v", video.ID, err)
+		return false
+	}
+	log.Printf("ytgrabber: library entry %s found its file again", video.ID)
+	video.FilePath, video.ThumbnailPath, video.Title = filePath, thumbnail, title
+	return true
 }
 
 // DeleteVideo удаляет запись из библиотеки; с deleteFiles=true — ещё и сам
@@ -86,9 +120,8 @@ func (a *App) RevealVideo(id string) error {
 // decorateVideo fills the fields computed at read time: whether the file
 // is still there and the URLs the frontend loads it by.
 func decorateVideo(video *model.VideoRecord) {
-	if _, err := os.Stat(video.FilePath); err != nil {
-		video.FileMissing = true
-	}
+	_, err := os.Stat(video.FilePath)
+	video.FileMissing = err != nil
 
 	base := mediaRoutePrefix + url.PathEscape(video.ID) + "/"
 	// The extension is kept in the URL on purpose: the Angular dev server
@@ -101,8 +134,4 @@ func decorateVideo(video *model.VideoRecord) {
 			video.ThumbnailURL = base + "thumbnail.jpg"
 		}
 	}
-}
-
-func fileTitle(path string) string {
-	return ytdlp.StripExt(filepath.Base(path))
 }

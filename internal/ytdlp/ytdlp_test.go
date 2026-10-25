@@ -47,6 +47,9 @@ func TestBuildYtDlpArgs(t *testing.T) {
 	if n := len(args); n < 2 || args[n-2] != "--" || args[n-1] != "https://example.com/v" {
 		t.Fatalf("URL must be the last argument after \"--\", got tail %q", args[max(len(args)-2, 0):])
 	}
+	if i := slices.Index(args, "--encoding"); i == -1 || args[i+1] != "utf-8" {
+		t.Errorf("output encoding not forced to UTF-8: %q", args)
+	}
 	for _, flag := range []string{"--ignore-config", "--no-playlist", "--newline", "--no-simulate", "--no-quiet"} {
 		if !slices.Contains(args, flag) {
 			t.Errorf("missing %s", flag)
@@ -185,5 +188,39 @@ func TestRemovePartialFiles(t *testing.T) {
 	want := []string{"Clip [abc].jpg", "Other [xyz].mp4"}
 	if !slices.Equal(left, want) {
 		t.Errorf("left %q, want %q", left, want)
+	}
+}
+
+func TestFindByID(t *testing.T) {
+	dir := t.TempDir()
+	real := filepath.Join(dir, "Привет, мир! [abc_1-X].mp4")
+	os.WriteFile(real, []byte("v"), 0o644)
+	os.WriteFile(filepath.Join(dir, "Привет, мир! [abc_1-X].jpg"), []byte("t"), 0o644)
+	os.WriteFile(filepath.Join(dir, "Other [zzz].mp4"), []byte("v"), 0o644)
+
+	// What a title read in the wrong encoding looks like: "?" per letter,
+	// or raw cp1251 bytes that aren't UTF-8.
+	for _, mangled := range []string{"??????, ???! [abc_1-X].mp4", "\xcf\xf0\xe8\xe2\xe5\xf2 [abc_1-X].mp4", "_ [abc_1-X].mp4"} {
+		if got, ok := FindByID(filepath.Join(dir, mangled)); !ok || got != real {
+			t.Errorf("FindByID(%q) = %q, %v", mangled, got, ok)
+		}
+	}
+	if got, ok := FindByID(filepath.Join(dir, "x [abc_1-X].webm")); ok {
+		t.Errorf("matched another extension: %q", got)
+	}
+	if got, ok := FindByID(filepath.Join(dir, "no id.mp4")); ok {
+		t.Errorf("matched a name without an id: %q", got)
+	}
+
+	os.WriteFile(filepath.Join(dir, "Second copy [abc_1-X].mp4"), []byte("v"), 0o644)
+	if got, ok := FindByID(filepath.Join(dir, "??? [abc_1-X].mp4")); ok {
+		t.Errorf("picked one of two candidates: %q", got)
+	}
+
+	if got := TitleFromFilename(real); got != "Привет, мир!" {
+		t.Errorf("TitleFromFilename = %q", got)
+	}
+	if got := TitleFromFilename("/x/plain.mp3"); got != "plain" {
+		t.Errorf("TitleFromFilename without id = %q", got)
 	}
 }
