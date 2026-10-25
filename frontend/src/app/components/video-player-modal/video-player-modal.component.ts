@@ -9,11 +9,12 @@ import {
     ViewChild,
 } from '@angular/core';
 import { model } from '../../wailsjs/wailsjs/go/models';
+import { IconComponent } from '../icon/icon.component';
 
 @Component({
     selector: 'app-video-player-modal',
     standalone: true,
-    imports: [],
+    imports: [IconComponent],
     templateUrl: './video-player-modal.component.html',
     styleUrl: './video-player-modal.component.scss',
     changeDetection: ChangeDetectionStrategy.OnPush,

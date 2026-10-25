@@ -12,13 +12,14 @@ import { Subject, takeUntil } from 'rxjs';
 import { AudioPlayerService, AudioTrack } from '../../services/audio-player.service';
 import { NotificationService } from '../../services/notification.service';
 import { formatDuration } from '../../shared/format-duration';
+import { IconComponent } from '../icon/icon.component';
 
 const VOLUME_STORAGE_KEY = 'ytgrabber.volume';
 
 @Component({
     selector: 'app-audio-player-bar',
     standalone: true,
-    imports: [],
+    imports: [IconComponent],
     templateUrl: './audio-player-bar.component.html',
     styleUrl: './audio-player-bar.component.scss',
     changeDetection: ChangeDetectionStrategy.OnPush,

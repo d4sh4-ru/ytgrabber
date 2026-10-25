@@ -38,8 +38,8 @@
     }
 
     &__icon {
+        display: flex;
         color: v.$text-secondary;
-        font-size: 28px;
     }
 
     &__badge {
@@ -64,7 +64,11 @@
         transition: opacity 0.1s;
 
         .btn {
-            padding: 2px 6px;
+            padding: 4px 6px;
+        }
+
+        .btn--danger {
+            color: v.$error;
         }
     }
 

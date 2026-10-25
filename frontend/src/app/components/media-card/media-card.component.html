@@ -15,7 +15,7 @@
                 loading="lazy"
             />
         } @else if (isAudio) {
-            <span class="media-card__icon">♪</span>
+            <span class="media-card__icon"><app-icon name="music" [size]="32" /></span>
         }
         @if (item.fileMissing) {
             <span class="media-card__badge">Файл не найден</span>
@@ -26,18 +26,20 @@
                     type="button"
                     class="btn"
                     title="Показать в папке"
+                    aria-label="Показать в папке"
                     (click)="onReveal($event)"
                 >
-                    📂
+                    <app-icon name="folder" />
                 </button>
             }
             <button
                 type="button"
                 class="btn btn--danger"
                 title="Удалить"
+                aria-label="Удалить"
                 (click)="onDelete($event)"
             >
-                🗑
+                <app-icon name="trash" />
             </button>
         </div>
     </div>

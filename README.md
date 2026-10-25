@@ -116,6 +116,7 @@ cmd/updatesign/         ключ и подпись списка контроль
   logging/              лог-файл
 frontend/               Angular-приложение
 build/                  иконки и шаблоны пакетов: macOS, Windows (NSIS), Linux (.desktop, install.sh)
+                        иконка рисуется в appicon.svg, PNG/ICO из неё делает build/icons.sh
 ```
 
 `main.go` лежит в корне модуля, потому что `//go:embed` не видит файлы выше каталога пакета, а Wails собирает корневой пакет.

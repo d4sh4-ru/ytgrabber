@@ -1,0 +1,14 @@
+<!-- App icon source. Regenerate the raster icons with build/icons.sh. -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#26262a"/>
+      <stop offset="1" stop-color="#141416"/>
+    </linearGradient>
+  </defs>
+  <rect x="100" y="100" width="824" height="824" rx="185" fill="url(#bg)"/>
+  <rect x="100.5" y="100.5" width="823" height="823" rx="185" fill="none" stroke="#3a3a3e" stroke-width="3"/>
+  <rect x="250" y="300" width="524" height="370" rx="70" fill="none" stroke="#e8e8e8" stroke-width="56"/>
+  <path d="M462 410 L462 560 L590 485 Z" fill="#3b82f6" stroke="#3b82f6" stroke-width="36" stroke-linejoin="round"/>
+  <path d="M400 770h224" stroke="#3b82f6" stroke-width="56" stroke-linecap="round"/>
+</svg>
