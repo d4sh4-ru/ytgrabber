@@ -236,8 +236,9 @@ func installHint(name string) string {
 // Env is the environment for every child process. PATH is extended with
 // the directories of the resolved tools and the well-known install
 // locations, because yt-dlp itself looks up ffmpeg and deno on PATH. The
-// Python variables force UTF-8 output: on Windows yt-dlp would otherwise
-// print titles and file paths in the console's ANSI code page.
+// Python variables ask a pip/Homebrew yt-dlp for UTF-8; the standalone
+// builds ignore them, which is why yt-dlp also gets --encoding utf-8
+// (see ytdlp.BuildArgs).
 func (s Set) Env() []string {
 	seen := map[string]bool{}
 	var dirs []string

@@ -13,6 +13,7 @@ import (
 	"strings"
 	"sync"
 	"time"
+	"unicode/utf8"
 
 	"github.com/google/uuid"
 
@@ -440,7 +441,7 @@ func (a *App) finishJob(ctx context.Context, j *job, toolSet tools.Set) {
 		j.FilePath = j.Tracks[len(j.Tracks)-1].Filename
 	}
 	if j.Title == "" {
-		j.Title = fileTitle(j.FilePath)
+		j.Title = ytdlp.TitleFromFilename(j.FilePath)
 	}
 	filePath, title, sourceURL, quality, id := j.FilePath, j.Title, j.URL, j.Quality, j.ID
 	a.mu.Unlock()
@@ -450,8 +451,16 @@ func (a *App) finishJob(ctx context.Context, j *job, toolSet tools.Set) {
 		return
 	}
 	if _, err := os.Stat(filePath); err != nil {
-		a.setError(j, fmt.Sprintf("Итоговый файл не найден: %s", filePath))
-		return
+		// A yt-dlp that ignores --encoding can still print a mangled path.
+		found, ok := ytdlp.FindByID(filePath)
+		if !ok {
+			a.setError(j, fmt.Sprintf("Итоговый файл не найден: %s", filePath))
+			return
+		}
+		filePath = found
+		if !utf8.ValidString(title) || strings.Contains(title, "?") {
+			title = ytdlp.TitleFromFilename(found)
+		}
 	}
 
 	a.setStatus(j, model.StatusProcessing)

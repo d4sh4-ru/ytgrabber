@@ -216,7 +216,7 @@ func (a *App) checkAccountOnline(account *model.Account, checkURL string) error 
 	ctx, cancel := context.WithTimeout(context.Background(), accountCheckTimeout)
 	defer cancel()
 	cmd := toolSet.Command(ctx, toolSet.YtDlp.Path,
-		"--ignore-config", "--flat-playlist", "--playlist-items", "1", "--simulate", "--no-warnings",
+		"--ignore-config", "--encoding", "utf-8", "--flat-playlist", "--playlist-items", "1", "--simulate", "--no-warnings",
 		"--cookies", session.path, "--", checkURL)
 	var stderr bytes.Buffer
 	cmd.Stderr = &stderr

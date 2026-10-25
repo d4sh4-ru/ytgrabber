@@ -133,7 +133,7 @@ func (a *App) extractWithYtDlp(profile browsers.Profile, domain string) ([]accou
 	ctx, cancel := context.WithTimeout(context.Background(), extractTimeout)
 	defer cancel()
 	cmd := toolSet.Command(ctx, toolSet.YtDlp.Path,
-		"--ignore-config", "--cookies-from-browser", profile.YtDlpSpec(), "--cookies", jar, "--", "notaurl")
+		"--ignore-config", "--encoding", "utf-8", "--cookies-from-browser", profile.YtDlpSpec(), "--cookies", jar, "--", "notaurl")
 	output, _ := cmd.CombinedOutput() // always fails on the fake URL
 	if ctx.Err() != nil {
 		return nil, errors.New("извлечение cookies не уложилось во время: возможно, не был подтверждён доступ к Связке ключей")

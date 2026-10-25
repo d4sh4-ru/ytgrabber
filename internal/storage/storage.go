@@ -335,6 +335,14 @@ func (d *DB) GetVideo(id string) (*model.VideoRecord, error) {
 	return video, err
 }
 
+// RelocateVideo points a library entry at its file again (see
+// app.repairVideo).
+func (d *DB) RelocateVideo(id string, filePath string, thumbnailPath string, title string) error {
+	_, err := d.conn.Exec(`UPDATE videos SET file_path = ?, thumbnail_path = ?, title = ? WHERE id = ?`,
+		filePath, thumbnailPath, title, id)
+	return err
+}
+
 func (d *DB) DeleteVideo(id string) error {
 	_, err := d.conn.Exec(`DELETE FROM videos WHERE id = ?`, id)
 	return err

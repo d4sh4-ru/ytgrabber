@@ -243,3 +243,34 @@ func TestGetLibraryMarksMissingFiles(t *testing.T) {
 		t.Errorf("video = %+v", videos[0])
 	}
 }
+
+// TestLibraryRepairsMangledEntries: entries saved by releases that read
+// non-Latin titles in the wrong encoding find their files again.
+func TestLibraryRepairsMangledEntries(t *testing.T) {
+	app, _ := newTestApp(t)
+	dir := t.TempDir()
+	real := filepath.Join(dir, "Привет мир [abc].mp4")
+	thumb := filepath.Join(dir, "Привет мир [abc].jpg")
+	os.WriteFile(real, []byte("v"), 0o644)
+	os.WriteFile(thumb, []byte("t"), 0o644)
+
+	err := app.db.SaveVideo(&model.VideoRecord{
+		ID: "v1", Title: "?????? ???", MediaKind: model.MediaVideo,
+		FilePath:      filepath.Join(dir, "?????? ??? [abc].mp4"),
+		ThumbnailPath: filepath.Join(dir, "?????? ??? [abc].jpg"),
+		DownloadedAt:  "2026-01-01T00:00:00Z",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	videos, _ := app.GetLibrary()
+	if v := videos[0]; v.FilePath != real || v.ThumbnailPath != thumb || v.Title != "Привет мир" || v.FileMissing || v.ThumbnailURL == "" {
+		t.Errorf("repaired = %+v", v)
+	}
+	// The repair is stored, not redone on every read.
+	stored, _ := app.db.GetVideo("v1")
+	if stored.FilePath != real || stored.Title != "Привет мир" {
+		t.Errorf("stored = %+v", stored)
+	}
+}
