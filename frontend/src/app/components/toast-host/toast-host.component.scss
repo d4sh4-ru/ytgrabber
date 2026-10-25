@@ -33,9 +33,16 @@
     }
 
     &__close {
+        display: inline-flex;
+        padding: 2px;
         border: none;
+        border-radius: v.$radius-sm;
         background: transparent;
         color: v.$text-secondary;
         cursor: pointer;
+
+        &:hover {
+            color: v.$text-primary;
+        }
     }
 }

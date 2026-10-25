@@ -1,0 +1,46 @@
+<svg
+    xmlns="http://www.w3.org/2000/svg"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+    aria-hidden="true"
+    [attr.width]="size"
+    [attr.height]="size"
+    [attr.stroke-width]="strokeWidth"
+>
+    @switch (name) {
+        @case ('close') {
+            <path d="M18 6 6 18" />
+            <path d="m6 6 12 12" />
+        }
+        @case ('play') {
+            <path
+                d="M7 4.5v15a1 1 0 0 0 1.5.86l12-7.5a1 1 0 0 0 0-1.72l-12-7.5A1 1 0 0 0 7 4.5Z"
+                fill="currentColor"
+            />
+        }
+        @case ('pause') {
+            <rect x="6" y="4" width="4" height="16" rx="1" fill="currentColor" />
+            <rect x="14" y="4" width="4" height="16" rx="1" fill="currentColor" />
+        }
+        @case ('music') {
+            <path d="M9 18V5l12-2v13" />
+            <circle cx="6" cy="18" r="3" />
+            <circle cx="18" cy="16" r="3" />
+        }
+        @case ('folder') {
+            <path
+                d="m6 14 1.5-2.9A2 2 0 0 1 9.24 10H20a2 2 0 0 1 1.94 2.5l-1.54 6a2 2 0 0 1-1.95 1.5H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h3.9a2 2 0 0 1 1.69.9l.81 1.2a2 2 0 0 0 1.67.9H18a2 2 0 0 1 2 2v2"
+            />
+        }
+        @case ('trash') {
+            <path d="M3 6h18" />
+            <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6" />
+            <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2" />
+            <path d="M10 11v6" />
+            <path d="M14 11v6" />
+        }
+    }
+</svg>

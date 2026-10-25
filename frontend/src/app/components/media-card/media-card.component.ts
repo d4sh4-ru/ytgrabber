@@ -1,12 +1,13 @@
 import { ChangeDetectionStrategy, Component, EventEmitter, Input, Output } from '@angular/core';
 import { model } from '../../wailsjs/wailsjs/go/models';
 import { formatDuration } from '../../shared/format-duration';
+import { IconComponent } from '../icon/icon.component';
 
 /** A library tile for both videos and audio; audio shows its cover or a note icon. */
 @Component({
     selector: 'app-media-card',
     standalone: true,
-    imports: [],
+    imports: [IconComponent],
     templateUrl: './media-card.component.html',
     styleUrl: './media-card.component.scss',
     changeDetection: ChangeDetectionStrategy.OnPush,

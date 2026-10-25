@@ -73,6 +73,11 @@ button {
         }
     }
 
+    // A square button holding just an icon.
+    &--icon {
+        padding: 4px;
+    }
+
     &--danger:hover:not(:disabled) {
         border-color: v.$error;
         color: v.$error;
