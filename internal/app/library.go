@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"math"
 	"net/url"
 	"os"
 	"path/filepath"
@@ -96,6 +97,44 @@ func (a *App) DeleteVideo(id string, deleteFiles bool) error {
 
 	a.publish("library-changed")
 	return nil
+}
+
+const (
+	// resumeMinSeconds: stopping this early isn't worth resuming.
+	resumeMinSeconds = 5
+	// Closer than this to the end, or past resumeWatchedShare of it, counts
+	// as watched: the next play starts over, as on video sites.
+	resumeEndMarginSeconds = 10
+	resumeWatchedShare     = 0.95
+)
+
+// SavePlaybackPosition запоминает, на какой секунде остановилось
+// воспроизведение, и возвращает сохранённое значение: 0, если досмотрено
+// почти до конца или почти не начато (тогда в следующий раз — с начала).
+func (a *App) SavePlaybackPosition(id string, seconds float64) (float64, error) {
+	if err := a.ensureReady(); err != nil {
+		return 0, err
+	}
+	video, err := a.db.GetVideo(id)
+	if err != nil {
+		return 0, err
+	}
+	position := resumePosition(seconds, video.DurationSeconds)
+	if err := a.db.SavePosition(id, position); err != nil {
+		return 0, fmt.Errorf("не удалось сохранить позицию: %w", err)
+	}
+	return position, nil
+}
+
+// resumePosition is where the next playback should start.
+func resumePosition(seconds float64, duration float64) float64 {
+	if math.IsNaN(seconds) || math.IsInf(seconds, 0) || seconds < resumeMinSeconds {
+		return 0
+	}
+	if duration > 0 && (seconds >= duration-resumeEndMarginSeconds || seconds >= duration*resumeWatchedShare) {
+		return 0
+	}
+	return seconds
 }
 
 // RevealVideo показывает файл в Finder / Проводнике / файловом менеджере.

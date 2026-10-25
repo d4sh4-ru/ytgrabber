@@ -27,7 +27,14 @@
     &__actions {
         display: flex;
         flex-shrink: 0;
+        align-items: center;
         gap: 6px;
+    }
+
+    &__resumed {
+        color: v.$text-secondary;
+        font-size: 12px;
+        white-space: nowrap;
     }
 
     &__error {

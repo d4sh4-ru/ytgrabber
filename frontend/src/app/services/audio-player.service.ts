@@ -6,6 +6,8 @@ export interface AudioTrack {
     readonly title: string;
     readonly src: string;
     readonly coverSrc: string | null;
+    /** Where playback stopped last time (see PlaybackService). */
+    readonly positionSeconds: number;
 }
 
 @Injectable({ providedIn: 'root' })

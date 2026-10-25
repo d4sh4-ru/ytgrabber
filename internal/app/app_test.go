@@ -274,3 +274,60 @@ func TestLibraryRepairsMangledEntries(t *testing.T) {
 		t.Errorf("stored = %+v", stored)
 	}
 }
+
+func TestResumePosition(t *testing.T) {
+	cases := []struct {
+		seconds, duration, want float64
+	}{
+		{3, 600, 0}, // barely started
+		{125.5, 600, 125.5},
+		{585, 600, 0}, // within the last 10 s
+		{575, 600, 0}, // past 95 %
+		{560, 600, 560},
+		{40, 0, 40}, // duration unknown
+		{8, 12, 0},  // short clip: always from the start
+		{-1, 600, 0},
+	}
+	for _, c := range cases {
+		if got := resumePosition(c.seconds, c.duration); got != c.want {
+			t.Errorf("resumePosition(%v, %v) = %v, want %v", c.seconds, c.duration, got, c.want)
+		}
+	}
+}
+
+func TestSavePlaybackPosition(t *testing.T) {
+	app, _ := newTestApp(t)
+	file := filepath.Join(t.TempDir(), "clip [abc].mp4")
+	os.WriteFile(file, []byte("v"), 0o644)
+	app.db.SaveVideo(&model.VideoRecord{ID: "v1", Title: "clip", MediaKind: model.MediaVideo, FilePath: file,
+		DurationSeconds: 600, DownloadedAt: "2026-01-01T00:00:00Z"})
+
+	saved, err := app.SavePlaybackPosition("v1", 125.5)
+	if err != nil || saved != 125.5 {
+		t.Fatalf("saved = %v, %v", saved, err)
+	}
+	videos, _ := app.GetLibrary()
+	if videos[0].PositionSeconds != 125.5 {
+		t.Errorf("library position = %v", videos[0].PositionSeconds)
+	}
+
+	// Watched to the end: the next play starts over.
+	if saved, _ := app.SavePlaybackPosition("v1", 598); saved != 0 {
+		t.Errorf("near the end saved %v", saved)
+	}
+	if video, _ := app.db.GetVideo("v1"); video.PositionSeconds != 0 {
+		t.Errorf("stored = %v", video.PositionSeconds)
+	}
+
+	// Downloading the same file again keeps the position.
+	app.SavePlaybackPosition("v1", 300)
+	app.db.SaveVideo(&model.VideoRecord{ID: "v2", Title: "clip", MediaKind: model.MediaVideo, FilePath: file,
+		DurationSeconds: 600, DownloadedAt: "2026-01-02T00:00:00Z"})
+	if video, _ := app.db.GetVideo("v1"); video.PositionSeconds != 300 {
+		t.Errorf("after re-download = %v", video.PositionSeconds)
+	}
+
+	if _, err := app.SavePlaybackPosition("missing", 50); err == nil {
+		t.Error("saved a position for an unknown entry")
+	}
+}

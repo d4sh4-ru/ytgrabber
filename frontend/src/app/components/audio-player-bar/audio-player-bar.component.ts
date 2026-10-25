@@ -11,6 +11,7 @@ import {
 import { Subject, takeUntil } from 'rxjs';
 import { AudioPlayerService, AudioTrack } from '../../services/audio-player.service';
 import { NotificationService } from '../../services/notification.service';
+import { PlaybackService } from '../../services/playback.service';
 import { formatDuration } from '../../shared/format-duration';
 import { IconComponent } from '../icon/icon.component';
 
@@ -28,6 +29,7 @@ export class AudioPlayerBarComponent implements OnInit, OnDestroy {
     // --- DI / lifecycle ---
     private readonly audioPlayerService = inject(AudioPlayerService);
     private readonly notificationService = inject(NotificationService);
+    private readonly playbackService = inject(PlaybackService);
     private readonly changeDetectorRef = inject(ChangeDetectorRef);
     private readonly destroy$ = new Subject<void>();
 
@@ -60,6 +62,8 @@ export class AudioPlayerBarComponent implements OnInit, OnDestroy {
         this.audioPlayerService.currentTrack$
             .pipe(takeUntil(this.destroy$))
             .subscribe((track: AudioTrack | null): void => {
+                // Switching tracks or closing: remember where the old one stopped.
+                this.saveStop();
                 this.currentTrack = track;
                 this.isPlaying = false;
                 this.currentTime = 0;
@@ -69,6 +73,7 @@ export class AudioPlayerBarComponent implements OnInit, OnDestroy {
     }
 
     public ngOnDestroy(): void {
+        this.saveStop();
         this.destroy$.next();
         this.destroy$.complete();
     }
@@ -92,7 +97,11 @@ export class AudioPlayerBarComponent implements OnInit, OnDestroy {
     }
 
     protected onTimeUpdate(): void {
-        this.currentTime = this.audioElementRef?.nativeElement.currentTime ?? 0;
+        const audioElement = this.audioElementRef?.nativeElement;
+        this.currentTime = audioElement?.currentTime ?? 0;
+        if (audioElement && this.currentTrack && !audioElement.seeking) {
+            this.playbackService.progress(this.currentTrack.id, this.currentTime);
+        }
         this.changeDetectorRef.markForCheck();
     }
 
@@ -101,6 +110,15 @@ export class AudioPlayerBarComponent implements OnInit, OnDestroy {
         if (audioElement) {
             audioElement.volume = this.volume;
             this.duration = audioElement.duration;
+            if (this.currentTrack) {
+                const position = this.playbackService.startPosition(
+                    this.currentTrack.id,
+                    this.currentTrack.positionSeconds,
+                );
+                if (position > 0 && position < this.duration) {
+                    audioElement.currentTime = position;
+                }
+            }
         }
         this.changeDetectorRef.markForCheck();
     }
@@ -112,6 +130,7 @@ export class AudioPlayerBarComponent implements OnInit, OnDestroy {
 
     protected onPause(): void {
         this.isPlaying = false;
+        this.saveStop();
         this.changeDetectorRef.markForCheck();
     }
 
@@ -128,6 +147,13 @@ export class AudioPlayerBarComponent implements OnInit, OnDestroy {
 
         const percent = Number((event.target as HTMLInputElement).value);
         audioElement.currentTime = (percent / 100) * this.duration;
+    }
+
+    private saveStop(): void {
+        const audioElement = this.audioElementRef?.nativeElement;
+        if (audioElement && this.currentTrack && this.duration > 0) {
+            void this.playbackService.stop(this.currentTrack.id, audioElement.currentTime);
+        }
     }
 
     // --- Volume ---

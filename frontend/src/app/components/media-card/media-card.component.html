@@ -20,6 +20,11 @@
         @if (item.fileMissing) {
             <span class="media-card__badge">Файл не найден</span>
         }
+        @if (watchedPercent; as percent) {
+            <div class="media-card__watched" [title]="watchedTitle">
+                <div class="media-card__watched-bar" [style.width.%]="percent"></div>
+            </div>
+        }
         <div class="media-card__actions">
             @if (!item.fileMissing) {
                 <button
