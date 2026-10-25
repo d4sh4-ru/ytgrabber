@@ -283,6 +283,9 @@ func (s Set) Command(ctx context.Context, path string, args ...string) *exec.Cmd
 // FillVersions queries every found tool for its version in parallel; a
 // slow or broken binary only costs its own timeout.
 func (s *Set) FillVersions() {
+	// version takes the Set by value; copying s inside the goroutines
+	// would read the fields the others are writing.
+	snapshot := *s
 	var wg sync.WaitGroup
 	for _, status := range s.all() {
 		if !status.Found {
@@ -291,7 +294,7 @@ func (s *Set) FillVersions() {
 		wg.Add(1)
 		go func(status *Status) {
 			defer wg.Done()
-			status.Version = s.version(*status)
+			status.Version = snapshot.version(*status)
 		}(status)
 	}
 	wg.Wait()

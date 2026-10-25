@@ -50,6 +50,11 @@ func (p Paths) RunDir() string {
 	return filepath.Join(p.DataDir, "run")
 }
 
+// UpdateDir holds a downloaded update until it is installed.
+func (p Paths) UpdateDir() string {
+	return filepath.Join(p.DataDir, "update")
+}
+
 // WebviewDataDir is where WebView2 keeps its profile on Windows (see
 // main.go); inside DataDir so deleting all data has one place to wipe.
 func (p Paths) WebviewDataDir() string {

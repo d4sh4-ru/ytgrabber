@@ -15,6 +15,7 @@ import {
     ToolInstallState,
 } from '../../services/tool-install.service';
 import { AccountsService } from '../../services/accounts.service';
+import { UpdateProgress, UpdateService } from '../../services/update.service';
 import { app, model, tools } from '../../wailsjs/wailsjs/go/models';
 import { formatBytes } from '../../shared/format-bytes';
 import { formatRelativeTime } from '../../shared/format-relative-time';
@@ -44,6 +45,7 @@ export class SettingsComponent implements OnInit, OnDestroy {
     private readonly settingsService = inject(SettingsService);
     private readonly toolInstallService = inject(ToolInstallService);
     private readonly accountsService = inject(AccountsService);
+    private readonly updateService = inject(UpdateService);
     private readonly notificationService = inject(NotificationService);
     private readonly changeDetectorRef = inject(ChangeDetectorRef);
     private readonly destroy$ = new Subject<void>();
@@ -72,6 +74,13 @@ export class SettingsComponent implements OnInit, OnDestroy {
     // --- App info ---
     protected appInfo: app.AppInfo | null = null;
 
+    // --- Updates ---
+    protected update: app.UpdateInfo | null = null;
+    protected updateProgress: UpdateProgress | null = null;
+    protected isCheckingUpdate = false;
+    protected isInstallingUpdate = false;
+    protected hasCheckedUpdate = false;
+
     // --- Delete all data ---
     protected storage: app.StorageInfo | null = null;
     protected resetStep: ResetStep = 'idle';
@@ -82,6 +91,28 @@ export class SettingsComponent implements OnInit, OnDestroy {
         return (this.dependencies?.tools ?? []).filter(
             (tool) => !tool.found && !tool.custom && tool.installable,
         ).length;
+    }
+
+    protected get updateProgressLabel(): string {
+        const progress = this.updateProgress;
+        switch (progress?.stage) {
+            case 'verifying':
+                return 'Проверка подписи…';
+            case 'downloading':
+                return progress.total > 0
+                    ? `Скачивание: ${formatBytes(progress.done)} из ${formatBytes(progress.total)}`
+                    : `Скачивание: ${formatBytes(progress.done)}`;
+            case 'installing':
+                return 'Установка… Приложение перезапустится.';
+        }
+        return 'Подготовка…';
+    }
+
+    protected get updatePercent(): number | null {
+        const progress = this.updateProgress;
+        return progress?.stage === 'downloading' && progress.total > 0
+            ? Math.round((progress.done / progress.total) * 100)
+            : null;
     }
 
     protected get dataSizeLabel(): string {
@@ -117,6 +148,20 @@ export class SettingsComponent implements OnInit, OnDestroy {
             .pipe(takeUntil(this.destroy$))
             .subscribe((state: ToolInstallState): void => {
                 this.installState = state;
+                this.changeDetectorRef.markForCheck();
+            });
+
+        this.updateService.info$
+            .pipe(takeUntil(this.destroy$))
+            .subscribe((info: app.UpdateInfo | null): void => {
+                this.update = info;
+                this.changeDetectorRef.markForCheck();
+            });
+
+        this.updateService.progress$
+            .pipe(takeUntil(this.destroy$))
+            .subscribe((progress: UpdateProgress | null): void => {
+                this.updateProgress = progress;
                 this.changeDetectorRef.markForCheck();
             });
 
@@ -364,6 +409,61 @@ export class SettingsComponent implements OnInit, OnDestroy {
         }
         this.isUpdatingYtDlp = false;
         this.changeDetectorRef.markForCheck();
+    }
+
+    // --- Updates ---
+    protected async onCheckUpdates(): Promise<void> {
+        this.isCheckingUpdate = true;
+        this.changeDetectorRef.markForCheck();
+        try {
+            await this.updateService.check();
+            this.hasCheckedUpdate = true;
+        } catch (error: unknown) {
+            this.notificationService.error(error);
+        }
+        this.isCheckingUpdate = false;
+        this.changeDetectorRef.markForCheck();
+    }
+
+    protected async onInstallUpdate(): Promise<void> {
+        this.isInstallingUpdate = true;
+        this.changeDetectorRef.markForCheck();
+        try {
+            // The app restarts once this resolves.
+            await this.updateService.install();
+        } catch (error: unknown) {
+            this.notificationService.error(error);
+            this.isInstallingUpdate = false;
+            this.changeDetectorRef.markForCheck();
+        }
+    }
+
+    protected async onOpenReleasePage(): Promise<void> {
+        try {
+            await this.updateService.openReleasePage();
+        } catch (error: unknown) {
+            this.notificationService.error(error);
+        }
+    }
+
+    protected async onAutoCheckChange(event: Event): Promise<void> {
+        const autoCheck = (event.target as HTMLInputElement).checked;
+        await this.applySettings(
+            this.settingsService.setUpdateSettings(
+                autoCheck,
+                this.settings?.prereleaseUpdates ?? false,
+            ),
+        );
+    }
+
+    protected async onPrereleaseChange(event: Event): Promise<void> {
+        const prerelease = (event.target as HTMLInputElement).checked;
+        await this.applySettings(
+            this.settingsService.setUpdateSettings(
+                this.settings?.autoCheckUpdates ?? true,
+                prerelease,
+            ),
+        );
     }
 
     // --- Delete all data ---

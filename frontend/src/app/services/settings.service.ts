@@ -11,6 +11,7 @@ import {
     ResetAllData,
     ResetToolPath,
     SetMaxConcurrentDownloads,
+    SetUpdateSettings,
     UpdateYtDlp,
 } from '../wailsjs/wailsjs/go/app/App';
 import { app, tools } from '../wailsjs/wailsjs/go/models';
@@ -72,6 +73,10 @@ export class SettingsService {
 
     public setMaxConcurrentDownloads(value: number): Promise<app.Settings> {
         return SetMaxConcurrentDownloads(value);
+    }
+
+    public setUpdateSettings(autoCheck: boolean, prerelease: boolean): Promise<app.Settings> {
+        return SetUpdateSettings(autoCheck, prerelease);
     }
 
     public getStorageInfo(): Promise<app.StorageInfo> {

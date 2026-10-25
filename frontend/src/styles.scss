@@ -102,6 +102,10 @@ button {
         border-color: v.$warning;
     }
 
+    &--info {
+        border-color: v.$accent;
+    }
+
     &__actions {
         display: flex;
         gap: 6px;

@@ -221,6 +221,82 @@
                 <code class="settings__path">{{ appInfo.logPath }}</code>
             </dd>
         </dl>
+
+        <div class="settings__update">
+            <div class="settings__row">
+                <div class="settings__label">
+                    @if (update?.available) {
+                        <strong>
+                            Доступна версия {{ update?.version }}
+                            @if (update?.prerelease) {
+                                (тестовая)
+                            }
+                        </strong>
+                        @if (!update?.canInstall) {
+                            <span class="settings__muted"
+                                >Установите вручную: {{ update?.installNote }}</span
+                            >
+                        }
+                    } @else if (hasCheckedUpdate) {
+                        <span class="settings__ok">Установлена последняя версия</span>
+                    } @else {
+                        <span>Обновления</span>
+                    }
+                </div>
+                <div class="settings__buttons">
+                    @if (update?.available) {
+                        @if (update?.canInstall) {
+                            <button
+                                type="button"
+                                class="btn btn--primary"
+                                [disabled]="isInstallingUpdate"
+                                (click)="onInstallUpdate()"
+                            >
+                                Обновить и перезапустить
+                            </button>
+                        }
+                        <button type="button" class="btn" (click)="onOpenReleasePage()">
+                            Страница релиза
+                        </button>
+                    }
+                    <button
+                        type="button"
+                        class="btn"
+                        [disabled]="isCheckingUpdate || isInstallingUpdate"
+                        (click)="onCheckUpdates()"
+                    >
+                        {{ isCheckingUpdate ? 'Проверка…' : 'Проверить обновления' }}
+                    </button>
+                </div>
+            </div>
+            @if (isInstallingUpdate) {
+                <span class="settings__install">{{ updateProgressLabel }}</span>
+                @if (updatePercent; as percent) {
+                    <progress class="settings__progress" [value]="percent" max="100"></progress>
+                }
+            }
+            @if (update?.available && update?.notes) {
+                <pre class="settings__output settings__notes">{{ update?.notes }}</pre>
+            }
+            @if (settings) {
+                <label class="settings__check">
+                    <input
+                        type="checkbox"
+                        [checked]="settings.autoCheckUpdates"
+                        (change)="onAutoCheckChange($event)"
+                    />
+                    Проверять обновления при запуске и раз в день
+                </label>
+                <label class="settings__check">
+                    <input
+                        type="checkbox"
+                        [checked]="settings.prereleaseUpdates"
+                        (change)="onPrereleaseChange($event)"
+                    />
+                    Предлагать тестовые версии
+                </label>
+            }
+        </div>
     </section>
 }
 

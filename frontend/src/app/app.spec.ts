@@ -2,6 +2,7 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { BehaviorSubject, Observable, Subject } from 'rxjs';
 import { App } from './app';
 import { AccountsService } from './services/accounts.service';
+import { UpdateProgress, UpdateService } from './services/update.service';
 import { DownloadService } from './services/download.service';
 import { SettingsService } from './services/settings.service';
 import { ToolInstallService, ToolInstallState } from './services/tool-install.service';
@@ -82,6 +83,27 @@ class AccountsServiceStub {
     }
 }
 
+class UpdateServiceStub {
+    public readonly info$ = new BehaviorSubject<app.UpdateInfo | null>(null);
+    public readonly progress$ = new BehaviorSubject<UpdateProgress | null>(null);
+    public installs = 0;
+    public pageOpened = 0;
+
+    public load(): Promise<app.UpdateInfo> {
+        return Promise.resolve(this.info$.value ?? app.UpdateInfo.createFrom({}));
+    }
+
+    public install(): Promise<void> {
+        this.installs++;
+        return Promise.resolve();
+    }
+
+    public openReleasePage(): Promise<void> {
+        this.pageOpened++;
+        return Promise.resolve();
+    }
+}
+
 function job(id: string, status: string): model.DownloadJob {
     return model.DownloadJob.createFrom({ id, url: `https://x/${id}`, status, tracks: [] });
 }
@@ -90,11 +112,13 @@ describe('App', () => {
     let downloadService: DownloadServiceStub;
     let settingsService: SettingsServiceStub;
     let toolInstallService: ToolInstallServiceStub;
+    let updateService: UpdateServiceStub;
 
     beforeEach(async () => {
         downloadService = new DownloadServiceStub();
         settingsService = new SettingsServiceStub();
         toolInstallService = new ToolInstallServiceStub();
+        updateService = new UpdateServiceStub();
 
         await TestBed.configureTestingModule({
             imports: [App],
@@ -103,6 +127,7 @@ describe('App', () => {
                 { provide: SettingsService, useValue: settingsService },
                 { provide: ToolInstallService, useValue: toolInstallService },
                 { provide: AccountsService, useValue: new AccountsServiceStub() },
+                { provide: UpdateService, useValue: updateService },
             ],
         }).compileComponents();
     });
@@ -175,5 +200,49 @@ describe('App', () => {
         downloadService.jobRemoved$.next('a');
         fixture.detectChanges();
         expect(compiled.querySelectorAll('app-job-card').length).toBe(1);
+    });
+
+    it('offers an available update and installs it', async () => {
+        updateService.info$.next(
+            app.UpdateInfo.createFrom({ available: true, version: '1.3.0', canInstall: true }),
+        );
+        const fixture = TestBed.createComponent(App);
+        fixture.detectChanges();
+        await settle(fixture);
+        const compiled = fixture.nativeElement as HTMLElement;
+
+        const banner = compiled.querySelector('.banner--info');
+        expect(banner?.textContent).toContain('Доступна версия 1.3.0');
+        Array.from(banner!.querySelectorAll('button'))
+            .find((button) => button.textContent?.includes('Обновить и перезапустить'))!
+            .click();
+        await settle(fixture);
+        expect(updateService.installs).toBe(1);
+    });
+
+    it('links to the release page when the update cannot be installed in place', async () => {
+        updateService.info$.next(
+            app.UpdateInfo.createFrom({
+                available: true,
+                version: '1.3.0',
+                canInstall: false,
+                installNote: 'нет прав на запись',
+            }),
+        );
+        const fixture = TestBed.createComponent(App);
+        fixture.detectChanges();
+        await settle(fixture);
+        const banner = (fixture.nativeElement as HTMLElement).querySelector('.banner--info')!;
+
+        Array.from(banner.querySelectorAll('button'))
+            .find((button) => button.textContent?.includes('Скачать'))!
+            .click();
+        expect(updateService.pageOpened).toBe(1);
+
+        Array.from(banner.querySelectorAll('button'))
+            .find((button) => button.textContent?.includes('Позже'))!
+            .click();
+        fixture.detectChanges();
+        expect((fixture.nativeElement as HTMLElement).querySelector('.banner--info')).toBeNull();
     });
 });
