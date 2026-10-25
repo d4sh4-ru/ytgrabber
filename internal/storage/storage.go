@@ -29,6 +29,8 @@ type MigrationEnv struct {
 var migrations = []func(tx *sql.Tx, env MigrationEnv) error{
 	migrateInitialSchema,
 	migrateAbsolutePaths,
+	migrateAccounts,
+	migrateAccountProfileDir,
 }
 
 // Open opens the SQLite file with a single connection (so writes
@@ -181,6 +183,39 @@ ALTER TABLE videos_v2 RENAME TO videos;`)
 	return err
 }
 
+// migrateAccounts adds connected site accounts (their cookies live in
+// encrypted files, see package accounts) and the job fields that tie a
+// download to one.
+func migrateAccounts(tx *sql.Tx, _ MigrationEnv) error {
+	_, err := tx.Exec(`
+ALTER TABLE jobs ADD COLUMN error_kind TEXT NOT NULL DEFAULT '';
+ALTER TABLE jobs ADD COLUMN use_account INTEGER NOT NULL DEFAULT 1;
+ALTER TABLE jobs ADD COLUMN site TEXT NOT NULL DEFAULT '';
+ALTER TABLE jobs ADD COLUMN account_used INTEGER NOT NULL DEFAULT 0;
+
+CREATE TABLE accounts (
+	id TEXT PRIMARY KEY,
+	domain TEXT NOT NULL UNIQUE,
+	source TEXT NOT NULL,
+	browser TEXT NOT NULL DEFAULT '',
+	profile TEXT NOT NULL DEFAULT '',
+	cookie_count INTEGER NOT NULL DEFAULT 0,
+	logged_in INTEGER NOT NULL DEFAULT 0,
+	status TEXT NOT NULL,
+	created_at TEXT NOT NULL,
+	refreshed_at TEXT NOT NULL,
+	last_used_at TEXT NOT NULL DEFAULT ''
+);`)
+	return err
+}
+
+// migrateAccountProfileDir remembers which browser profile an account was
+// taken from, so "refresh" can read it again in one click.
+func migrateAccountProfileDir(tx *sql.Tx, _ MigrationEnv) error {
+	_, err := tx.Exec(`ALTER TABLE accounts ADD COLUMN profile_dir TEXT NOT NULL DEFAULT ''`)
+	return err
+}
+
 func (d *DB) Close() error {
 	return d.conn.Close()
 }
@@ -195,16 +230,20 @@ func (d *DB) SaveJob(job *model.DownloadJob) error {
 	}
 
 	_, err := d.conn.Exec(
-		`INSERT INTO jobs (id, url, title, status, quality, file_path, error, created_at)
-		 VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+		`INSERT INTO jobs (id, url, title, status, quality, file_path, error, error_kind, use_account, site, account_used, created_at)
+		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 		 ON CONFLICT(id) DO UPDATE SET
 			url = excluded.url,
 			title = excluded.title,
 			status = excluded.status,
 			quality = excluded.quality,
 			file_path = excluded.file_path,
-			error = excluded.error`,
-		job.ID, job.URL, job.Title, job.Status, job.Quality, job.FilePath, job.Error, createdAt,
+			error = excluded.error,
+			error_kind = excluded.error_kind,
+			use_account = excluded.use_account,
+			site = excluded.site,
+			account_used = excluded.account_used`,
+		job.ID, job.URL, job.Title, job.Status, job.Quality, job.FilePath, job.Error, job.ErrorKind, job.UseAccount, job.Site, job.AccountUsed, createdAt,
 	)
 	return err
 }
@@ -219,14 +258,14 @@ func (d *DB) DeleteJob(id string) error {
 // anymore.
 func (d *DB) MarkInterruptedJobs(message string) error {
 	_, err := d.conn.Exec(
-		`UPDATE jobs SET status = ?, error = ? WHERE status IN (?, ?, ?)`,
+		`UPDATE jobs SET status = ?, error = ?, error_kind = '' WHERE status IN (?, ?, ?)`,
 		model.StatusError, message, model.StatusPending, model.StatusDownloading, model.StatusProcessing,
 	)
 	return err
 }
 
 func (d *DB) LoadJobs() ([]*model.DownloadJob, error) {
-	rows, err := d.conn.Query(`SELECT id, url, title, status, quality, file_path, error, created_at FROM jobs ORDER BY created_at ASC`)
+	rows, err := d.conn.Query(`SELECT id, url, title, status, quality, file_path, error, error_kind, use_account, site, account_used, created_at FROM jobs ORDER BY created_at ASC`)
 	if err != nil {
 		return nil, err
 	}
@@ -235,7 +274,7 @@ func (d *DB) LoadJobs() ([]*model.DownloadJob, error) {
 	jobs := make([]*model.DownloadJob, 0)
 	for rows.Next() {
 		job := &model.DownloadJob{Tracks: []model.DownloadTrack{}}
-		if err := rows.Scan(&job.ID, &job.URL, &job.Title, &job.Status, &job.Quality, &job.FilePath, &job.Error, &job.CreatedAt); err != nil {
+		if err := rows.Scan(&job.ID, &job.URL, &job.Title, &job.Status, &job.Quality, &job.FilePath, &job.Error, &job.ErrorKind, &job.UseAccount, &job.Site, &job.AccountUsed, &job.CreatedAt); err != nil {
 			return nil, err
 		}
 		jobs = append(jobs, job)
@@ -338,5 +377,77 @@ func (d *DB) SetSetting(key string, value string) error {
 		 ON CONFLICT(key) DO UPDATE SET value = excluded.value`,
 		key, value,
 	)
+	return err
+}
+
+var ErrAccountNotFound = errors.New("аккаунт не найден")
+
+const accountColumns = `id, domain, source, browser, profile, profile_dir, cookie_count, logged_in, status, created_at, refreshed_at, last_used_at`
+
+func scanAccount(scanner interface{ Scan(...any) error }) (*model.Account, error) {
+	account := &model.Account{}
+	err := scanner.Scan(&account.ID, &account.Domain, &account.Source, &account.Browser, &account.Profile, &account.ProfileDir, &account.CookieCount,
+		&account.LoggedIn, &account.Status, &account.CreatedAt, &account.RefreshedAt, &account.LastUsedAt)
+	return account, err
+}
+
+// SaveAccount upserts an account; created_at survives updates.
+func (d *DB) SaveAccount(account *model.Account) error {
+	_, err := d.conn.Exec(
+		`INSERT INTO accounts (`+accountColumns+`)
+		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+		 ON CONFLICT(id) DO UPDATE SET
+			domain = excluded.domain,
+			source = excluded.source,
+			browser = excluded.browser,
+			profile = excluded.profile,
+			profile_dir = excluded.profile_dir,
+			cookie_count = excluded.cookie_count,
+			logged_in = excluded.logged_in,
+			status = excluded.status,
+			refreshed_at = excluded.refreshed_at,
+			last_used_at = excluded.last_used_at`,
+		account.ID, account.Domain, account.Source, account.Browser, account.Profile, account.ProfileDir, account.CookieCount,
+		account.LoggedIn, account.Status, account.CreatedAt, account.RefreshedAt, account.LastUsedAt,
+	)
+	return err
+}
+
+func (d *DB) LoadAccounts() ([]*model.Account, error) {
+	rows, err := d.conn.Query(`SELECT ` + accountColumns + ` FROM accounts ORDER BY domain ASC`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	accounts := make([]*model.Account, 0)
+	for rows.Next() {
+		account, err := scanAccount(rows)
+		if err != nil {
+			return nil, err
+		}
+		accounts = append(accounts, account)
+	}
+	return accounts, rows.Err()
+}
+
+func (d *DB) GetAccount(id string) (*model.Account, error) {
+	account, err := scanAccount(d.conn.QueryRow(`SELECT `+accountColumns+` FROM accounts WHERE id = ?`, id))
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, ErrAccountNotFound
+	}
+	return account, err
+}
+
+func (d *DB) GetAccountByDomain(domain string) (*model.Account, error) {
+	account, err := scanAccount(d.conn.QueryRow(`SELECT `+accountColumns+` FROM accounts WHERE domain = ?`, domain))
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, ErrAccountNotFound
+	}
+	return account, err
+}
+
+func (d *DB) DeleteAccount(id string) error {
+	_, err := d.conn.Exec(`DELETE FROM accounts WHERE id = ?`, id)
 	return err
 }

@@ -38,6 +38,70 @@
 
 <section class="settings__section">
     <div class="settings__heading-row">
+        <h2 class="settings__heading">Аккаунты</h2>
+        <button type="button" class="btn" (click)="onAddAccount()">+ Добавить сайт</button>
+    </div>
+    <p class="settings__muted settings__hint">
+        Для видео, которые открываются только после входа (приватные, 18+, проверка «я не робот»).
+        Загрузки с подключённого сайта идут с вашими cookies. Они хранятся зашифрованными: это
+        защищает от копирования папки и резервных копий, но не от программ на этом компьютере.
+    </p>
+    @for (account of accounts; track account.id) {
+        <div class="settings__tool" [class.settings__tool--missing]="account.status !== 'ok'">
+            <div class="settings__label">
+                <span>
+                    <strong>{{ account.domain }}</strong>
+                    <span class="settings__muted settings__inline">{{
+                        accountSourceLabel(account)
+                    }}</span>
+                </span>
+                <span
+                    [class.settings__problem]="account.status !== 'ok'"
+                    [class.settings__ok]="account.status === 'ok'"
+                >
+                    {{ accountStateLabel(account) }}
+                    @if (accountRefreshedLabel(account); as refreshed) {
+                        <span class="settings__muted">· {{ refreshed }}</span>
+                    }
+                </span>
+            </div>
+            <div class="settings__buttons">
+                <button
+                    type="button"
+                    class="btn"
+                    [disabled]="checkingAccountId === account.id"
+                    (click)="onCheckAccount(account)"
+                >
+                    {{ checkingAccountId === account.id ? 'Проверка…' : 'Проверить' }}
+                </button>
+                <button
+                    type="button"
+                    class="btn"
+                    [disabled]="refreshingAccountId === account.id"
+                    (click)="onRefreshAccount(account)"
+                >
+                    {{
+                        refreshingAccountId === account.id
+                            ? 'Обновление…'
+                            : accountRefreshLabel(account)
+                    }}
+                </button>
+                <button
+                    type="button"
+                    class="btn btn--danger"
+                    (click)="onRemoveAccountRequested(account)"
+                >
+                    Отключить
+                </button>
+            </div>
+        </div>
+    } @empty {
+        <p class="settings__muted">Нет подключённых сайтов.</p>
+    }
+</section>
+
+<section class="settings__section">
+    <div class="settings__heading-row">
         <h2 class="settings__heading">Внешние программы</h2>
         <div class="settings__buttons">
             @if (installState.isRunning) {
@@ -190,6 +254,7 @@
                 <li>библиотека и список загрузок</li>
                 <li>настройки</li>
                 <li>журнал и кэш встроенного браузера</li>
+                <li>подключённые аккаунты и их cookies</li>
                 <li>программы, установленные приложением (yt-dlp, ffmpeg, deno)</li>
                 <li>недокачанные файлы</li>
             </ul>
@@ -206,4 +271,23 @@
             (cancelled)="onResetCancelled()"
         />
     }
+}
+
+@if (connectSite !== null) {
+    <app-account-connect-dialog
+        [site]="connectSite"
+        (connected)="onConnectClosed()"
+        (cancelled)="onConnectClosed()"
+    />
+}
+
+@if (accountToRemove) {
+    <app-confirm-dialog
+        [title]="'Отключить ' + accountToRemove.domain + '?'"
+        message="Сохранённые cookies этого сайта будут удалены. Загрузки с него пойдут без входа."
+        confirmLabel="Отключить"
+        [danger]="true"
+        (confirmed)="onRemoveAccountConfirmed()"
+        (cancelled)="onRemoveAccountCancelled()"
+    />
 }

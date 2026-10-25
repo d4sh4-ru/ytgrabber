@@ -1,6 +1,7 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { BehaviorSubject, Observable, Subject } from 'rxjs';
 import { App } from './app';
+import { AccountsService } from './services/accounts.service';
 import { DownloadService } from './services/download.service';
 import { SettingsService } from './services/settings.service';
 import { ToolInstallService, ToolInstallState } from './services/tool-install.service';
@@ -73,6 +74,14 @@ class ToolInstallServiceStub {
     }
 }
 
+class AccountsServiceStub {
+    public readonly accounts$ = new BehaviorSubject<model.Account[]>([]);
+
+    public refresh(): Promise<model.Account[]> {
+        return Promise.resolve(this.accounts$.value);
+    }
+}
+
 function job(id: string, status: string): model.DownloadJob {
     return model.DownloadJob.createFrom({ id, url: `https://x/${id}`, status, tracks: [] });
 }
@@ -93,6 +102,7 @@ describe('App', () => {
                 { provide: DownloadService, useValue: downloadService },
                 { provide: SettingsService, useValue: settingsService },
                 { provide: ToolInstallService, useValue: toolInstallService },
+                { provide: AccountsService, useValue: new AccountsServiceStub() },
             ],
         }).compileComponents();
     });

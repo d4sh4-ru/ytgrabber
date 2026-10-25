@@ -1,0 +1,81 @@
+@use '../../../styles/variables' as v;
+
+.account-connect {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-bottom: 16px;
+    font-size: 13px;
+
+    &__input {
+        padding: 6px 8px;
+        border: 1px solid v.$border-subtle;
+        border-radius: v.$radius-sm;
+        background: v.$bg-surface;
+        color: v.$text-primary;
+        font-size: 13px;
+
+        &:focus {
+            outline: none;
+            border-color: v.$accent;
+        }
+    }
+
+    &__site {
+        display: flex;
+        gap: 6px;
+
+        .account-connect__input {
+            flex: 1;
+            min-width: 0;
+        }
+    }
+
+    &__match {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+        padding: 6px 0;
+        border-bottom: 1px solid v.$border-subtle;
+    }
+
+    &__match-info {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+        min-width: 0;
+    }
+
+    &__muted {
+        margin: 0;
+        color: v.$text-secondary;
+        font-size: 12px;
+    }
+
+    &__ok {
+        color: v.$success;
+        font-size: 12px;
+    }
+
+    &__problem {
+        color: v.$error;
+        font-size: 12px;
+    }
+
+    &__text {
+        margin: 0;
+    }
+
+    &__list {
+        margin: 0;
+        padding-left: 20px;
+        color: v.$text-secondary;
+    }
+
+    &__note {
+        margin: 0;
+        color: v.$warning;
+        font-size: 12px;
+    }
+}

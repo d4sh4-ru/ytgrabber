@@ -115,15 +115,15 @@ func TestDownloadVideoValidates(t *testing.T) {
 	app.tools.YtDlp.Found = true
 	app.tools.Ffmpeg.Found = true
 
-	if _, err := app.DownloadVideo("--exec whoami", "best"); err == nil {
+	if _, err := app.DownloadVideo("--exec whoami", "best", true); err == nil {
 		t.Error("option-like input accepted")
 	}
-	if _, err := app.DownloadVideo("https://example.com/v", "8k"); err == nil {
+	if _, err := app.DownloadVideo("https://example.com/v", "8k", true); err == nil {
 		t.Error("unknown quality accepted")
 	}
 
 	app.tools.YtDlp.Found = false
-	if _, err := app.DownloadVideo("https://example.com/v", "best"); err == nil {
+	if _, err := app.DownloadVideo("https://example.com/v", "best", true); err == nil {
 		t.Error("download started without yt-dlp")
 	}
 }
@@ -155,10 +155,10 @@ func TestRetryOnlyFailedJobs(t *testing.T) {
 	app.jobs["ok"] = &job{DownloadJob: model.DownloadJob{ID: "ok", Status: model.StatusDownloading}}
 	app.jobs["bad"] = &job{DownloadJob: model.DownloadJob{ID: "bad", Status: model.StatusError, Error: "boom", Tracks: []model.DownloadTrack{{Filename: "x"}}}}
 
-	if err := app.RetryJob("ok"); err == nil {
+	if err := app.RetryJob("ok", true); err == nil {
 		t.Error("retrying an active job must fail")
 	}
-	if err := app.RetryJob("bad"); err != nil {
+	if err := app.RetryJob("bad", true); err != nil {
 		t.Fatal(err)
 	}
 	bad := app.jobs["bad"]

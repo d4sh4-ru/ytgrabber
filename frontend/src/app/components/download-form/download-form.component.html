@@ -13,6 +13,15 @@
     </select>
     <button class="download-form__submit" type="submit" [disabled]="isSubmitting">Добавить</button>
 </form>
+@if (hasAccounts) {
+    <label
+        class="download-form__option"
+        title="Для публичных видео: подключённый аккаунт сайта не используется"
+    >
+        <input type="checkbox" [formControl]="withoutAccountControl" />
+        Скачать без аккаунта
+    </label>
+}
 
 <div class="vertical-divider"></div>
 

@@ -20,8 +20,9 @@ export class DownloadService {
     public readonly jobRemoved$ = fromWailsEvent<string>('job-removed');
     public readonly libraryChanged$ = fromWailsEvent<void>('library-changed');
 
-    public download(url: string, quality: DownloadQuality): Promise<string> {
-        return DownloadVideo(url, quality);
+    /** useAccount=false downloads without the site's connected account. */
+    public download(url: string, quality: DownloadQuality, useAccount: boolean): Promise<string> {
+        return DownloadVideo(url, quality, useAccount);
     }
 
     public getJobs(): Promise<model.DownloadJob[]> {
@@ -32,8 +33,8 @@ export class DownloadService {
         return RemoveJob(id);
     }
 
-    public retryJob(id: string): Promise<void> {
-        return RetryJob(id);
+    public retryJob(id: string, useAccount: boolean): Promise<void> {
+        return RetryJob(id, useAccount);
     }
 
     public getLibrary(): Promise<model.VideoRecord[]> {

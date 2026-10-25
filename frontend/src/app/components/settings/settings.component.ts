@@ -14,12 +14,16 @@ import {
     ToolInstallService,
     ToolInstallState,
 } from '../../services/tool-install.service';
-import { app, tools } from '../../wailsjs/wailsjs/go/models';
+import { AccountsService } from '../../services/accounts.service';
+import { app, model, tools } from '../../wailsjs/wailsjs/go/models';
 import { formatBytes } from '../../shared/format-bytes';
+import { formatRelativeTime } from '../../shared/format-relative-time';
+import { connectedMessage, cookieCountLabel } from '../../shared/account-summary';
 import {
     ConfirmDialogComponent,
     ConfirmDialogResult,
 } from '../confirm-dialog/confirm-dialog.component';
+import { AccountConnectDialogComponent } from '../account-connect-dialog/account-connect-dialog.component';
 
 const CONFIGURABLE_TOOLS: ReadonlySet<string> = new Set<ConfigurableTool>(['yt-dlp', 'ffmpeg']);
 const CONCURRENCY_OPTIONS: readonly number[] = [1, 2, 3, 4, 5];
@@ -30,7 +34,7 @@ type ResetStep = 'idle' | 'choose' | 'confirm';
 @Component({
     selector: 'app-settings',
     standalone: true,
-    imports: [ConfirmDialogComponent],
+    imports: [ConfirmDialogComponent, AccountConnectDialogComponent],
     templateUrl: './settings.component.html',
     styleUrl: './settings.component.scss',
     changeDetection: ChangeDetectionStrategy.OnPush,
@@ -39,6 +43,7 @@ export class SettingsComponent implements OnInit, OnDestroy {
     // --- DI / lifecycle ---
     private readonly settingsService = inject(SettingsService);
     private readonly toolInstallService = inject(ToolInstallService);
+    private readonly accountsService = inject(AccountsService);
     private readonly notificationService = inject(NotificationService);
     private readonly changeDetectorRef = inject(ChangeDetectorRef);
     private readonly destroy$ = new Subject<void>();
@@ -46,6 +51,14 @@ export class SettingsComponent implements OnInit, OnDestroy {
     // --- Settings ---
     protected settings: app.Settings | null = null;
     protected readonly concurrencyOptions = CONCURRENCY_OPTIONS;
+
+    // --- Accounts ---
+    protected accounts: model.Account[] = [];
+    /** The site the connect dialog is open for; '' asks for one, null is closed. */
+    protected connectSite: string | null = null;
+    protected checkingAccountId = '';
+    protected refreshingAccountId = '';
+    protected accountToRemove: model.Account | null = null;
 
     // --- Dependencies ---
     protected dependencies: tools.Report | null = null;
@@ -107,7 +120,17 @@ export class SettingsComponent implements OnInit, OnDestroy {
                 this.changeDetectorRef.markForCheck();
             });
 
+        this.accountsService.accounts$
+            .pipe(takeUntil(this.destroy$))
+            .subscribe((accounts: model.Account[]): void => {
+                this.accounts = accounts;
+                this.changeDetectorRef.markForCheck();
+            });
+
         void this.load();
+        // Separate from load(): without a database (startup error) this
+        // fails, and the rest of the screen must still work.
+        void this.accountsService.refresh().catch((): void => undefined);
     }
 
     public ngOnDestroy(): void {
@@ -152,6 +175,104 @@ export class SettingsComponent implements OnInit, OnDestroy {
     private async applySettings(request: Promise<app.Settings>): Promise<void> {
         try {
             this.settings = await request;
+        } catch (error: unknown) {
+            this.notificationService.error(error);
+        }
+        this.changeDetectorRef.markForCheck();
+    }
+
+    // --- Accounts ---
+    protected accountSourceLabel(account: model.Account): string {
+        if (account.source === 'browser') {
+            const browser = account.browserName || account.browser;
+            return account.profile ? `${browser} · ${account.profile}` : browser;
+        }
+        return 'cookies.txt';
+    }
+
+    protected accountStateLabel(account: model.Account): string {
+        switch (account.status) {
+            case 'expired':
+                return 'вход истёк';
+            case 'error':
+                return 'cookies не читаются';
+        }
+        if (!account.loginKnown) {
+            return cookieCountLabel(account.cookieCount);
+        }
+        return account.loggedIn ? 'вход есть' : 'вход не найден';
+    }
+
+    protected accountRefreshedLabel(account: model.Account): string {
+        const refreshed = formatRelativeTime(account.refreshedAt);
+        return refreshed ? `обновлено ${refreshed}` : '';
+    }
+
+    protected onAddAccount(): void {
+        this.connectSite = '';
+    }
+
+    protected accountRefreshLabel(account: model.Account): string {
+        return account.source === 'browser' ? 'Обновить' : 'Загрузить новый';
+    }
+
+    /** Browser accounts re-read their profile in one click; files need a new file. */
+    protected async onRefreshAccount(account: model.Account): Promise<void> {
+        if (account.source !== 'browser') {
+            this.connectSite = account.domain;
+            return;
+        }
+        this.refreshingAccountId = account.id;
+        this.changeDetectorRef.markForCheck();
+        try {
+            const refreshed = await this.accountsService.refreshFromBrowser(account.id);
+            this.notificationService.info(connectedMessage(refreshed));
+        } catch (error: unknown) {
+            this.notificationService.error(error);
+            // The profile may be gone: let the user pick another source.
+            this.connectSite = account.domain;
+        }
+        this.refreshingAccountId = '';
+        this.changeDetectorRef.markForCheck();
+    }
+
+    protected onConnectClosed(): void {
+        this.connectSite = null;
+    }
+
+    protected async onCheckAccount(account: model.Account): Promise<void> {
+        this.checkingAccountId = account.id;
+        this.changeDetectorRef.markForCheck();
+        try {
+            const checked = await this.accountsService.check(account.id);
+            this.notificationService.info(
+                checked.status === 'ok'
+                    ? `${checked.domain}: вход действует`
+                    : `${checked.domain}: ${this.accountStateLabel(checked)}, загрузите новый cookies.txt`,
+            );
+        } catch (error: unknown) {
+            this.notificationService.error(error);
+        }
+        this.checkingAccountId = '';
+        this.changeDetectorRef.markForCheck();
+    }
+
+    protected onRemoveAccountRequested(account: model.Account): void {
+        this.accountToRemove = account;
+    }
+
+    protected onRemoveAccountCancelled(): void {
+        this.accountToRemove = null;
+    }
+
+    protected async onRemoveAccountConfirmed(): Promise<void> {
+        const account = this.accountToRemove;
+        this.accountToRemove = null;
+        if (!account) {
+            return;
+        }
+        try {
+            await this.accountsService.remove(account.id);
         } catch (error: unknown) {
             this.notificationService.error(error);
         }

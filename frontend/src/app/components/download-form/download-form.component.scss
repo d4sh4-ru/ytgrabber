@@ -68,6 +68,16 @@
     }
 }
 
+.download-form__option {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-top: 8px;
+    color: v.$text-secondary;
+    font-size: 12px;
+    cursor: pointer;
+}
+
 .vertical-divider {
     height: 24px;
     margin-bottom: 12px;

@@ -104,6 +104,16 @@
         text-overflow: ellipsis;
     }
 
+    &__status {
+        flex-shrink: 0;
+    }
+
+    &__login {
+        margin: 6px 0 0;
+        color: v.$warning;
+        font-size: 12px;
+    }
+
     &__error {
         margin: 6px 0 0;
         padding: 6px 8px;

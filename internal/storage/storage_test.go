@@ -175,3 +175,45 @@ func TestSettingsKeyValue(t *testing.T) {
 		t.Errorf("settings = %v, %v", values, err)
 	}
 }
+
+func TestJobAccountFieldsAndAccounts(t *testing.T) {
+	db := openTestDB(t, "")
+
+	job := &model.DownloadJob{ID: "j1", URL: "https://x.com/a", Status: model.StatusError, ErrorKind: model.ErrorLoginRequired,
+		UseAccount: false, Site: "x.com", AccountUsed: true}
+	if err := db.SaveJob(job); err != nil {
+		t.Fatal(err)
+	}
+	jobs, err := db.LoadJobs()
+	if err != nil || len(jobs) != 1 {
+		t.Fatalf("jobs = %+v, %v", jobs, err)
+	}
+	if got := jobs[0]; got.ErrorKind != model.ErrorLoginRequired || got.UseAccount || got.Site != "x.com" || !got.AccountUsed {
+		t.Errorf("job = %+v", got)
+	}
+
+	account := &model.Account{ID: "a1", Domain: "x.com", Source: model.AccountFromFile, CookieCount: 3, LoggedIn: true,
+		Status: model.AccountOK, CreatedAt: "c", RefreshedAt: "r"}
+	if err := db.SaveAccount(account); err != nil {
+		t.Fatal(err)
+	}
+	account.Status = model.AccountExpired
+	account.CreatedAt = "ignored on update"
+	if err := db.SaveAccount(account); err != nil {
+		t.Fatal(err)
+	}
+	got, err := db.GetAccountByDomain("x.com")
+	if err != nil || got.Status != model.AccountExpired || got.CreatedAt != "c" || !got.LoggedIn || got.CookieCount != 3 {
+		t.Errorf("account = %+v, %v", got, err)
+	}
+	if err := db.SaveAccount(&model.Account{ID: "a2", Domain: "x.com", Source: model.AccountFromFile, Status: model.AccountOK, CreatedAt: "c", RefreshedAt: "r"}); err == nil {
+		t.Error("two accounts for one domain")
+	}
+
+	if err := db.DeleteAccount("a1"); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := db.GetAccount("a1"); err != ErrAccountNotFound {
+		t.Errorf("deleted account error = %v", err)
+	}
+}

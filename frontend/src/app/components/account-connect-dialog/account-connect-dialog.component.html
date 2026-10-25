@@ -1,0 +1,94 @@
+<app-confirm-dialog
+    [title]="title"
+    [confirmLabel]="isImporting ? 'Подключение…' : 'Выбрать cookies.txt…'"
+    [busy]="isBusy"
+    (confirmed)="onConfirm()"
+    (cancelled)="onCancel()"
+>
+    <div class="account-connect">
+        @if (!site) {
+            <div class="account-connect__site">
+                <input
+                    class="account-connect__input"
+                    type="text"
+                    placeholder="Ссылка или домен, например instagram.com"
+                    [value]="siteInput"
+                    [disabled]="isBusy"
+                    (input)="onSiteInput($event)"
+                />
+                <button
+                    type="button"
+                    class="btn"
+                    [disabled]="isBusy || isScanning"
+                    (click)="onScan()"
+                >
+                    Найти в браузерах
+                </button>
+            </div>
+        }
+
+        @if (isScanning) {
+            <p class="account-connect__muted">Поиск в браузерах…</p>
+        } @else if (matches) {
+            @for (match of matches; track match.profileDir) {
+                <div class="account-connect__match">
+                    <div class="account-connect__match-info">
+                        <strong>{{ match.browser }} · {{ match.profile }}</strong>
+                        <span
+                            [class.account-connect__ok]="match.loggedIn && !match.error"
+                            [class.account-connect__problem]="match.error"
+                        >
+                            {{ matchStateLabel(match) }}
+                            @if (matchActivityLabel(match); as activity) {
+                                <span class="account-connect__muted">· {{ activity }}</span>
+                            }
+                        </span>
+                        @if (match.note && !match.error) {
+                            <span class="account-connect__muted">{{ match.note }}</span>
+                        }
+                    </div>
+                    @if (match.connectable && !match.error) {
+                        <button
+                            type="button"
+                            class="btn"
+                            [class.btn--primary]="match.loggedIn"
+                            [disabled]="isBusy"
+                            (click)="onConnectProfile(match)"
+                        >
+                            {{ connectingDir === match.profileDir ? 'Подключение…' : 'Подключить' }}
+                        </button>
+                    }
+                </div>
+            } @empty {
+                <p class="account-connect__muted">
+                    В браузерах нет cookies {{ siteLabel }}. Войдите на сайт в браузере и повторите
+                    поиск или выберите файл cookies.txt.
+                </p>
+            }
+        }
+
+        <p class="account-connect__text">
+            Можно подключить профиль браузера, где вы вошли на {{ siteLabel }}, или файл
+            cookies.txt, экспортированный расширением браузера на странице сайта.
+        </p>
+        <ul class="account-connect__list">
+            <li>
+                Поиск по браузерам читает только имена cookies и время активности, без значений.
+            </li>
+            <li>
+                Из профиля или файла берутся только cookies {{ siteLabel }}, остальные не
+                сохраняются. Из Firefox они читаются напрямую, из Chrome и других Chromium-браузеров
+                их расшифровывает yt-dlp.
+            </li>
+            <li>
+                Они хранятся в папке данных приложения в зашифрованном виде и передаются только
+                yt-dlp при загрузках с этого сайта.
+            </li>
+            <li>Отключить аккаунт и удалить cookies можно в «Настройки → Аккаунты».</li>
+        </ul>
+        <p class="account-connect__note">
+            Шифрование защищает от копирования папки и резервных копий, но не от программ,
+            запущенных на этом компьютере. Сам файл cookies.txt после подключения лучше удалить.
+        </p>
+    </div>
+</app-confirm-dialog>
