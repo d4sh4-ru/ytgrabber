@@ -67,6 +67,41 @@
             </div>
         }
 
+        @if (isUpdateBannerVisible && update) {
+            <div class="banner banner--info">
+                <span>
+                    Доступна версия {{ update.version }}
+                    @if (update.prerelease) {
+                        (тестовая)
+                    }
+                </span>
+                <div class="banner__actions">
+                    @if (update.canInstall) {
+                        <button
+                            type="button"
+                            class="btn btn--primary"
+                            [disabled]="isInstallingUpdate"
+                            (click)="onInstallUpdate()"
+                        >
+                            {{ isInstallingUpdate ? 'Обновление…' : 'Обновить и перезапустить' }}
+                        </button>
+                    } @else {
+                        <button
+                            type="button"
+                            class="btn btn--primary"
+                            (click)="onOpenReleasePage()"
+                        >
+                            Скачать
+                        </button>
+                    }
+                    <button type="button" class="btn" (click)="setTab('settings')">
+                        Что нового
+                    </button>
+                    <button type="button" class="btn" (click)="onDismissUpdate()">Позже</button>
+                </div>
+            </div>
+        }
+
         <section class="app__section">
             @switch (activeTab) {
                 @case ('add') {

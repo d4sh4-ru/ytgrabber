@@ -11,7 +11,8 @@ import { DownloadService } from './services/download.service';
 import { NotificationService } from './services/notification.service';
 import { SettingsService } from './services/settings.service';
 import { ToolInstallService, ToolInstallState } from './services/tool-install.service';
-import { model, tools } from './wailsjs/wailsjs/go/models';
+import { UpdateService } from './services/update.service';
+import { app, model, tools } from './wailsjs/wailsjs/go/models';
 import { DownloadFormComponent } from './components/download-form/download-form.component';
 import { LibraryComponent } from './components/video-library/library.component';
 import { VideoPlayerModalComponent } from './components/video-player-modal/video-player-modal.component';
@@ -43,6 +44,7 @@ export class App implements OnInit, OnDestroy {
     private readonly downloadService = inject(DownloadService);
     private readonly settingsService = inject(SettingsService);
     private readonly toolInstallService = inject(ToolInstallService);
+    private readonly updateService = inject(UpdateService);
     private readonly notificationService = inject(NotificationService);
     private readonly changeDetectorRef = inject(ChangeDetectorRef);
     private readonly destroy$ = new Subject<void>();
@@ -59,6 +61,11 @@ export class App implements OnInit, OnDestroy {
     protected jobs: model.DownloadJob[] = [];
     private readonly removedJobIds = new Set<string>();
 
+    // --- Updates ---
+    protected update: app.UpdateInfo | null = null;
+    protected isUpdateDismissed = false;
+    protected isInstallingUpdate = false;
+
     // --- Library ---
     protected library: model.VideoRecord[] = [];
     protected selectedVideo: model.VideoRecord | null = null;
@@ -71,6 +78,10 @@ export class App implements OnInit, OnDestroy {
         return (this.dependencies?.tools ?? []).some(
             (tool) => tool.required && !tool.found && !tool.custom && tool.installable,
         );
+    }
+
+    protected get isUpdateBannerVisible(): boolean {
+        return !!this.update?.available && !this.isUpdateDismissed && this.activeTab !== 'settings';
     }
 
     protected get missingRequiredTools(): string[] {
@@ -93,6 +104,7 @@ export class App implements OnInit, OnDestroy {
         }
 
         await Promise.all([this.loadJobs(), this.refreshLibrary(), this.refreshDependencies()]);
+        void this.updateService.load().catch((): void => undefined);
     }
 
     public ngOnDestroy(): void {
@@ -134,6 +146,13 @@ export class App implements OnInit, OnDestroy {
             .pipe(takeUntil(this.destroy$))
             .subscribe((report: tools.Report | null): void => {
                 this.dependencies = report;
+                this.changeDetectorRef.markForCheck();
+            });
+
+        this.updateService.info$
+            .pipe(takeUntil(this.destroy$))
+            .subscribe((info: app.UpdateInfo | null): void => {
+                this.update = info;
                 this.changeDetectorRef.markForCheck();
             });
     }
@@ -193,6 +212,32 @@ export class App implements OnInit, OnDestroy {
         } catch (error: unknown) {
             this.notificationService.error(error);
         }
+    }
+
+    // --- Updates ---
+    protected async onInstallUpdate(): Promise<void> {
+        this.isInstallingUpdate = true;
+        this.changeDetectorRef.markForCheck();
+        try {
+            // The app restarts once this resolves.
+            await this.updateService.install();
+        } catch (error: unknown) {
+            this.notificationService.error(error);
+            this.isInstallingUpdate = false;
+            this.changeDetectorRef.markForCheck();
+        }
+    }
+
+    protected async onOpenReleasePage(): Promise<void> {
+        try {
+            await this.updateService.openReleasePage();
+        } catch (error: unknown) {
+            this.notificationService.error(error);
+        }
+    }
+
+    protected onDismissUpdate(): void {
+        this.isUpdateDismissed = true;
     }
 
     // --- Dependencies ---

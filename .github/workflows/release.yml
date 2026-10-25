@@ -109,8 +109,16 @@ jobs:
           ' "${{ steps.version.outputs.numeric }}"
 
       - name: Build
+        env:
+          UPDATE_PUBLIC_KEY: ${{ vars.UPDATE_PUBLIC_KEY }}
         run: |
-          args=(-clean -platform "${{ matrix.platform }}" -ldflags "-X ytgrabber/internal/app.Version=${{ steps.version.outputs.version }}")
+          # The update key lets the app verify updates before installing
+          # them (see cmd/updatesign); without it updates are download-only.
+          ldflags="-X ytgrabber/internal/app.Version=${{ steps.version.outputs.version }}"
+          if [ -n "${UPDATE_PUBLIC_KEY}" ]; then
+            ldflags="$ldflags -X ytgrabber/internal/updater.PublicKey=${UPDATE_PUBLIC_KEY}"
+          fi
+          args=(-clean -platform "${{ matrix.platform }}" -ldflags "$ldflags")
           if [ -n "${{ matrix.tags }}" ]; then args+=(-tags "${{ matrix.tags }}"); fi
           if [ "${{ runner.os }}" = "Windows" ]; then args+=(-nsis); fi
           wails build "${args[@]}"
@@ -160,6 +168,26 @@ jobs:
       - name: Checksums
         working-directory: dist
         run: sha256sum * > SHA256SUMS.txt && cat SHA256SUMS.txt
+
+      # The app installs an update only if this signature verifies against
+      # the key built into it, so whoever can swap release files still
+      # can't swap the app.
+      - uses: actions/checkout@v4
+        with:
+          path: src
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: src/go.mod
+          cache: false
+      - name: Sign checksums
+        env:
+          UPDATE_SIGNING_KEY: ${{ secrets.UPDATE_SIGNING_KEY }}
+        run: |
+          if [ -z "$UPDATE_SIGNING_KEY" ]; then
+            echo "::warning::UPDATE_SIGNING_KEY is not set: the release is not signed, the app will offer it as a download only"
+            exit 0
+          fi
+          (cd src && go run ./cmd/updatesign sign "$GITHUB_WORKSPACE/dist/SHA256SUMS.txt")
 
       - name: Release notes
         run: |

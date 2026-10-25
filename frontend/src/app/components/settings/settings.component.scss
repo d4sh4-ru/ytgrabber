@@ -99,6 +99,27 @@
         margin-left: 6px;
     }
 
+    &__update {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+        padding-top: 8px;
+        border-top: 1px solid v.$border-subtle;
+    }
+
+    &__notes {
+        max-height: 200px;
+        overflow-y: auto;
+    }
+
+    &__check {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 13px;
+        cursor: pointer;
+    }
+
     &__hint {
         margin: 0;
     }

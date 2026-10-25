@@ -19,6 +19,9 @@ const (
 	settingYtDlpPath     = "ytdlp_path"
 	settingFfmpegPath    = "ffmpeg_path"
 	settingMaxConcurrent = "max_concurrent_downloads"
+
+	settingUpdateAutoCheck  = "update_auto_check"
+	settingUpdatePrerelease = "update_prerelease"
 )
 
 const (
@@ -33,12 +36,17 @@ type Settings struct {
 	YtDlpPath              string `json:"ytDlpPath"`
 	FfmpegPath             string `json:"ffmpegPath"`
 	MaxConcurrentDownloads int    `json:"maxConcurrentDownloads"`
+	// AutoCheckUpdates looks for a new version at startup and daily;
+	// PrereleaseUpdates offers test versions too.
+	AutoCheckUpdates  bool `json:"autoCheckUpdates"`
+	PrereleaseUpdates bool `json:"prereleaseUpdates"`
 }
 
 func loadSettings(db *storage.DB, defaultDownloadsDir string) (Settings, error) {
 	settings := Settings{
 		DownloadsDir:           defaultDownloadsDir,
 		MaxConcurrentDownloads: defaultMaxConcurrentDownloads,
+		AutoCheckUpdates:       true,
 	}
 
 	values, err := db.LoadSettings()
@@ -54,6 +62,8 @@ func loadSettings(db *storage.DB, defaultDownloadsDir string) (Settings, error) 
 	if n, err := strconv.Atoi(values[settingMaxConcurrent]); err == nil {
 		settings.MaxConcurrentDownloads = clampConcurrency(n)
 	}
+	settings.AutoCheckUpdates = values[settingUpdateAutoCheck] != "0"
+	settings.PrereleaseUpdates = values[settingUpdatePrerelease] == "1"
 	return settings, nil
 }
 
@@ -61,6 +71,15 @@ func loadSettings(db *storage.DB, defaultDownloadsDir string) (Settings, error) 
 // user and copies installed by the app (see InstallTools).
 func (a *App) resolveTools(s Settings) tools.Set {
 	return tools.Resolve(s.YtDlpPath, s.FfmpegPath, a.paths.ToolsDir())
+}
+
+// boolSetting stores a flag; "0" rather than "" for false, since an
+// empty value deletes the setting (and with it a non-false default).
+func boolSetting(value bool) string {
+	if value {
+		return "1"
+	}
+	return "0"
 }
 
 func clampConcurrency(n int) int {

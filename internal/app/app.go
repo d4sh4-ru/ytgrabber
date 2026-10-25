@@ -24,6 +24,7 @@ import (
 	"ytgrabber/internal/platform"
 	"ytgrabber/internal/storage"
 	"ytgrabber/internal/tools"
+	"ytgrabber/internal/updater"
 )
 
 // Version is shown in the settings screen. Release builds set it from the
@@ -63,6 +64,14 @@ type App struct {
 	accounts   *accounts.Store
 	browserEnv browsers.Env
 
+	// updater finds and downloads new versions; detectInstall says how
+	// this copy can be replaced (both swapped out in tests).
+	updater       *updater.Client
+	detectInstall func() updater.Install
+	updateMu      sync.Mutex
+	update        updateState
+	stopWatching  context.CancelFunc
+
 	mu       sync.RWMutex // guards everything below
 	settings Settings
 	tools    tools.Set
@@ -93,6 +102,10 @@ func New(paths platform.Paths) *App {
 		cancels:    make(map[string]context.CancelCauseFunc),
 		accounts:   accounts.NewStore(paths.AccountsDir()),
 		browserEnv: browsers.CurrentEnv(),
+
+		updater:       newUpdateClient(),
+		detectInstall: currentInstall,
+		stopWatching:  func() {},
 	}
 	a.startHelper = a.startCleanupHelper
 	a.installer = installer.Installer{
@@ -132,7 +145,12 @@ func (a *App) startup(ctx context.Context) {
 	if err := a.init(); err != nil {
 		log.Printf("ytgrabber: startup failed: %v", err)
 		a.startupErr = err.Error()
+		return
 	}
+
+	watchCtx, stop := context.WithCancel(context.Background())
+	a.stopWatching = stop
+	go a.watchForUpdates(watchCtx)
 }
 
 // init opens the database, loads settings, locates tools and restores the
@@ -184,6 +202,7 @@ func (a *App) init() error {
 // shutdown stops every download, waits for their goroutines to record the
 // interruption, and only then closes the database.
 func (a *App) shutdown(context.Context) {
+	a.stopWatching()
 	a.stopAllDownloads(errShutdown)
 
 	if a.db != nil {
@@ -191,6 +210,8 @@ func (a *App) shutdown(context.Context) {
 			log.Printf("ytgrabber: failed to close database: %v", err)
 		}
 	}
+	// After everything is closed, so the new version starts clean.
+	a.startRelaunch()
 	if a.logFile != nil {
 		a.logFile.Close()
 	}

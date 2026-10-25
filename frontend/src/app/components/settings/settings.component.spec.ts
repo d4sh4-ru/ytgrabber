@@ -5,14 +5,29 @@ import { SettingsService } from '../../services/settings.service';
 import { ToolInstallService, ToolInstallState } from '../../services/tool-install.service';
 import { AccountsService } from '../../services/accounts.service';
 import { NotificationService } from '../../services/notification.service';
+import { UpdateProgress, UpdateService } from '../../services/update.service';
 import { app, browsers, model, tools } from '../../wailsjs/wailsjs/go/models';
 
 class SettingsServiceStub {
     public readonly dependencies$ = new BehaviorSubject<tools.Report | null>(null);
     public readonly resetCalls: boolean[] = [];
+    public readonly updateSettingsCalls: [boolean, boolean][] = [];
+
+    public setUpdateSettings(autoCheck: boolean, prerelease: boolean): Promise<app.Settings> {
+        this.updateSettingsCalls.push([autoCheck, prerelease]);
+        return Promise.resolve(
+            app.Settings.createFrom({
+                downloadsDir: '/videos',
+                autoCheckUpdates: autoCheck,
+                prereleaseUpdates: prerelease,
+            }),
+        );
+    }
 
     public getSettings(): Promise<app.Settings> {
-        return Promise.resolve(app.Settings.createFrom({ downloadsDir: '/videos' }));
+        return Promise.resolve(
+            app.Settings.createFrom({ downloadsDir: '/videos', autoCheckUpdates: true }),
+        );
     }
 
     public getAppInfo(): Promise<app.AppInfo> {
@@ -95,6 +110,28 @@ class AccountsServiceStub {
     }
 }
 
+class UpdateServiceStub {
+    public readonly info$ = new BehaviorSubject<app.UpdateInfo | null>(null);
+    public readonly progress$ = new BehaviorSubject<UpdateProgress | null>(null);
+    public checkResult = app.UpdateInfo.createFrom({ available: false });
+    public installs = 0;
+
+    public check(): Promise<app.UpdateInfo> {
+        this.info$.next(this.checkResult);
+        return Promise.resolve(this.checkResult);
+    }
+
+    public install(): Promise<void> {
+        this.installs++;
+        this.progress$.next({ stage: 'downloading', done: 1024 * 1024, total: 2 * 1024 * 1024 });
+        return new Promise<void>(() => undefined); // the app restarts
+    }
+
+    public openReleasePage(): Promise<void> {
+        return Promise.resolve();
+    }
+}
+
 describe('SettingsComponent: delete all data', () => {
     let fixture: ComponentFixture<SettingsComponent>;
     let service: SettingsServiceStub;
@@ -127,6 +164,7 @@ describe('SettingsComponent: delete all data', () => {
                 { provide: SettingsService, useValue: service },
                 { provide: ToolInstallService, useValue: new ToolInstallServiceStub() },
                 { provide: AccountsService, useValue: new AccountsServiceStub() },
+                { provide: UpdateService, useValue: new UpdateServiceStub() },
             ],
         }).compileComponents();
 
@@ -189,6 +227,7 @@ describe('SettingsComponent: installing tools', () => {
                 { provide: SettingsService, useValue: service },
                 { provide: ToolInstallService, useValue: installer },
                 { provide: AccountsService, useValue: new AccountsServiceStub() },
+                { provide: UpdateService, useValue: new UpdateServiceStub() },
             ],
         }).compileComponents();
 
@@ -333,6 +372,7 @@ describe('SettingsComponent: accounts', () => {
                 { provide: SettingsService, useValue: new SettingsServiceStub() },
                 { provide: ToolInstallService, useValue: new ToolInstallServiceStub() },
                 { provide: AccountsService, useValue: accounts },
+                { provide: UpdateService, useValue: new UpdateServiceStub() },
             ],
         }).compileComponents();
 
@@ -431,5 +471,86 @@ describe('SettingsComponent: accounts', () => {
         input.dispatchEvent(new Event('input'));
         await clickButton('Выбрать cookies.txt');
         expect(accounts.imported).toEqual(['https://vk.com/video-1_2']);
+    });
+});
+
+describe('SettingsComponent: updates', () => {
+    let fixture: ComponentFixture<SettingsComponent>;
+    let settings: SettingsServiceStub;
+    let updates: UpdateServiceStub;
+
+    function element(): HTMLElement {
+        return fixture.nativeElement as HTMLElement;
+    }
+
+    async function settle(): Promise<void> {
+        await new Promise((resolve) => setTimeout(resolve));
+        fixture.detectChanges();
+    }
+
+    async function clickButton(label: string): Promise<void> {
+        Array.from(element().querySelectorAll('button'))
+            .find((candidate) => candidate.textContent?.includes(label))!
+            .click();
+        await settle();
+    }
+
+    beforeEach(async () => {
+        settings = new SettingsServiceStub();
+        updates = new UpdateServiceStub();
+        await TestBed.configureTestingModule({
+            imports: [SettingsComponent],
+            providers: [
+                { provide: SettingsService, useValue: settings },
+                { provide: ToolInstallService, useValue: new ToolInstallServiceStub() },
+                { provide: AccountsService, useValue: new AccountsServiceStub() },
+                { provide: UpdateService, useValue: updates },
+            ],
+        }).compileComponents();
+        fixture = TestBed.createComponent(SettingsComponent);
+        fixture.detectChanges();
+        await settle();
+    });
+
+    it('reports that the app is up to date', async () => {
+        await clickButton('Проверить обновления');
+        expect(element().textContent).toContain('Установлена последняя версия');
+    });
+
+    it('shows the changes and installs with progress', async () => {
+        updates.checkResult = app.UpdateInfo.createFrom({
+            available: true,
+            version: '1.3.0',
+            canInstall: true,
+            notes: '* вход через браузер',
+        });
+        await clickButton('Проверить обновления');
+        expect(element().textContent).toContain('Доступна версия 1.3.0');
+        expect(element().textContent).toContain('* вход через браузер');
+
+        await clickButton('Обновить и перезапустить');
+        expect(updates.installs).toBe(1);
+        expect(element().textContent).toContain('Скачивание: 1.0 МБ из 2.0 МБ');
+    });
+
+    it('explains why an update has to be installed by hand', async () => {
+        updates.checkResult = app.UpdateInfo.createFrom({
+            available: true,
+            version: '1.3.0',
+            canInstall: false,
+            installNote: 'нет прав на запись в папку /Applications',
+        });
+        await clickButton('Проверить обновления');
+        expect(element().textContent).toContain('нет прав на запись в папку /Applications');
+        expect(element().textContent).not.toContain('Обновить и перезапустить');
+        expect(element().textContent).toContain('Страница релиза');
+    });
+
+    it('saves the update preferences', async () => {
+        const boxes = element().querySelectorAll<HTMLInputElement>('.settings__check input');
+        expect(boxes[0].checked).toBe(true);
+        boxes[1].click();
+        await settle();
+        expect(settings.updateSettingsCalls).toEqual([[true, true]]);
     });
 });
