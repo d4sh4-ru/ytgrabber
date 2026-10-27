@@ -122,8 +122,11 @@ type VideoRecord struct {
 	FilePath        string    `json:"filePath"`
 	ThumbnailPath   string    `json:"-"`
 	DurationSeconds float64   `json:"durationSeconds"`
-	DownloadedAt    string    `json:"downloadedAt"`
-	MediaURL        string    `json:"mediaUrl"`
-	ThumbnailURL    string    `json:"thumbnailUrl"`
-	FileMissing     bool      `json:"fileMissing"`
+	// PositionSeconds is where playback stopped last time; 0 means from
+	// the start (never played, or watched to the end).
+	PositionSeconds float64 `json:"positionSeconds"`
+	DownloadedAt    string  `json:"downloadedAt"`
+	MediaURL        string  `json:"mediaUrl"`
+	ThumbnailURL    string  `json:"thumbnailUrl"`
+	FileMissing     bool    `json:"fileMissing"`
 }

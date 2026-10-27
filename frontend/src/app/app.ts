@@ -12,6 +12,7 @@ import { NotificationService } from './services/notification.service';
 import { SettingsService } from './services/settings.service';
 import { ToolInstallService, ToolInstallState } from './services/tool-install.service';
 import { UpdateService } from './services/update.service';
+import { PlaybackService } from './services/playback.service';
 import { app, model, tools } from './wailsjs/wailsjs/go/models';
 import { DownloadFormComponent } from './components/download-form/download-form.component';
 import { LibraryComponent } from './components/video-library/library.component';
@@ -45,6 +46,7 @@ export class App implements OnInit, OnDestroy {
     private readonly settingsService = inject(SettingsService);
     private readonly toolInstallService = inject(ToolInstallService);
     private readonly updateService = inject(UpdateService);
+    private readonly playbackService = inject(PlaybackService);
     private readonly notificationService = inject(NotificationService);
     private readonly changeDetectorRef = inject(ChangeDetectorRef);
     private readonly destroy$ = new Subject<void>();
@@ -131,9 +133,12 @@ export class App implements OnInit, OnDestroy {
                 this.changeDetectorRef.markForCheck();
             });
 
-        this.downloadService.libraryChanged$.pipe(takeUntil(this.destroy$)).subscribe((): void => {
-            void this.refreshLibrary();
-        });
+        // A saved playback position changes the "watched" bar on its card.
+        merge(this.downloadService.libraryChanged$, this.playbackService.saved$)
+            .pipe(takeUntil(this.destroy$))
+            .subscribe((): void => {
+                void this.refreshLibrary();
+            });
 
         this.toolInstallService.state$
             .pipe(takeUntil(this.destroy$))

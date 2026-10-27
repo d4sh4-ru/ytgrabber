@@ -75,6 +75,7 @@ export class LibraryComponent {
                 title: item.title,
                 src: item.mediaUrl,
                 coverSrc: item.thumbnailUrl || null,
+                positionSeconds: item.positionSeconds,
             });
         } else {
             this.videoSelected.emit(item);

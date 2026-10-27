@@ -29,6 +29,19 @@ export class MediaCardComponent {
         return this.item.durationSeconds > 0 ? formatDuration(this.item.durationSeconds) : null;
     }
 
+    /** How much was watched, 0–100; null when not started (or finished). */
+    protected get watchedPercent(): number | null {
+        const { positionSeconds, durationSeconds } = this.item;
+        if (!positionSeconds || durationSeconds <= 0) {
+            return null;
+        }
+        return Math.min(100, (positionSeconds / durationSeconds) * 100);
+    }
+
+    protected get watchedTitle(): string {
+        return `Остановились на ${formatDuration(this.item.positionSeconds)}`;
+    }
+
     protected get isAudio(): boolean {
         return this.item.mediaKind === 'audio';
     }

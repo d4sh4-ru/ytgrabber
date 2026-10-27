@@ -4,12 +4,15 @@ import {
     ElementRef,
     EventEmitter,
     HostListener,
+    inject,
     Input,
     Output,
     ViewChild,
 } from '@angular/core';
 import { model } from '../../wailsjs/wailsjs/go/models';
 import { IconComponent } from '../icon/icon.component';
+import { PlaybackService } from '../../services/playback.service';
+import { formatDuration } from '../../shared/format-duration';
 
 @Component({
     selector: 'app-video-player-modal',
@@ -20,6 +23,8 @@ import { IconComponent } from '../icon/icon.component';
     changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class VideoPlayerModalComponent {
+    private readonly playbackService = inject(PlaybackService);
+
     @Input()
     public item: model.VideoRecord | null = null;
 
@@ -30,6 +35,12 @@ export class VideoPlayerModalComponent {
     public videoElementRef?: ElementRef<HTMLVideoElement>;
 
     protected playbackError = false;
+    /** Where playback resumed, for the "start over" hint; null when from the start. */
+    protected resumedFrom: number | null = null;
+
+    protected get resumedFromLabel(): string {
+        return formatDuration(this.resumedFrom ?? 0);
+    }
 
     @HostListener('document:keydown.escape')
     public onEscape(): void {
@@ -40,9 +51,55 @@ export class VideoPlayerModalComponent {
     }
 
     protected onClose(): void {
-        this.videoElementRef?.nativeElement.pause();
+        const video = this.videoElementRef?.nativeElement;
+        if (video && this.item) {
+            void this.playbackService.stop(this.item.id, video.currentTime);
+            video.pause();
+        }
         this.playbackError = false;
+        this.resumedFrom = null;
         this.closed.emit();
+    }
+
+    // --- Resuming ---
+    protected onLoadedMetadata(): void {
+        const video = this.videoElementRef?.nativeElement;
+        if (!video || !this.item) {
+            return;
+        }
+        const position = this.playbackService.startPosition(
+            this.item.id,
+            this.item.positionSeconds,
+        );
+        if (position > 0 && position < video.duration) {
+            video.currentTime = position;
+            this.resumedFrom = position;
+        } else {
+            this.resumedFrom = null;
+        }
+    }
+
+    protected onTimeUpdate(): void {
+        const video = this.videoElementRef?.nativeElement;
+        if (video && this.item && !video.seeking) {
+            this.playbackService.progress(this.item.id, video.currentTime);
+        }
+    }
+
+    protected onPaused(): void {
+        const video = this.videoElementRef?.nativeElement;
+        if (video && this.item) {
+            void this.playbackService.stop(this.item.id, video.currentTime);
+        }
+    }
+
+    protected onStartOver(): void {
+        const video = this.videoElementRef?.nativeElement;
+        if (video) {
+            video.currentTime = 0;
+            void video.play();
+        }
+        this.resumedFrom = null;
     }
 
     protected onFullscreen(): void {

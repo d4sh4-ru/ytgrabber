@@ -4,6 +4,12 @@
             <div class="video-modal__header">
                 <span class="video-modal__title" [title]="item.title">{{ item.title }}</span>
                 <div class="video-modal__actions">
+                    @if (resumedFrom) {
+                        <span class="video-modal__resumed"
+                            >Продолжено с {{ resumedFromLabel }}</span
+                        >
+                        <button class="btn" type="button" (click)="onStartOver()">С начала</button>
+                    }
                     <button class="btn" type="button" (click)="onFullscreen()">Развернуть</button>
                     <button
                         class="btn btn--icon"
@@ -27,6 +33,10 @@
                 [src]="item.mediaUrl"
                 controls
                 autoplay
+                (loadedmetadata)="onLoadedMetadata()"
+                (timeupdate)="onTimeUpdate()"
+                (pause)="onPaused()"
+                (ended)="onPaused()"
                 (error)="onPlaybackError()"
             ></video>
         </div>

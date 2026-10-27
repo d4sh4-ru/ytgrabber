@@ -42,6 +42,20 @@
         color: v.$text-secondary;
     }
 
+    &__watched {
+        position: absolute;
+        right: 0;
+        bottom: 0;
+        left: 0;
+        height: 3px;
+        background: rgba(v.$text-primary, 0.25);
+    }
+
+    &__watched-bar {
+        height: 100%;
+        background: v.$accent;
+    }
+
     &__badge {
         position: absolute;
         left: 6px;

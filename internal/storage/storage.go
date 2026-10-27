@@ -31,6 +31,7 @@ var migrations = []func(tx *sql.Tx, env MigrationEnv) error{
 	migrateAbsolutePaths,
 	migrateAccounts,
 	migrateAccountProfileDir,
+	migratePlaybackPosition,
 }
 
 // Open opens the SQLite file with a single connection (so writes
@@ -216,6 +217,13 @@ func migrateAccountProfileDir(tx *sql.Tx, _ MigrationEnv) error {
 	return err
 }
 
+// migratePlaybackPosition remembers where playback of a library entry
+// stopped, so it can resume there.
+func migratePlaybackPosition(tx *sql.Tx, _ MigrationEnv) error {
+	_, err := tx.Exec(`ALTER TABLE videos ADD COLUMN position_seconds REAL NOT NULL DEFAULT 0`)
+	return err
+}
+
 func (d *DB) Close() error {
 	return d.conn.Close()
 }
@@ -299,11 +307,11 @@ func (d *DB) SaveVideo(video *model.VideoRecord) error {
 	return err
 }
 
-const videoColumns = `id, title, source_url, media_kind, file_path, thumbnail_path, duration_seconds, downloaded_at`
+const videoColumns = `id, title, source_url, media_kind, file_path, thumbnail_path, duration_seconds, downloaded_at, position_seconds`
 
 func scanVideo(scanner interface{ Scan(...any) error }) (*model.VideoRecord, error) {
 	video := &model.VideoRecord{}
-	err := scanner.Scan(&video.ID, &video.Title, &video.SourceURL, &video.MediaKind, &video.FilePath, &video.ThumbnailPath, &video.DurationSeconds, &video.DownloadedAt)
+	err := scanner.Scan(&video.ID, &video.Title, &video.SourceURL, &video.MediaKind, &video.FilePath, &video.ThumbnailPath, &video.DurationSeconds, &video.DownloadedAt, &video.PositionSeconds)
 	return video, err
 }
 
@@ -340,6 +348,12 @@ func (d *DB) GetVideo(id string) (*model.VideoRecord, error) {
 func (d *DB) RelocateVideo(id string, filePath string, thumbnailPath string, title string) error {
 	_, err := d.conn.Exec(`UPDATE videos SET file_path = ?, thumbnail_path = ?, title = ? WHERE id = ?`,
 		filePath, thumbnailPath, title, id)
+	return err
+}
+
+// SavePosition records where playback of a library entry stopped.
+func (d *DB) SavePosition(id string, seconds float64) error {
+	_, err := d.conn.Exec(`UPDATE videos SET position_seconds = ? WHERE id = ?`, seconds, id)
 	return err
 }
 
