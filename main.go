@@ -13,6 +13,7 @@ import (
 	"github.com/wailsapp/wails/v2/pkg/options/windows"
 
 	"ytgrabber/internal/app"
+	"ytgrabber/internal/core"
 	"ytgrabber/internal/platform"
 )
 
@@ -26,8 +27,8 @@ var assets embed.FS
 var appIcon []byte
 
 func main() {
-	if len(os.Args) > 1 && os.Args[1] == app.CleanupHelperArg {
-		app.RunCleanupHelper(os.Args[2:])
+	if len(os.Args) > 1 && os.Args[1] == core.CleanupHelperArg {
+		core.RunCleanupHelper(os.Args[2:])
 		return
 	}
 
@@ -45,7 +46,7 @@ func main() {
 			// Assets serves the built frontend. Handler is Wails' fallback
 			// for any request it can't satisfy from Assets — WebViews block
 			// <video src="file://…">, so library files are served through
-			// the same asset server under /media/ (see app.MediaHandler).
+			// the same asset server under /media/ (see core.MediaHandler).
 			Assets:  assets,
 			Handler: app.MediaHandler(backend),
 		},
@@ -58,7 +59,7 @@ func main() {
 		Mac: &mac.Options{
 			About: &mac.AboutInfo{
 				Title:   "YT Grabber",
-				Message: "Версия " + app.Version,
+				Message: "Версия " + core.Version,
 				Icon:    appIcon,
 			},
 		},

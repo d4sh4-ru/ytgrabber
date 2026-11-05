@@ -1,6 +1,6 @@
 import { TestBed } from '@angular/core/testing';
 import { MediaCardComponent } from './media-card.component';
-import { model } from '../../wailsjs/wailsjs/go/models';
+import { model } from '../../api/models';
 
 describe('MediaCardComponent', () => {
     beforeEach(async () => {

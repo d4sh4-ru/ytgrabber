@@ -1,4 +1,4 @@
-package app
+package core
 
 import (
 	"bufio"
@@ -59,7 +59,7 @@ const (
 // DownloadVideo ставит загрузку в очередь и возвращает id задачи. С
 // useAccount=true загрузка идёт через подключённый аккаунт сайта, если он
 // есть; false — «скачать без аккаунта».
-func (a *App) DownloadVideo(rawURL string, quality string, useAccount bool) (string, error) {
+func (a *App) DownloadVideo(user UserID, rawURL string, quality string, useAccount bool) (string, error) {
 	if err := a.ensureReady(); err != nil {
 		return "", err
 	}
@@ -104,7 +104,7 @@ func (a *App) DownloadVideo(rawURL string, quality string, useAccount bool) (str
 // RetryJob перезапускает задачу, завершившуюся ошибкой. useAccount
 // заменяет выбор, сделанный при добавлении: после входа на сайт повтор
 // идёт через аккаунт, даже если задача добавлялась «без аккаунта».
-func (a *App) RetryJob(id string, useAccount bool) error {
+func (a *App) RetryJob(user UserID, id string, useAccount bool) error {
 	if err := a.ensureReady(); err != nil {
 		return err
 	}
@@ -140,7 +140,7 @@ func (a *App) RetryJob(id string, useAccount bool) error {
 // RemoveJob отменяет задачу (если она выполняется), удаляет её из памяти и
 // SQLite и подчищает недокачанные файлы. Удаление уже отсутствующей задачи
 // не считается ошибкой.
-func (a *App) RemoveJob(id string) error {
+func (a *App) RemoveJob(user UserID, id string) error {
 	if err := a.ensureReady(); err != nil {
 		return err
 	}
@@ -176,7 +176,7 @@ func (a *App) RemoveJob(id string) error {
 
 // GetJobs возвращает все незавершённые задачи (в очереди, активные и с
 // ошибкой) в порядке добавления.
-func (a *App) GetJobs() ([]model.DownloadJob, error) {
+func (a *App) GetJobs(user UserID) ([]model.DownloadJob, error) {
 	if err := a.ensureReady(); err != nil {
 		return []model.DownloadJob{}, err
 	}

@@ -1,4 +1,4 @@
-package app
+package core
 
 import (
 	"errors"
@@ -104,7 +104,7 @@ func (a *App) ResetAllData(deleteMedia bool) error {
 
 	// Only folders that are empty now: a downloads folder may be one the
 	// user picked and share with other files.
-	for _, dir := range []string{a.GetSettings().DownloadsDir, a.paths.DefaultDownloadsDir, a.paths.LegacyDownloadsDir} {
+	for _, dir := range []string{a.currentSettings().DownloadsDir, a.paths.DefaultDownloadsDir, a.paths.LegacyDownloadsDir} {
 		if dir != "" {
 			_ = os.Remove(dir)
 		}

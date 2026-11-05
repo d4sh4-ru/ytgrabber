@@ -1,20 +1,7 @@
-import { Injectable } from '@angular/core';
+import { inject, Injectable } from '@angular/core';
 import { BehaviorSubject, Observable } from 'rxjs';
-import {
-    ChooseDownloadsDir,
-    ChooseToolPath,
-    GetAppInfo,
-    GetDependencies,
-    GetSettings,
-    GetStorageInfo,
-    OpenDownloadsDir,
-    ResetAllData,
-    ResetToolPath,
-    SetMaxConcurrentDownloads,
-    SetUpdateSettings,
-    UpdateYtDlp,
-} from '../wailsjs/wailsjs/go/app/App';
-import { app, tools } from '../wailsjs/wailsjs/go/models';
+import { core, tools } from '../api/models';
+import { Transport } from '../api/transport';
 
 export type ConfigurableTool = 'yt-dlp' | 'ffmpeg';
 
@@ -27,22 +14,23 @@ export type ConfigurableTool = 'yt-dlp' | 'ffmpeg';
 export class SettingsService {
     public readonly dependencies$: Observable<tools.Report | null>;
 
+    private readonly transport = inject(Transport);
     private readonly dependenciesSubject$ = new BehaviorSubject<tools.Report | null>(null);
 
     public constructor() {
         this.dependencies$ = this.dependenciesSubject$.asObservable();
     }
 
-    public getAppInfo(): Promise<app.AppInfo> {
-        return GetAppInfo();
+    public getAppInfo(): Promise<core.AppInfo> {
+        return this.transport.call<core.AppInfo>('GetAppInfo');
     }
 
-    public getSettings(): Promise<app.Settings> {
-        return GetSettings();
+    public getSettings(): Promise<core.Settings> {
+        return this.transport.call<core.Settings>('GetSettings');
     }
 
     public async refreshDependencies(): Promise<tools.Report> {
-        const report = await GetDependencies();
+        const report = await this.transport.call<tools.Report>('GetDependencies');
         this.setDependencies(report);
         return report;
     }
@@ -51,45 +39,45 @@ export class SettingsService {
         this.dependenciesSubject$.next(report);
     }
 
-    public chooseDownloadsDir(): Promise<app.Settings> {
-        return ChooseDownloadsDir();
+    public chooseDownloadsDir(): Promise<core.Settings> {
+        return this.transport.call<core.Settings>('ChooseDownloadsDir');
     }
 
     public openDownloadsDir(): Promise<void> {
-        return OpenDownloadsDir();
+        return this.transport.call<void>('OpenDownloadsDir');
     }
 
-    public async chooseToolPath(tool: ConfigurableTool): Promise<app.Settings> {
-        const settings = await ChooseToolPath(tool);
+    public async chooseToolPath(tool: ConfigurableTool): Promise<core.Settings> {
+        const settings = await this.transport.call<core.Settings>('ChooseToolPath', [tool]);
         await this.refreshDependencies();
         return settings;
     }
 
-    public async resetToolPath(tool: ConfigurableTool): Promise<app.Settings> {
-        const settings = await ResetToolPath(tool);
+    public async resetToolPath(tool: ConfigurableTool): Promise<core.Settings> {
+        const settings = await this.transport.call<core.Settings>('ResetToolPath', [tool]);
         await this.refreshDependencies();
         return settings;
     }
 
-    public setMaxConcurrentDownloads(value: number): Promise<app.Settings> {
-        return SetMaxConcurrentDownloads(value);
+    public setMaxConcurrentDownloads(value: number): Promise<core.Settings> {
+        return this.transport.call<core.Settings>('SetMaxConcurrentDownloads', [value]);
     }
 
-    public setUpdateSettings(autoCheck: boolean, prerelease: boolean): Promise<app.Settings> {
-        return SetUpdateSettings(autoCheck, prerelease);
+    public setUpdateSettings(autoCheck: boolean, prerelease: boolean): Promise<core.Settings> {
+        return this.transport.call<core.Settings>('SetUpdateSettings', [autoCheck, prerelease]);
     }
 
-    public getStorageInfo(): Promise<app.StorageInfo> {
-        return GetStorageInfo();
+    public getStorageInfo(): Promise<core.StorageInfo> {
+        return this.transport.call<core.StorageInfo>('GetStorageInfo');
     }
 
     /** Deletes everything the app created; the app quits right after. */
     public resetAllData(deleteMedia: boolean): Promise<void> {
-        return ResetAllData(deleteMedia);
+        return this.transport.call<void>('ResetAllData', [deleteMedia]);
     }
 
     public async updateYtDlp(): Promise<string> {
-        const output = await UpdateYtDlp();
+        const output = await this.transport.call<string>('UpdateYtDlp');
         await this.refreshDependencies();
         return output;
     }

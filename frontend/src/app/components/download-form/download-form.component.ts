@@ -18,7 +18,7 @@ import { Subject, takeUntil } from 'rxjs';
 import { AccountsService } from '../../services/accounts.service';
 import { DownloadQuality, DownloadService } from '../../services/download.service';
 import { NotificationService } from '../../services/notification.service';
-import { model } from '../../wailsjs/wailsjs/go/models';
+import { model } from '../../api/models';
 import { JobListComponent } from '../job-list/job-list.component';
 
 const URL_LIKE_PATTERN = /^(https?:\/\/)?([\w-]+\.)+[a-zA-Z]{2,}([/?#]\S*)?$/;

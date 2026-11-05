@@ -1,4 +1,4 @@
-package app
+package core
 
 import (
 	"archive/tar"
@@ -162,7 +162,7 @@ func TestNoUpdateWhenCurrent(t *testing.T) {
 
 func TestUpdateSettings(t *testing.T) {
 	app, _ := newTestApp(t)
-	if s := app.GetSettings(); !s.AutoCheckUpdates || s.PrereleaseUpdates {
+	if s := app.GetSettings(LocalUser); !s.AutoCheckUpdates || s.PrereleaseUpdates {
 		t.Errorf("defaults = %+v", s)
 	}
 	if _, err := app.SetUpdateSettings(false, true); err != nil {

@@ -1,6 +1,6 @@
 //go:build !windows
 
-package app
+package core
 
 import (
 	"fmt"
@@ -102,7 +102,7 @@ func waitForJobs(t *testing.T, app *App, done func([]model.DownloadJob) bool) []
 	t.Helper()
 	var jobs []model.DownloadJob
 	waitFor(t, "jobs", func() bool {
-		jobs, _ = app.GetJobs()
+		jobs, _ = app.GetJobs(LocalUser)
 		return done(jobs)
 	})
 	return jobs
@@ -121,7 +121,7 @@ func TestImportCookiesFile(t *testing.T) {
 
 	// Importing again refreshes the same account.
 	again := importTestAccount(t, app)
-	list, _ := app.GetAccounts()
+	list, _ := app.GetAccounts(LocalUser)
 	if again.ID != account.ID || len(list) != 1 {
 		t.Errorf("re-import created a second account: %+v", list)
 	}
@@ -140,11 +140,11 @@ func TestDownloadWithAccount(t *testing.T) {
 	app, record := newAppWithCookieTools(t)
 	account := importTestAccount(t, app)
 
-	if _, err := app.DownloadVideo("https://www.example.com/watch/one", "best", true); err != nil {
+	if _, err := app.DownloadVideo(LocalUser, "https://www.example.com/watch/one", "best", true); err != nil {
 		t.Fatal(err)
 	}
 	waitFor(t, "library entry", func() bool {
-		videos, _ := app.GetLibrary()
+		videos, _ := app.GetLibrary(LocalUser)
 		return len(videos) == 1
 	})
 
@@ -173,11 +173,11 @@ func TestDownloadWithoutAccount(t *testing.T) {
 	app, record := newAppWithCookieTools(t)
 	importTestAccount(t, app)
 
-	if _, err := app.DownloadVideo("https://example.com/watch/anon", "best", false); err != nil {
+	if _, err := app.DownloadVideo(LocalUser, "https://example.com/watch/anon", "best", false); err != nil {
 		t.Fatal(err)
 	}
 	waitFor(t, "library entry", func() bool {
-		videos, _ := app.GetLibrary()
+		videos, _ := app.GetLibrary(LocalUser)
 		return len(videos) == 1
 	})
 	if _, err := os.Stat(filepath.Join(record, "anon.txt")); err == nil {
@@ -191,7 +191,7 @@ func TestLoginRequiredExpiresAccount(t *testing.T) {
 	app, _ := newAppWithCookieTools(t)
 	account := importTestAccount(t, app)
 
-	if _, err := app.DownloadVideo("https://example.com/login", "best", true); err != nil {
+	if _, err := app.DownloadVideo(LocalUser, "https://example.com/login", "best", true); err != nil {
 		t.Fatal(err)
 	}
 	jobs := waitForJobs(t, app, func(jobs []model.DownloadJob) bool {
@@ -209,7 +209,7 @@ func TestLoginRequiredExpiresAccount(t *testing.T) {
 	if updated, _ := app.db.GetAccount(account.ID); updated.Status != model.AccountOK {
 		t.Errorf("re-imported account status = %s", updated.Status)
 	}
-	if err := app.RetryJob(jobs[0].ID, true); err != nil {
+	if err := app.RetryJob(LocalUser, jobs[0].ID, true); err != nil {
 		t.Fatal(err)
 	}
 	jobs = waitForJobs(t, app, func(jobs []model.DownloadJob) bool {
@@ -223,7 +223,7 @@ func TestLoginRequiredExpiresAccount(t *testing.T) {
 func TestLoginRequiredWithoutAccount(t *testing.T) {
 	app, _ := newAppWithCookieTools(t)
 
-	app.DownloadVideo("https://example.com/login", "best", true)
+	app.DownloadVideo(LocalUser, "https://example.com/login", "best", true)
 	jobs := waitForJobs(t, app, func(jobs []model.DownloadJob) bool {
 		return len(jobs) == 1 && jobs[0].Status == model.StatusError
 	})
@@ -233,7 +233,7 @@ func TestLoginRequiredWithoutAccount(t *testing.T) {
 
 	// Connecting the account and retrying uses it.
 	importTestAccount(t, app)
-	app.RetryJob(jobs[0].ID, true)
+	app.RetryJob(LocalUser, jobs[0].ID, true)
 	jobs = waitForJobs(t, app, func(jobs []model.DownloadJob) bool {
 		return len(jobs) == 1 && jobs[0].Status == model.StatusError
 	})
@@ -248,7 +248,7 @@ func TestRetryAfterOptOut(t *testing.T) {
 	app, _ := newAppWithCookieTools(t)
 	importTestAccount(t, app)
 
-	id, _ := app.DownloadVideo("https://example.com/login", "best", false)
+	id, _ := app.DownloadVideo(LocalUser, "https://example.com/login", "best", false)
 	jobs := waitForJobs(t, app, func(jobs []model.DownloadJob) bool {
 		return len(jobs) == 1 && jobs[0].Status == model.StatusError
 	})
@@ -256,7 +256,7 @@ func TestRetryAfterOptOut(t *testing.T) {
 		t.Fatalf("opted-out job = %+v", jobs[0])
 	}
 
-	app.RetryJob(id, true)
+	app.RetryJob(LocalUser, id, true)
 	jobs = waitForJobs(t, app, func(jobs []model.DownloadJob) bool {
 		return len(jobs) == 1 && jobs[0].Status == model.StatusError
 	})
@@ -271,10 +271,10 @@ func TestParallelWriteBack(t *testing.T) {
 	app, _ := newAppWithCookieTools(t)
 	account := importTestAccount(t, app)
 
-	app.DownloadVideo("https://example.com/slow-a", "best", true)
-	app.DownloadVideo("https://example.com/slow-b", "best", true)
+	app.DownloadVideo(LocalUser, "https://example.com/slow-a", "best", true)
+	app.DownloadVideo(LocalUser, "https://example.com/slow-b", "best", true)
 	waitFor(t, "both downloads", func() bool {
-		videos, _ := app.GetLibrary()
+		videos, _ := app.GetLibrary(LocalUser)
 		return len(videos) == 2
 	})
 
@@ -288,19 +288,19 @@ func TestRemoveAccount(t *testing.T) {
 	app, record := newAppWithCookieTools(t)
 	account := importTestAccount(t, app)
 
-	if err := app.RemoveAccount(account.ID); err != nil {
+	if err := app.RemoveAccount(LocalUser, account.ID); err != nil {
 		t.Fatal(err)
 	}
-	if list, _ := app.GetAccounts(); len(list) != 0 {
+	if list, _ := app.GetAccounts(LocalUser); len(list) != 0 {
 		t.Errorf("accounts = %+v", list)
 	}
 	if _, err := os.Stat(filepath.Join(app.paths.AccountsDir(), account.ID+".enc")); !os.IsNotExist(err) {
 		t.Errorf("snapshot not deleted: %v", err)
 	}
 
-	app.DownloadVideo("https://example.com/watch/after", "best", true)
+	app.DownloadVideo(LocalUser, "https://example.com/watch/after", "best", true)
 	waitFor(t, "library entry", func() bool {
-		videos, _ := app.GetLibrary()
+		videos, _ := app.GetLibrary(LocalUser)
 		return len(videos) == 1
 	})
 	if _, err := os.Stat(filepath.Join(record, "after.txt")); err == nil {
@@ -316,7 +316,7 @@ func TestCheckAccountWithoutOnlineCheck(t *testing.T) {
 	app.accounts.Save(account.ID, account.Domain, []accounts.Cookie{
 		{Domain: ".example.com", Path: "/", Name: "session", Value: "s1", Expires: 1},
 	})
-	checked, err := app.CheckAccount(account.ID)
+	checked, err := app.CheckAccount(LocalUser, account.ID)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -331,11 +331,11 @@ func TestCheckKeepsRefusedAccountExpired(t *testing.T) {
 	app, _ := newAppWithCookieTools(t)
 	account := importTestAccount(t, app)
 
-	app.DownloadVideo("https://example.com/login", "best", true)
+	app.DownloadVideo(LocalUser, "https://example.com/login", "best", true)
 	waitForJobs(t, app, func(jobs []model.DownloadJob) bool {
 		return len(jobs) == 1 && jobs[0].Status == model.StatusError
 	})
-	checked, err := app.CheckAccount(account.ID)
+	checked, err := app.CheckAccount(LocalUser, account.ID)
 	if err != nil {
 		t.Fatal(err)
 	}

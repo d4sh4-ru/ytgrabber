@@ -1,4 +1,4 @@
-package app
+package core
 
 import (
 	"bytes"
@@ -13,7 +13,6 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/wailsapp/wails/v2/pkg/runtime"
 
 	"ytgrabber/internal/accounts"
 	"ytgrabber/internal/model"
@@ -28,7 +27,7 @@ const (
 )
 
 // GetAccounts возвращает подключённые аккаунты (без самих cookies).
-func (a *App) GetAccounts() ([]*model.Account, error) {
+func (a *App) GetAccounts(user UserID) ([]*model.Account, error) {
 	if err := a.ensureReady(); err != nil {
 		return []*model.Account{}, err
 	}
@@ -43,10 +42,10 @@ func (a *App) GetAccounts() ([]*model.Account, error) {
 }
 
 // ImportCookiesFile подключает (или обновляет) аккаунт сайта из файла
-// cookies.txt: открывает диалог выбора файла, оставляет только cookies
-// этого сайта и сохраняет их в зашифрованном виде. site — ссылка или домен.
-// Отмена диалога возвращает nil без ошибки.
-func (a *App) ImportCookiesFile(site string) (*model.Account, error) {
+// cookies.txt по пути path (выбранному в диалоге адаптером): оставляет
+// только cookies этого сайта и сохраняет их в зашифрованном виде.
+// site — ссылка или домен.
+func (a *App) ImportCookiesFile(user UserID, site string, path string) (*model.Account, error) {
 	if err := a.ensureReady(); err != nil {
 		return nil, err
 	}
@@ -54,24 +53,10 @@ func (a *App) ImportCookiesFile(site string) (*model.Account, error) {
 	if err != nil {
 		return nil, err
 	}
-
-	path, err := runtime.OpenFileDialog(a.ctx, runtime.OpenDialogOptions{
-		Title: fmt.Sprintf("Файл cookies.txt для %s", domain),
-		Filters: []runtime.FileFilter{
-			{DisplayName: "cookies.txt (*.txt)", Pattern: "*.txt"},
-			{DisplayName: "Все файлы", Pattern: "*"},
-		},
-	})
-	if err != nil {
-		return nil, fmt.Errorf("не удалось открыть диалог: %w", err)
-	}
-	if path == "" {
-		return nil, nil
-	}
 	return a.importCookiesFromPath(domain, path)
 }
 
-// importCookiesFromPath is ImportCookiesFile after the dialog.
+// importCookiesFromPath is ImportCookiesFile with the site already checked.
 func (a *App) importCookiesFromPath(domain string, path string) (*model.Account, error) {
 	file, err := os.Open(path)
 	if err != nil {
@@ -133,7 +118,7 @@ func (a *App) saveAccountCookies(domain string, cookies []accounts.Cookie, origi
 
 // RemoveAccount отключает аккаунт: удаляет его зашифрованные cookies и
 // запись о нём. Загрузки с этого сайта пойдут без входа.
-func (a *App) RemoveAccount(id string) error {
+func (a *App) RemoveAccount(user UserID, id string) error {
 	if err := a.ensureReady(); err != nil {
 		return err
 	}
@@ -153,7 +138,7 @@ func (a *App) RemoveAccount(id string) error {
 // CheckAccount проверяет, действует ли вход: есть ли непросроченный
 // cookie сессии, а для сайтов с проверочной ссылкой (YouTube) — пускает ли
 // сайт с этими cookies (yt-dlp без скачивания).
-func (a *App) CheckAccount(id string) (*model.Account, error) {
+func (a *App) CheckAccount(user UserID, id string) (*model.Account, error) {
 	if err := a.ensureReady(); err != nil {
 		return nil, err
 	}

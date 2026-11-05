@@ -1,6 +1,6 @@
-import { Injectable } from '@angular/core';
+import { inject, Injectable } from '@angular/core';
 import { Observable, Subject } from 'rxjs';
-import { SavePlaybackPosition } from '../wailsjs/wailsjs/go/app/App';
+import { Transport } from '../api/transport';
 
 /** How often a position is saved while playing; pausing or closing saves at once. */
 const SAVE_INTERVAL_MS = 5000;
@@ -16,6 +16,7 @@ export class PlaybackService {
     /** A position was saved on pause or close: the library is worth refreshing. */
     public readonly saved$: Observable<void>;
 
+    private readonly transport = inject(Transport);
     private readonly savedSubject$ = new Subject<void>();
     private readonly positions = new Map<string, number>();
     private readonly lastSaveAt = new Map<string, number>();
@@ -46,7 +47,7 @@ export class PlaybackService {
 
     private async save(id: string, seconds: number, final: boolean): Promise<void> {
         try {
-            const stored = await SavePlaybackPosition(id, seconds);
+            const stored = await this.transport.call<number>('SavePlaybackPosition', [id, seconds]);
             const changed = this.positions.get(id) !== stored;
             this.positions.set(id, stored);
             if (final && changed) {

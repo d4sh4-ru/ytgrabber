@@ -9,7 +9,7 @@ import {
     Output,
     ViewChild,
 } from '@angular/core';
-import { model } from '../../wailsjs/wailsjs/go/models';
+import { model } from '../../api/models';
 import { IconComponent } from '../icon/icon.component';
 import { PlaybackService } from '../../services/playback.service';
 import { formatDuration } from '../../shared/format-duration';

@@ -6,7 +6,7 @@ import {
     Input,
     Output,
 } from '@angular/core';
-import { model } from '../../wailsjs/wailsjs/go/models';
+import { model } from '../../api/models';
 import { DownloadService } from '../../services/download.service';
 import { NotificationService } from '../../services/notification.service';
 import { AudioPlayerService } from '../../services/audio-player.service';
