@@ -11,7 +11,7 @@ permissions:
   contents: read
 
 env:
-  WAILS_VERSION: v2.13.0
+  WAILS_VERSION: v2.17.1
 
 jobs:
   build:
