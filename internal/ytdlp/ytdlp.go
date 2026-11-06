@@ -36,8 +36,6 @@ var (
 	ytDlpErrorRe    = regexp.MustCompile(`^ERROR:\s*(.+)$`)
 )
 
-const maxErrorMessageLength = 300
-
 // Qualities are the values the UI offers; see BuildArgs for what they mean.
 var validQualities = map[string]bool{
 	"best":  true,
@@ -214,11 +212,44 @@ func ClassifyTrack(filename string) model.TrackKind {
 	}
 }
 
-// ExtractErrorMessage turns yt-dlp's raw stderr into a short, readable
-// message: the last "ERROR:" line if yt-dlp printed one (that's its own
-// summary of what went wrong), otherwise the last few non-empty lines as a
-// fallback. Either way the result is capped so a stack trace can't flood
-// the UI.
+// ExitError is a failed yt-dlp run: Message is the summary
+// ExtractErrorMessage picks out, Details the stderr tail it came from
+// (empty when it would only repeat Message), so the UI can show the
+// summary and expand the rest on demand.
+type ExitError struct {
+	Message string
+	Details string
+}
+
+func (e *ExitError) Error() string {
+	return e.Message
+}
+
+// NewExitError builds the error for a yt-dlp run that printed stderrLines.
+func NewExitError(stderrLines []string) *ExitError {
+	message := ExtractErrorMessage(stderrLines)
+	details := ErrorDetails(stderrLines)
+	if details == message {
+		details = ""
+	}
+	return &ExitError{Message: message, Details: details}
+}
+
+// ErrorDetails is stderr as yt-dlp printed it, minus line-ending noise and
+// the blank lines around it. Nothing is cut: the caller already keeps
+// only a bounded tail (see LineTail).
+func ErrorDetails(stderrLines []string) string {
+	lines := make([]string, len(stderrLines))
+	for i, line := range stderrLines {
+		lines[i] = strings.TrimRight(line, "\r \t")
+	}
+	return strings.Trim(strings.Join(lines, "\n"), "\n")
+}
+
+// ExtractErrorMessage turns yt-dlp's raw stderr into a readable message:
+// the last "ERROR:" line if yt-dlp printed one (that's its own summary of
+// what went wrong), otherwise the last few non-empty lines as a fallback.
+// The text is kept whole; ErrorDetails has the full output.
 func ExtractErrorMessage(stderrLines []string) string {
 	var lastError string
 	for _, line := range stderrLines {
@@ -227,7 +258,7 @@ func ExtractErrorMessage(stderrLines []string) string {
 		}
 	}
 	if lastError != "" {
-		return truncateMessage(lastError)
+		return lastError
 	}
 
 	nonEmpty := make([]string, 0, len(stderrLines))
@@ -242,7 +273,7 @@ func ExtractErrorMessage(stderrLines []string) string {
 	}
 
 	tailStart := max(len(nonEmpty)-3, 0)
-	return truncateMessage(strings.Join(nonEmpty[tailStart:], "\n"))
+	return strings.Join(nonEmpty[tailStart:], "\n")
 }
 
 // loginRequiredMarkers are fragments of yt-dlp errors (lowercased) that
@@ -277,14 +308,6 @@ func IsLoginRequired(message string) bool {
 		}
 	}
 	return false
-}
-
-func truncateMessage(message string) string {
-	runes := []rune(message)
-	if len(runes) <= maxErrorMessageLength {
-		return message
-	}
-	return string(runes[:maxErrorMessageLength]) + "…"
 }
 
 // LineTail keeps the last n lines written to it.

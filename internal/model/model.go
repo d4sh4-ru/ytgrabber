@@ -64,6 +64,9 @@ type DownloadJob struct {
 	// account's cookies.
 	Site        string `json:"site"`
 	AccountUsed bool   `json:"accountUsed"`
+	// ErrorDetails is the full tool output behind Error (e.g. yt-dlp's
+	// stderr), shown on demand; empty when Error says it all.
+	ErrorDetails string `json:"errorDetails,omitempty"`
 }
 
 type AccountSource string

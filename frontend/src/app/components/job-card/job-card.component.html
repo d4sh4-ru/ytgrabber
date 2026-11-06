@@ -62,6 +62,38 @@
     }
 
     @if (isError && job.error) {
-        <pre class="job-card__error">{{ job.error }}</pre>
+        <div class="job-card__error">
+            <div class="job-card__error-summary">
+                @if (hasErrorDetails) {
+                    <button
+                        type="button"
+                        class="job-card__error-toggle"
+                        [attr.aria-expanded]="isErrorExpanded"
+                        [attr.aria-controls]="errorDetailsId"
+                        [attr.aria-label]="errorToggleLabel"
+                        [title]="errorToggleLabel"
+                        (click)="toggleErrorDetails()"
+                    >
+                        <app-icon name="alert" [size]="14" />
+                        <app-icon
+                            name="chevron-down"
+                            class="job-card__error-chevron"
+                            [class.job-card__error-chevron--open]="isErrorExpanded"
+                            [size]="12"
+                        />
+                    </button>
+                } @else {
+                    <span class="job-card__error-icon"><app-icon name="alert" [size]="14" /></span>
+                }
+                <pre class="job-card__error-text">{{ job.error }}</pre>
+            </div>
+            @if (hasErrorDetails) {
+                <pre
+                    class="job-card__error-details"
+                    [id]="errorDetailsId"
+                    [hidden]="!isErrorExpanded"
+                    >{{ job.errorDetails }}</pre>
+            }
+        </div>
     }
 </div>

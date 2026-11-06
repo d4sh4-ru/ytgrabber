@@ -157,9 +157,32 @@ func TestExtractErrorMessage(t *testing.T) {
 		t.Error("empty stderr must still produce a message")
 	}
 
-	long := strings.Repeat("x", maxErrorMessageLength+50)
-	if got := ExtractErrorMessage([]string{long}); len([]rune(got)) != maxErrorMessageLength+1 {
-		t.Errorf("message not truncated: %d runes", len([]rune(got)))
+	long := strings.Repeat("x", 2000)
+	if got := ExtractErrorMessage([]string{"ERROR: " + long}); got != long {
+		t.Errorf("message must be kept whole, got %d runes", len([]rune(got)))
+	}
+}
+
+func TestNewExitError(t *testing.T) {
+	lines := []string{
+		"",
+		"WARNING: something minor\r",
+		"ERROR: [youtube] abc: Video unavailable",
+		"Traceback (most recent call last):",
+		"",
+	}
+	err := NewExitError(lines)
+	if err.Error() != "[youtube] abc: Video unavailable" {
+		t.Errorf("message = %q", err.Error())
+	}
+	want := "WARNING: something minor\nERROR: [youtube] abc: Video unavailable\nTraceback (most recent call last):"
+	if err.Details != want {
+		t.Errorf("details = %q, want %q", err.Details, want)
+	}
+
+	// Details that would only repeat the message are dropped.
+	if err := NewExitError([]string{"just one line"}); err.Details != "" {
+		t.Errorf("details = %q, want empty", err.Details)
 	}
 }
 

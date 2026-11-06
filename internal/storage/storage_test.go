@@ -120,7 +120,7 @@ func TestMarkInterruptedJobs(t *testing.T) {
 		"pending": model.StatusPending, "downloading": model.StatusDownloading,
 		"processing": model.StatusProcessing, "failed": model.StatusError,
 	} {
-		if err := db.SaveJob(&model.DownloadJob{ID: id, URL: "https://x", Status: status, Error: "old"}); err != nil {
+		if err := db.SaveJob(&model.DownloadJob{ID: id, URL: "https://x", Status: status, Error: "old", ErrorDetails: "old details"}); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -140,6 +140,13 @@ func TestMarkInterruptedJobs(t *testing.T) {
 		}
 		if job.Error != wantErr {
 			t.Errorf("%s: error %q, want %q", job.ID, job.Error, wantErr)
+		}
+		wantDetails := ""
+		if job.ID == "failed" {
+			wantDetails = "old details"
+		}
+		if job.ErrorDetails != wantDetails {
+			t.Errorf("%s: details %q, want %q", job.ID, job.ErrorDetails, wantDetails)
 		}
 	}
 }

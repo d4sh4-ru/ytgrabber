@@ -43,6 +43,9 @@ export class JobCardComponent {
     @Output()
     public readonly loginRequested = new EventEmitter<model.DownloadJob>();
 
+    /** The full error output (errorDetails) is unfolded under the summary. */
+    protected isErrorExpanded = false;
+
     protected get displayTitle(): string {
         return this.job.title || this.job.url;
     }
@@ -81,6 +84,20 @@ export class JobCardComponent {
         return this.isError && this.job.errorKind === 'login_required';
     }
 
+    /** Details worth unfolding: present and not just the summary again. */
+    protected get hasErrorDetails(): boolean {
+        const details = this.job.errorDetails?.trim() ?? '';
+        return details !== '' && details !== (this.job.error ?? '').trim();
+    }
+
+    protected get errorDetailsId(): string {
+        return `job-error-details-${this.job.id}`;
+    }
+
+    protected get errorToggleLabel(): string {
+        return this.isErrorExpanded ? 'Скрыть подробности ошибки' : 'Показать подробности ошибки';
+    }
+
     protected get loginHint(): string {
         if (this.job.accountUsed) {
             return `Сайт не принял вход через аккаунт ${this.job.site}: похоже, он истёк. Загрузите свежий cookies.txt.`;
@@ -104,6 +121,10 @@ export class JobCardComponent {
 
     protected trackPercent(progress: number): number {
         return Math.min(100, Math.max(0, Math.round(progress)));
+    }
+
+    protected toggleErrorDetails(): void {
+        this.isErrorExpanded = !this.isErrorExpanded;
     }
 
     protected onRemove(): void {
