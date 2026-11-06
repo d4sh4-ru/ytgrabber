@@ -1,6 +1,6 @@
 //go:build !windows
 
-package app
+package core
 
 import (
 	"os"
@@ -65,14 +65,14 @@ func newAppWithFakeTools(t *testing.T) (*App, *recordedEvents) {
 func TestDownloadEndToEnd(t *testing.T) {
 	app, events := newAppWithFakeTools(t)
 
-	id, err := app.DownloadVideo("https://example.com/watch?v=abc", "best", true)
+	id, err := app.DownloadVideo(LocalUser, "https://example.com/watch?v=abc", "best", true)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	waitFor(t, "library entry", func() bool { return events.count("library-changed") > 0 })
 
-	videos, err := app.GetLibrary()
+	videos, err := app.GetLibrary(LocalUser)
 	if err != nil || len(videos) != 1 {
 		t.Fatalf("library = %+v, %v", videos, err)
 	}
@@ -84,7 +84,7 @@ func TestDownloadEndToEnd(t *testing.T) {
 	if video.ThumbnailURL == "" || video.SourceURL != "https://example.com/watch?v=abc" {
 		t.Errorf("video = %+v", video)
 	}
-	if jobs, _ := app.GetJobs(); len(jobs) != 0 {
+	if jobs, _ := app.GetJobs(LocalUser); len(jobs) != 0 {
 		t.Errorf("finished job still listed: %+v", jobs)
 	}
 }
@@ -92,16 +92,16 @@ func TestDownloadEndToEnd(t *testing.T) {
 func TestDownloadFailureShowsYtDlpError(t *testing.T) {
 	app, _ := newAppWithFakeTools(t)
 
-	id, err := app.DownloadVideo("https://example.com/fail", "best", true)
+	id, err := app.DownloadVideo(LocalUser, "https://example.com/fail", "best", true)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	waitFor(t, "job error", func() bool {
-		jobs, _ := app.GetJobs()
+		jobs, _ := app.GetJobs(LocalUser)
 		return len(jobs) == 1 && jobs[0].Status == model.StatusError
 	})
-	jobs, _ := app.GetJobs()
+	jobs, _ := app.GetJobs(LocalUser)
 	if jobs[0].ID != id || !strings.Contains(jobs[0].Error, "Unsupported URL") {
 		t.Errorf("job = %+v", jobs[0])
 	}
@@ -112,7 +112,7 @@ func TestDownloadFailureShowsYtDlpError(t *testing.T) {
 func TestRemoveRunningJob(t *testing.T) {
 	app, _ := newAppWithFakeTools(t)
 
-	id, err := app.DownloadVideo("https://example.com/slow", "best", true)
+	id, err := app.DownloadVideo(LocalUser, "https://example.com/slow", "best", true)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -123,7 +123,7 @@ func TestRemoveRunningJob(t *testing.T) {
 	})
 
 	start := time.Now()
-	if err := app.RemoveJob(id); err != nil {
+	if err := app.RemoveJob(LocalUser, id); err != nil {
 		t.Fatal(err)
 	}
 	waitFor(t, "worker to stop", func() bool {
@@ -137,7 +137,7 @@ func TestRemoveRunningJob(t *testing.T) {
 	if _, err := os.Stat(partial); !os.IsNotExist(err) {
 		t.Error("partial file left behind")
 	}
-	if jobs, _ := app.GetJobs(); len(jobs) != 0 {
+	if jobs, _ := app.GetJobs(LocalUser); len(jobs) != 0 {
 		t.Errorf("jobs = %+v", jobs)
 	}
 }
@@ -146,8 +146,8 @@ func TestQueueRespectsConcurrencyLimit(t *testing.T) {
 	app, _ := newAppWithFakeTools(t)
 	app.settings.MaxConcurrentDownloads = 1
 
-	first, _ := app.DownloadVideo("https://example.com/slow1", "best", true)
-	second, _ := app.DownloadVideo("https://example.com/slow2", "best", true)
+	first, _ := app.DownloadVideo(LocalUser, "https://example.com/slow1", "best", true)
+	second, _ := app.DownloadVideo(LocalUser, "https://example.com/slow2", "best", true)
 
 	waitFor(t, "first job to start", func() bool {
 		app.mu.RLock()
@@ -161,14 +161,14 @@ func TestQueueRespectsConcurrencyLimit(t *testing.T) {
 		t.Errorf("second job status %s, want pending", secondStatus)
 	}
 
-	app.RemoveJob(first)
+	app.RemoveJob(LocalUser, first)
 	waitFor(t, "second job to start", func() bool {
 		app.mu.RLock()
 		defer app.mu.RUnlock()
 		job, ok := app.jobs[second]
 		return ok && job.Status == model.StatusDownloading
 	})
-	app.RemoveJob(second)
+	app.RemoveJob(LocalUser, second)
 }
 
 // TestShutdownMarksRunningJobsInterrupted checks a job cancelled by app
@@ -176,14 +176,14 @@ func TestQueueRespectsConcurrencyLimit(t *testing.T) {
 func TestShutdownMarksRunningJobsInterrupted(t *testing.T) {
 	app, _ := newAppWithFakeTools(t)
 
-	id, _ := app.DownloadVideo("https://example.com/slow", "best", true)
+	id, _ := app.DownloadVideo(LocalUser, "https://example.com/slow", "best", true)
 	waitFor(t, "download to start", func() bool {
 		app.mu.RLock()
 		defer app.mu.RUnlock()
 		return len(app.jobs[id].Tracks) > 0
 	})
 
-	app.shutdown(nil)
+	app.Stop()
 
 	db, err := storage.Open(app.paths.DBPath(), storage.MigrationEnv{})
 	if err != nil {

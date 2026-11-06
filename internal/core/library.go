@@ -1,4 +1,4 @@
-package app
+package core
 
 import (
 	"errors"
@@ -18,7 +18,7 @@ import (
 
 // GetLibrary возвращает скачанные файлы, отмечая те, что были удалены или
 // перемещены вне приложения.
-func (a *App) GetLibrary() ([]*model.VideoRecord, error) {
+func (a *App) GetLibrary(user UserID) ([]*model.VideoRecord, error) {
 	if err := a.ensureReady(); err != nil {
 		return []*model.VideoRecord{}, err
 	}
@@ -69,7 +69,7 @@ func (a *App) repairVideo(video *model.VideoRecord) bool {
 
 // DeleteVideo удаляет запись из библиотеки; с deleteFiles=true — ещё и сам
 // файл с обложкой (если обложка не используется другой записью).
-func (a *App) DeleteVideo(id string, deleteFiles bool) error {
+func (a *App) DeleteVideo(user UserID, id string, deleteFiles bool) error {
 	if err := a.ensureReady(); err != nil {
 		return err
 	}
@@ -111,7 +111,7 @@ const (
 // SavePlaybackPosition запоминает, на какой секунде остановилось
 // воспроизведение, и возвращает сохранённое значение: 0, если досмотрено
 // почти до конца или почти не начато (тогда в следующий раз — с начала).
-func (a *App) SavePlaybackPosition(id string, seconds float64) (float64, error) {
+func (a *App) SavePlaybackPosition(user UserID, id string, seconds float64) (float64, error) {
 	if err := a.ensureReady(); err != nil {
 		return 0, err
 	}
@@ -138,7 +138,7 @@ func resumePosition(seconds float64, duration float64) float64 {
 }
 
 // RevealVideo показывает файл в Finder / Проводнике / файловом менеджере.
-func (a *App) RevealVideo(id string) error {
+func (a *App) RevealVideo(user UserID, id string) error {
 	if err := a.ensureReady(); err != nil {
 		return err
 	}

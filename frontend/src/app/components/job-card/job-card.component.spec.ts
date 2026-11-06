@@ -1,6 +1,6 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { JobCardComponent } from './job-card.component';
-import { model } from '../../wailsjs/wailsjs/go/models';
+import { model } from '../../api/models';
 
 describe('JobCardComponent', () => {
     let fixture: ComponentFixture<JobCardComponent>;

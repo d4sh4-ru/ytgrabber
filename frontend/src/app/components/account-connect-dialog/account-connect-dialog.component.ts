@@ -12,7 +12,7 @@ import { AccountsService } from '../../services/accounts.service';
 import { NotificationService } from '../../services/notification.service';
 import { connectedMessage, cookieCountLabel } from '../../shared/account-summary';
 import { formatRelativeTime } from '../../shared/format-relative-time';
-import { browsers, model } from '../../wailsjs/wailsjs/go/models';
+import { browsers, model } from '../../api/models';
 import { ConfirmDialogComponent } from '../confirm-dialog/confirm-dialog.component';
 
 /**

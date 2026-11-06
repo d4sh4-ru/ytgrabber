@@ -1,4 +1,4 @@
-import { model } from '../wailsjs/wailsjs/go/models';
+import { model } from '../api/models';
 import { pluralRu } from './format-relative-time';
 
 export function cookieCountLabel(count: number): string {

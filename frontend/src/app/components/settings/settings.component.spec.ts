@@ -6,17 +6,17 @@ import { ToolInstallService, ToolInstallState } from '../../services/tool-instal
 import { AccountsService } from '../../services/accounts.service';
 import { NotificationService } from '../../services/notification.service';
 import { UpdateProgress, UpdateService } from '../../services/update.service';
-import { app, browsers, model, tools } from '../../wailsjs/wailsjs/go/models';
+import { browsers, core, model, tools } from '../../api/models';
 
 class SettingsServiceStub {
     public readonly dependencies$ = new BehaviorSubject<tools.Report | null>(null);
     public readonly resetCalls: boolean[] = [];
     public readonly updateSettingsCalls: [boolean, boolean][] = [];
 
-    public setUpdateSettings(autoCheck: boolean, prerelease: boolean): Promise<app.Settings> {
+    public setUpdateSettings(autoCheck: boolean, prerelease: boolean): Promise<core.Settings> {
         this.updateSettingsCalls.push([autoCheck, prerelease]);
         return Promise.resolve(
-            app.Settings.createFrom({
+            core.Settings.createFrom({
                 downloadsDir: '/videos',
                 autoCheckUpdates: autoCheck,
                 prereleaseUpdates: prerelease,
@@ -24,19 +24,19 @@ class SettingsServiceStub {
         );
     }
 
-    public getSettings(): Promise<app.Settings> {
+    public getSettings(): Promise<core.Settings> {
         return Promise.resolve(
-            app.Settings.createFrom({ downloadsDir: '/videos', autoCheckUpdates: true }),
+            core.Settings.createFrom({ downloadsDir: '/videos', autoCheckUpdates: true }),
         );
     }
 
-    public getAppInfo(): Promise<app.AppInfo> {
-        return Promise.resolve(app.AppInfo.createFrom({ version: '1.0.0' }));
+    public getAppInfo(): Promise<core.AppInfo> {
+        return Promise.resolve(core.AppInfo.createFrom({ version: '1.0.0' }));
     }
 
-    public getStorageInfo(): Promise<app.StorageInfo> {
+    public getStorageInfo(): Promise<core.StorageInfo> {
         return Promise.resolve(
-            app.StorageInfo.createFrom({
+            core.StorageInfo.createFrom({
                 dataBytes: 2048,
                 mediaFiles: 3,
                 mediaBytes: 5 * 1024 ** 3,
@@ -111,12 +111,12 @@ class AccountsServiceStub {
 }
 
 class UpdateServiceStub {
-    public readonly info$ = new BehaviorSubject<app.UpdateInfo | null>(null);
+    public readonly info$ = new BehaviorSubject<core.UpdateInfo | null>(null);
     public readonly progress$ = new BehaviorSubject<UpdateProgress | null>(null);
-    public checkResult = app.UpdateInfo.createFrom({ available: false });
+    public checkResult = core.UpdateInfo.createFrom({ available: false });
     public installs = 0;
 
-    public check(): Promise<app.UpdateInfo> {
+    public check(): Promise<core.UpdateInfo> {
         this.info$.next(this.checkResult);
         return Promise.resolve(this.checkResult);
     }
@@ -518,7 +518,7 @@ describe('SettingsComponent: updates', () => {
     });
 
     it('shows the changes and installs with progress', async () => {
-        updates.checkResult = app.UpdateInfo.createFrom({
+        updates.checkResult = core.UpdateInfo.createFrom({
             available: true,
             version: '1.3.0',
             canInstall: true,
@@ -534,7 +534,7 @@ describe('SettingsComponent: updates', () => {
     });
 
     it('explains why an update has to be installed by hand', async () => {
-        updates.checkResult = app.UpdateInfo.createFrom({
+        updates.checkResult = core.UpdateInfo.createFrom({
             available: true,
             version: '1.3.0',
             canInstall: false,

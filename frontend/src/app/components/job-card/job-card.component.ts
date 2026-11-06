@@ -1,5 +1,5 @@
 import { ChangeDetectionStrategy, Component, EventEmitter, Input, Output } from '@angular/core';
-import { model } from '../../wailsjs/wailsjs/go/models';
+import { model } from '../../api/models';
 
 const STATUS_LABELS: Record<string, string> = {
     pending: 'в очереди',

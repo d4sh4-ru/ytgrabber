@@ -1,4 +1,4 @@
-package app
+package core
 
 import (
 	"context"
@@ -11,8 +11,6 @@ import (
 	goruntime "runtime"
 	"slices"
 	"time"
-
-	"github.com/wailsapp/wails/v2/pkg/runtime"
 
 	"ytgrabber/internal/accounts"
 	"ytgrabber/internal/model"
@@ -99,7 +97,7 @@ func (a *App) CheckForUpdates() (UpdateInfo, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), updateCheckTimeout)
 	defer cancel()
 	// A pre-release build is offered newer pre-releases too.
-	prerelease := a.GetSettings().PrereleaseUpdates || current.IsPrerelease()
+	prerelease := a.currentSettings().PrereleaseUpdates || current.IsPrerelease()
 	release, err := a.updater.Latest(ctx, prerelease)
 	if err != nil {
 		return a.GetUpdateInfo(), err
@@ -249,24 +247,23 @@ func (a *App) hasActiveJobs() bool {
 	return false
 }
 
-// OpenReleasePage открывает страницу найденного релиза в браузере.
-func (a *App) OpenReleasePage() error {
-	url := a.GetUpdateInfo().PageURL
-	if url == "" {
-		url = "https://github.com/" + updater.Repo + "/releases/latest"
+// ReleasePageURL is the page of the found release, or of the latest one;
+// the adapter opens it in a browser.
+func (a *App) ReleasePageURL() string {
+	if url := a.GetUpdateInfo().PageURL; url != "" {
+		return url
 	}
-	runtime.BrowserOpenURL(a.ctx, url)
-	return nil
+	return "https://github.com/" + updater.Repo + "/releases/latest"
 }
 
 // SetUpdateSettings включает автоматическую проверку обновлений и
 // тестовые (pre-release) версии.
 func (a *App) SetUpdateSettings(autoCheck bool, prerelease bool) (Settings, error) {
 	if err := a.ensureReady(); err != nil {
-		return a.GetSettings(), err
+		return a.currentSettings(), err
 	}
 	if _, err := a.updateSettings(func(s *Settings) { s.AutoCheckUpdates = autoCheck }, settingUpdateAutoCheck, boolSetting(autoCheck)); err != nil {
-		return a.GetSettings(), err
+		return a.currentSettings(), err
 	}
 	return a.updateSettings(func(s *Settings) { s.PrereleaseUpdates = prerelease }, settingUpdatePrerelease, boolSetting(prerelease))
 }
@@ -287,7 +284,7 @@ func (a *App) watchForUpdates(ctx context.Context) {
 	ticker := time.NewTicker(updateCheckInterval)
 	defer ticker.Stop()
 	for {
-		if a.GetSettings().AutoCheckUpdates {
+		if a.currentSettings().AutoCheckUpdates {
 			info, err := a.CheckForUpdates()
 			switch {
 			case err != nil:

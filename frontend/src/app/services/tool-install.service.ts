@@ -1,7 +1,7 @@
 import { inject, Injectable } from '@angular/core';
 import { BehaviorSubject, Observable } from 'rxjs';
-import { CancelToolInstall, InstallTools } from '../wailsjs/wailsjs/go/app/App';
-import { fromWailsEvent } from '../shared/wails-event';
+import { tools } from '../api/models';
+import { Transport } from '../api/transport';
 import { SettingsService } from './settings.service';
 
 export type ToolInstallStage = 'downloading' | 'verifying' | 'extracting' | 'done' | 'failed';
@@ -32,6 +32,7 @@ const IDLE_STATE: ToolInstallState = { isRunning: false, progress: {} };
 export class ToolInstallService {
     public readonly state$: Observable<ToolInstallState>;
 
+    private readonly transport = inject(Transport);
     private readonly settingsService = inject(SettingsService);
     private readonly stateSubject$ = new BehaviorSubject<ToolInstallState>(IDLE_STATE);
 
@@ -39,15 +40,15 @@ export class ToolInstallService {
         this.state$ = this.stateSubject$.asObservable();
 
         // Root service: lives as long as the app, so the subscription does too.
-        fromWailsEvent<ToolInstallProgress>('tool-install-progress').subscribe(
-            (progress: ToolInstallProgress): void => {
+        this.transport
+            .events$<ToolInstallProgress>('tool-install-progress')
+            .subscribe((progress: ToolInstallProgress): void => {
                 const state = this.stateSubject$.value;
                 this.stateSubject$.next({
                     ...state,
                     progress: { ...state.progress, [progress.tool]: progress },
                 });
-            },
-        );
+            });
     }
 
     /** Installs the given tools, or every missing one when the list is empty. */
@@ -58,7 +59,9 @@ export class ToolInstallService {
 
         this.stateSubject$.next({ isRunning: true, progress: {} });
         try {
-            this.settingsService.setDependencies(await InstallTools([...names]));
+            this.settingsService.setDependencies(
+                await this.transport.call<tools.Report>('InstallTools', [[...names]]),
+            );
         } catch (error: unknown) {
             // Some tools may have been installed before the failure.
             await this.settingsService.refreshDependencies().catch((): void => undefined);
@@ -69,6 +72,6 @@ export class ToolInstallService {
     }
 
     public cancel(): Promise<void> {
-        return CancelToolInstall();
+        return this.transport.call<void>('CancelToolInstall');
     }
 }

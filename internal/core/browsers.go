@@ -1,4 +1,4 @@
-package app
+package core
 
 import (
 	"context"
@@ -39,7 +39,7 @@ func (a *App) ScanBrowsers(site string) ([]browsers.Match, error) {
 
 // ConnectBrowserProfile подключает аккаунт сайта из профиля браузера,
 // найденного ScanBrowsers: из профиля берутся только cookies этого сайта.
-func (a *App) ConnectBrowserProfile(site string, browserID string, profileDir string) (*model.Account, error) {
+func (a *App) ConnectBrowserProfile(user UserID, site string, browserID string, profileDir string) (*model.Account, error) {
 	if err := a.ensureReady(); err != nil {
 		return nil, err
 	}
@@ -57,7 +57,7 @@ func (a *App) ConnectBrowserProfile(site string, browserID string, profileDir st
 // RefreshAccount заново берёт cookies из того же профиля браузера, из
 // которого аккаунт был подключён. Аккаунт из файла обновляется новым
 // файлом (ImportCookiesFile).
-func (a *App) RefreshAccount(id string) (*model.Account, error) {
+func (a *App) RefreshAccount(user UserID, id string) (*model.Account, error) {
 	if err := a.ensureReady(); err != nil {
 		return nil, err
 	}
