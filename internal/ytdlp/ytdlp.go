@@ -50,6 +50,25 @@ func IsValidQuality(quality string) bool {
 	return validQualities[quality]
 }
 
+// Output formats BuildArgs asks yt-dlp to produce.
+const (
+	videoFormat = "mp4"
+	audioFormat = "mp3"
+)
+
+// OutputFormat is the container or codec a quality ends up in ("mp4" for
+// video, "mp3" for audio), or "" for a quality the UI doesn't offer.
+func OutputFormat(quality string) string {
+	switch {
+	case quality == "audio":
+		return audioFormat
+	case IsValidQuality(quality):
+		return videoFormat
+	default:
+		return ""
+	}
+}
+
 // NormalizeURL accepts what a user would paste into the form — with or
 // without a scheme — and only lets http(s) URLs through. Anything else
 // (including strings starting with "-" that yt-dlp would parse as options)
@@ -121,13 +140,13 @@ func BuildArgs(sourceURL string, quality string, downloadsDir string, ffmpegPath
 
 	switch quality {
 	case "1080p":
-		args = append(args, "-f", "bv*[height<=1080]+ba/b[height<=1080]", "--merge-output-format", "mp4")
+		args = append(args, "-f", "bv*[height<=1080]+ba/b[height<=1080]", "--merge-output-format", videoFormat)
 	case "720p":
-		args = append(args, "-f", "bv*[height<=720]+ba/b[height<=720]", "--merge-output-format", "mp4")
+		args = append(args, "-f", "bv*[height<=720]+ba/b[height<=720]", "--merge-output-format", videoFormat)
 	case "audio":
-		args = append(args, "-f", "ba/b", "-x", "--audio-format", "mp3")
+		args = append(args, "-f", "ba/b", "-x", "--audio-format", audioFormat)
 	default: // "best"
-		args = append(args, "-f", "bv*+ba/b", "--merge-output-format", "mp4")
+		args = append(args, "-f", "bv*+ba/b", "--merge-output-format", videoFormat)
 	}
 
 	args = append(args, "--write-thumbnail", "--convert-thumbnails", "jpg")

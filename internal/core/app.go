@@ -26,6 +26,7 @@ import (
 	"ytgrabber/internal/storage"
 	"ytgrabber/internal/tools"
 	"ytgrabber/internal/updater"
+	"ytgrabber/internal/ytdlp"
 )
 
 // Version is shown in the settings screen. Release builds set it from the
@@ -212,6 +213,7 @@ func (a *App) init() error {
 	a.settings = settings
 	a.tools = toolSet
 	for _, stored := range stored {
+		stored.Format = ytdlp.OutputFormat(stored.Quality)
 		a.jobs[stored.ID] = &job{DownloadJob: *stored}
 	}
 	a.mu.Unlock()

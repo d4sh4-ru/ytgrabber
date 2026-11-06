@@ -1,6 +1,6 @@
 import { ChangeDetectionStrategy, Component, Input } from '@angular/core';
 
-export type IconName = 'close' | 'play' | 'pause' | 'music' | 'folder' | 'trash';
+export type IconName = 'close' | 'play' | 'pause' | 'music' | 'video' | 'folder' | 'trash';
 
 /** Stroke width per icon; the close cross is drawn heavier to read at small sizes. */
 const STROKE_WIDTHS: Readonly<Record<IconName, number>> = {
@@ -8,6 +8,7 @@ const STROKE_WIDTHS: Readonly<Record<IconName, number>> = {
     play: 2,
     pause: 2,
     music: 1.75,
+    video: 1.75,
     folder: 1.75,
     trash: 1.75,
 };

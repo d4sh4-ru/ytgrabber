@@ -61,4 +61,38 @@ describe('JobCardComponent', () => {
         expect(buttons(element)).not.toContain('Войти…');
         expect(buttons(element)).toContain('Повторить');
     });
+
+    describe('quality', () => {
+        function quality(element: HTMLElement): string {
+            return element.querySelector('.job-card__quality')?.textContent?.trim() ?? '';
+        }
+
+        for (const status of ['pending', 'downloading', 'processing', 'done', 'error']) {
+            it(`shows the chosen video quality while ${status}`, () => {
+                const element = render({ status, quality: '1080p', format: 'mp4' });
+                expect(quality(element)).toBe('1080p · MP4');
+                expect(element.querySelector('.job-card__quality app-icon')).not.toBeNull();
+            });
+
+            it(`marks an audio job while ${status}`, () => {
+                expect(quality(render({ status, quality: 'audio', format: 'mp3' }))).toBe(
+                    'Аудио · MP3',
+                );
+            });
+        }
+
+        it('names the best quality', () => {
+            expect(quality(render({ status: 'pending', quality: 'best', format: 'mp4' }))).toBe(
+                'Лучшее качество · MP4',
+            );
+        });
+
+        it('marks audio even when the format is unknown', () => {
+            expect(quality(render({ status: 'pending', quality: 'audio' }))).toBe('Аудио');
+        });
+
+        it('shows nothing for a job without a quality', () => {
+            expect(render({ status: 'error' }).querySelector('.job-card__quality')).toBeNull();
+        });
+    });
 });

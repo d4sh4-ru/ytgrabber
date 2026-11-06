@@ -104,6 +104,25 @@
         text-overflow: ellipsis;
     }
 
+    &__meta {
+        display: flex;
+        flex-shrink: 0;
+        align-items: center;
+        gap: 8px;
+    }
+
+    &__quality {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        padding: 1px 6px;
+        border: 1px solid v.$border-subtle;
+        border-radius: v.$radius-sm;
+        background: v.$bg-elevated;
+        color: v.$text-primary;
+        white-space: nowrap;
+    }
+
     &__status {
         flex-shrink: 0;
     }

@@ -1,5 +1,6 @@
 import { ChangeDetectionStrategy, Component, EventEmitter, Input, Output } from '@angular/core';
 import { model } from '../../api/models';
+import { IconComponent, IconName } from '../icon/icon.component';
 
 const STATUS_LABELS: Record<string, string> = {
     pending: 'в очереди',
@@ -7,6 +8,12 @@ const STATUS_LABELS: Record<string, string> = {
     processing: 'обработка',
     done: 'готово',
     error: 'ошибка',
+};
+
+const VIDEO_QUALITY_LABELS: Record<string, string> = {
+    best: 'Лучшее качество',
+    '1080p': '1080p',
+    '720p': '720p',
 };
 
 const TRACK_LABELS: Record<string, string> = {
@@ -17,7 +24,7 @@ const TRACK_LABELS: Record<string, string> = {
 @Component({
     selector: 'app-job-card',
     standalone: true,
-    imports: [],
+    imports: [IconComponent],
     templateUrl: './job-card.component.html',
     styleUrl: './job-card.component.scss',
     changeDetection: ChangeDetectionStrategy.OnPush,
@@ -42,6 +49,24 @@ export class JobCardComponent {
 
     protected get statusLabel(): string {
         return STATUS_LABELS[this.job.status] ?? this.job.status;
+    }
+
+    protected get isAudio(): boolean {
+        return this.job.quality === 'audio';
+    }
+
+    /** What the job downloads, from the job itself: "720p", "Аудио · MP3"; empty for old jobs. */
+    protected get qualityLabel(): string {
+        const format = this.job.format ? this.job.format.toUpperCase() : '';
+        if (this.isAudio) {
+            return format ? `Аудио · ${format}` : 'Аудио';
+        }
+        const label = VIDEO_QUALITY_LABELS[this.job.quality] ?? '';
+        return label && format ? `${label} · ${format}` : label;
+    }
+
+    protected get qualityIcon(): IconName {
+        return this.isAudio ? 'music' : 'video';
     }
 
     protected get isProcessing(): boolean {

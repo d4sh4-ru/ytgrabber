@@ -179,7 +179,7 @@ func TestSettingsKeyValue(t *testing.T) {
 func TestJobAccountFieldsAndAccounts(t *testing.T) {
 	db := openTestDB(t, "")
 
-	job := &model.DownloadJob{ID: "j1", URL: "https://x.com/a", Status: model.StatusError, ErrorKind: model.ErrorLoginRequired,
+	job := &model.DownloadJob{ID: "j1", URL: "https://x.com/a", Quality: "audio", Status: model.StatusError, ErrorKind: model.ErrorLoginRequired,
 		UseAccount: false, Site: "x.com", AccountUsed: true}
 	if err := db.SaveJob(job); err != nil {
 		t.Fatal(err)
@@ -188,7 +188,7 @@ func TestJobAccountFieldsAndAccounts(t *testing.T) {
 	if err != nil || len(jobs) != 1 {
 		t.Fatalf("jobs = %+v, %v", jobs, err)
 	}
-	if got := jobs[0]; got.ErrorKind != model.ErrorLoginRequired || got.UseAccount || got.Site != "x.com" || !got.AccountUsed {
+	if got := jobs[0]; got.Quality != "audio" || got.ErrorKind != model.ErrorLoginRequired || got.UseAccount || got.Site != "x.com" || !got.AccountUsed {
 		t.Errorf("job = %+v", got)
 	}
 

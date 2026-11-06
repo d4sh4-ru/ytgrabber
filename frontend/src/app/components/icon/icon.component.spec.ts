@@ -17,7 +17,15 @@ describe('IconComponent', () => {
     }
 
     it('draws every icon in the current colour', () => {
-        for (const name of ['close', 'play', 'pause', 'music', 'folder', 'trash'] as IconName[]) {
+        for (const name of [
+            'close',
+            'play',
+            'pause',
+            'music',
+            'video',
+            'folder',
+            'trash',
+        ] as IconName[]) {
             const svg = render(name);
             expect(svg.getAttribute('stroke')).toBe('currentColor');
             expect(svg.children.length).toBeGreaterThan(0);
