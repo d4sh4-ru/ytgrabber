@@ -38,11 +38,19 @@
     }
 
     <div class="job-card__footer">
-        <span class="job-card__status">
-            {{ statusLabel }}
-            @if (job.accountUsed) {
-                · через аккаунт {{ job.site }}
+        <span class="job-card__meta">
+            @if (qualityLabel) {
+                <span class="job-card__quality" [title]="'Формат загрузки: ' + qualityLabel">
+                    <app-icon [name]="qualityIcon" [size]="12" />
+                    {{ qualityLabel }}
+                </span>
             }
+            <span class="job-card__status">
+                {{ statusLabel }}
+                @if (job.accountUsed) {
+                    · через аккаунт {{ job.site }}
+                }
+            </span>
         </span>
         @if (job.title) {
             <span class="job-card__url" [title]="job.url">{{ job.url }}</span>

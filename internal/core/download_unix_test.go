@@ -107,6 +107,54 @@ func TestDownloadFailureShowsYtDlpError(t *testing.T) {
 	}
 }
 
+// TestJobKeepsQuality checks the chosen quality stays with the job: it
+// survives a restart and "Повторить", and comes with its output format.
+func TestJobKeepsQuality(t *testing.T) {
+	app, events := newAppWithFakeTools(t)
+
+	id, err := app.DownloadVideo(LocalUser, "https://example.com/fail", "audio", true)
+	if err != nil {
+		t.Fatal(err)
+	}
+	jobs, _ := app.GetJobs(LocalUser)
+	if len(jobs) != 1 || jobs[0].Quality != "audio" || jobs[0].Format != "mp3" {
+		t.Fatalf("new job = %+v", jobs)
+	}
+	waitFor(t, "job error", func() bool {
+		jobs, _ := app.GetJobs(LocalUser)
+		return len(jobs) == 1 && jobs[0].Status == model.StatusError
+	})
+	app.Stop()
+
+	app2 := New(app.paths)
+	app2.events = EventFunc(events.emit)
+	if err := app2.init(); err != nil {
+		t.Fatal(err)
+	}
+	defer app2.Stop()
+	app2.settings.YtDlpPath = app.settings.YtDlpPath
+	app2.settings.FfmpegPath = app.settings.FfmpegPath
+	app2.tools = app2.resolveTools(app2.settings)
+	app2.tools.Ffprobe.Found = false
+
+	jobs, _ = app2.GetJobs(LocalUser)
+	if len(jobs) != 1 || jobs[0].Quality != "audio" || jobs[0].Format != "mp3" {
+		t.Fatalf("job after restart = %+v", jobs)
+	}
+
+	if err := app2.RetryJob(LocalUser, id, true); err != nil {
+		t.Fatal(err)
+	}
+	jobs, _ = app2.GetJobs(LocalUser)
+	if len(jobs) != 1 || jobs[0].Quality != "audio" || jobs[0].Format != "mp3" {
+		t.Errorf("job after retry = %+v", jobs)
+	}
+	waitFor(t, "retried job error", func() bool {
+		jobs, _ := app2.GetJobs(LocalUser)
+		return len(jobs) == 1 && jobs[0].Status == model.StatusError
+	})
+}
+
 // TestRemoveRunningJob checks cancellation kills the whole process group
 // promptly and removes the partial download.
 func TestRemoveRunningJob(t *testing.T) {

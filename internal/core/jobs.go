@@ -79,6 +79,7 @@ func (a *App) DownloadVideo(user UserID, rawURL string, quality string, useAccou
 		ID:         uuid.NewString(),
 		URL:        sourceURL,
 		Quality:    quality,
+		Format:     ytdlp.OutputFormat(quality),
 		Status:     model.StatusPending,
 		Tracks:     []model.DownloadTrack{},
 		CreatedAt:  time.Now().UTC().Format(time.RFC3339Nano),

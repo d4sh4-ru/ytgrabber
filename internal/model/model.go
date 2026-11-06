@@ -43,10 +43,13 @@ const (
 // DownloadJob is a download that hasn't made it into the library yet:
 // queued, running or failed.
 type DownloadJob struct {
-	ID        string          `json:"id"`
-	URL       string          `json:"url"`
-	Title     string          `json:"title"`
-	Quality   string          `json:"quality"`
+	ID      string `json:"id"`
+	URL     string `json:"url"`
+	Title   string `json:"title"`
+	Quality string `json:"quality"`
+	// Format is what Quality produces ("mp4", "mp3"). It is derived, not
+	// stored: the core fills it in for new and reloaded jobs.
+	Format    string          `json:"format"`
 	FilePath  string          `json:"filePath"`
 	Status    DownloadStatus  `json:"status"`
 	Tracks    []DownloadTrack `json:"tracks"`

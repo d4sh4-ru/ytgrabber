@@ -88,6 +88,15 @@ func TestBuildYtDlpArgs(t *testing.T) {
 	}
 }
 
+func TestOutputFormat(t *testing.T) {
+	cases := map[string]string{"best": "mp4", "1080p": "mp4", "720p": "mp4", "audio": "mp3", "": "", "8k": ""}
+	for quality, want := range cases {
+		if got := OutputFormat(quality); got != want {
+			t.Errorf("OutputFormat(%q) = %q, want %q", quality, got, want)
+		}
+	}
+}
+
 func TestIsLoginRequired(t *testing.T) {
 	cases := map[string]bool{
 		"[youtube] abc: Sign in to confirm you’re not a bot. Use --cookies-from-browser or --cookies for the authentication.": true,
