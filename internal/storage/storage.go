@@ -32,6 +32,7 @@ var migrations = []func(tx *sql.Tx, env MigrationEnv) error{
 	migrateAccounts,
 	migrateAccountProfileDir,
 	migratePlaybackPosition,
+	migrateJobErrorDetails,
 }
 
 // Open opens the SQLite file with a single connection (so writes
@@ -224,6 +225,13 @@ func migratePlaybackPosition(tx *sql.Tx, _ MigrationEnv) error {
 	return err
 }
 
+// migrateJobErrorDetails keeps a failed job's full tool output next to
+// its summary, so it survives a restart.
+func migrateJobErrorDetails(tx *sql.Tx, _ MigrationEnv) error {
+	_, err := tx.Exec(`ALTER TABLE jobs ADD COLUMN error_details TEXT NOT NULL DEFAULT ''`)
+	return err
+}
+
 func (d *DB) Close() error {
 	return d.conn.Close()
 }
@@ -238,8 +246,8 @@ func (d *DB) SaveJob(job *model.DownloadJob) error {
 	}
 
 	_, err := d.conn.Exec(
-		`INSERT INTO jobs (id, url, title, status, quality, file_path, error, error_kind, use_account, site, account_used, created_at)
-		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+		`INSERT INTO jobs (id, url, title, status, quality, file_path, error, error_details, error_kind, use_account, site, account_used, created_at)
+		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 		 ON CONFLICT(id) DO UPDATE SET
 			url = excluded.url,
 			title = excluded.title,
@@ -247,11 +255,12 @@ func (d *DB) SaveJob(job *model.DownloadJob) error {
 			quality = excluded.quality,
 			file_path = excluded.file_path,
 			error = excluded.error,
+			error_details = excluded.error_details,
 			error_kind = excluded.error_kind,
 			use_account = excluded.use_account,
 			site = excluded.site,
 			account_used = excluded.account_used`,
-		job.ID, job.URL, job.Title, job.Status, job.Quality, job.FilePath, job.Error, job.ErrorKind, job.UseAccount, job.Site, job.AccountUsed, createdAt,
+		job.ID, job.URL, job.Title, job.Status, job.Quality, job.FilePath, job.Error, job.ErrorDetails, job.ErrorKind, job.UseAccount, job.Site, job.AccountUsed, createdAt,
 	)
 	return err
 }
@@ -266,14 +275,14 @@ func (d *DB) DeleteJob(id string) error {
 // anymore.
 func (d *DB) MarkInterruptedJobs(message string) error {
 	_, err := d.conn.Exec(
-		`UPDATE jobs SET status = ?, error = ?, error_kind = '' WHERE status IN (?, ?, ?)`,
+		`UPDATE jobs SET status = ?, error = ?, error_details = '', error_kind = '' WHERE status IN (?, ?, ?)`,
 		model.StatusError, message, model.StatusPending, model.StatusDownloading, model.StatusProcessing,
 	)
 	return err
 }
 
 func (d *DB) LoadJobs() ([]*model.DownloadJob, error) {
-	rows, err := d.conn.Query(`SELECT id, url, title, status, quality, file_path, error, error_kind, use_account, site, account_used, created_at FROM jobs ORDER BY created_at ASC`)
+	rows, err := d.conn.Query(`SELECT id, url, title, status, quality, file_path, error, error_details, error_kind, use_account, site, account_used, created_at FROM jobs ORDER BY created_at ASC`)
 	if err != nil {
 		return nil, err
 	}
@@ -282,7 +291,7 @@ func (d *DB) LoadJobs() ([]*model.DownloadJob, error) {
 	jobs := make([]*model.DownloadJob, 0)
 	for rows.Next() {
 		job := &model.DownloadJob{Tracks: []model.DownloadTrack{}}
-		if err := rows.Scan(&job.ID, &job.URL, &job.Title, &job.Status, &job.Quality, &job.FilePath, &job.Error, &job.ErrorKind, &job.UseAccount, &job.Site, &job.AccountUsed, &job.CreatedAt); err != nil {
+		if err := rows.Scan(&job.ID, &job.URL, &job.Title, &job.Status, &job.Quality, &job.FilePath, &job.Error, &job.ErrorDetails, &job.ErrorKind, &job.UseAccount, &job.Site, &job.AccountUsed, &job.CreatedAt); err != nil {
 			return nil, err
 		}
 		jobs = append(jobs, job)

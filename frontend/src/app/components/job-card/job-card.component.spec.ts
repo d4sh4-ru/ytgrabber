@@ -61,4 +61,50 @@ describe('JobCardComponent', () => {
         expect(buttons(element)).not.toContain('Войти…');
         expect(buttons(element)).toContain('Повторить');
     });
+
+    it('shows the backend error text whole', () => {
+        const message = 'ERROR: ' + 'очень длинная ошибка '.repeat(40);
+        const element = render({ status: 'error', error: message });
+        expect(element.querySelector('.job-card__error-text')?.textContent).toBe(message);
+    });
+
+    it('unfolds and folds the full error output from the error icon', () => {
+        const details =
+            'WARNING: minor\nERROR: Video unavailable\nTraceback (most recent call last):';
+        const element = render({
+            status: 'error',
+            error: 'Video unavailable',
+            errorDetails: details,
+        });
+
+        const toggle = element.querySelector<HTMLButtonElement>('.job-card__error-toggle')!;
+        const panel = element.querySelector<HTMLElement>('.job-card__error-details')!;
+        expect(toggle.getAttribute('aria-expanded')).toBe('false');
+        expect(toggle.getAttribute('aria-label')).toBe('Показать подробности ошибки');
+        expect(toggle.getAttribute('aria-controls')).toBe(panel.id);
+        expect(panel.hidden).toBe(true);
+
+        toggle.click();
+        fixture.detectChanges();
+        expect(toggle.getAttribute('aria-expanded')).toBe('true');
+        expect(toggle.getAttribute('aria-label')).toBe('Скрыть подробности ошибки');
+        expect(panel.hidden).toBe(false);
+        expect(panel.textContent).toBe(details);
+
+        toggle.click();
+        fixture.detectChanges();
+        expect(toggle.getAttribute('aria-expanded')).toBe('false');
+        expect(panel.hidden).toBe(true);
+    });
+
+    it('offers no toggle when the details only repeat the error', () => {
+        const element = render({
+            status: 'error',
+            error: 'HTTP Error 404',
+            errorDetails: 'HTTP Error 404\n',
+        });
+        expect(element.querySelector('.job-card__error-toggle')).toBeNull();
+        expect(element.querySelector('.job-card__error-details')).toBeNull();
+        expect(element.querySelector('.job-card__error-text')?.textContent).toBe('HTTP Error 404');
+    });
 });
