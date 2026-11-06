@@ -1,16 +1,7 @@
-import { Injectable } from '@angular/core';
+import { inject, Injectable } from '@angular/core';
 import { BehaviorSubject, Observable } from 'rxjs';
-import {
-    CheckAccount,
-    ConnectBrowserProfile,
-    GetAccounts,
-    ImportCookiesFile,
-    RefreshAccount,
-    RemoveAccount,
-    ScanBrowsers,
-} from '../wailsjs/wailsjs/go/app/App';
-import { browsers, model } from '../wailsjs/wailsjs/go/models';
-import { fromWailsEvent } from '../shared/wails-event';
+import { browsers, model } from '../api/models';
+import { Transport } from '../api/transport';
 
 /**
  * Connected site accounts. The list is cached in a subject because the
@@ -21,19 +12,20 @@ import { fromWailsEvent } from '../shared/wails-event';
 export class AccountsService {
     public readonly accounts$: Observable<model.Account[]>;
 
+    private readonly transport = inject(Transport);
     private readonly accountsSubject$ = new BehaviorSubject<model.Account[]>([]);
 
     public constructor() {
         this.accounts$ = this.accountsSubject$.asObservable();
 
         // Root service: lives as long as the app, so the subscription does too.
-        fromWailsEvent<void>('accounts-changed').subscribe((): void => {
+        this.transport.events$<void>('accounts-changed').subscribe((): void => {
             void this.refresh().catch((): void => undefined);
         });
     }
 
     public async refresh(): Promise<model.Account[]> {
-        const accounts = await GetAccounts();
+        const accounts = await this.transport.call<model.Account[]>('GetAccounts');
         this.accountsSubject$.next(accounts);
         return accounts;
     }
@@ -44,25 +36,31 @@ export class AccountsService {
      * cancelled.
      */
     public async importCookiesFile(site: string): Promise<model.Account | null> {
-        const account = await ImportCookiesFile(site);
+        const account = await this.transport.call<model.Account | null>('ImportCookiesFile', [
+            site,
+        ]);
         await this.refresh();
         return account ?? null;
     }
 
     /** Browser profiles that have cookies of the site; reads names only. */
     public scanBrowsers(site: string): Promise<browsers.Match[]> {
-        return ScanBrowsers(site);
+        return this.transport.call<browsers.Match[]>('ScanBrowsers', [site]);
     }
 
     public async connectProfile(site: string, match: browsers.Match): Promise<model.Account> {
-        const account = await ConnectBrowserProfile(site, match.browserId, match.profileDir);
+        const account = await this.transport.call<model.Account>('ConnectBrowserProfile', [
+            site,
+            match.browserId,
+            match.profileDir,
+        ]);
         await this.refresh();
         return account;
     }
 
     /** Re-reads a browser account's cookies from the same profile. */
     public async refreshFromBrowser(id: string): Promise<model.Account> {
-        const account = await RefreshAccount(id);
+        const account = await this.transport.call<model.Account>('RefreshAccount', [id]);
         await this.refresh();
         return account;
     }
@@ -73,13 +71,13 @@ export class AccountsService {
     }
 
     public async check(id: string): Promise<model.Account> {
-        const account = await CheckAccount(id);
+        const account = await this.transport.call<model.Account>('CheckAccount', [id]);
         await this.refresh();
         return account;
     }
 
     public async remove(id: string): Promise<void> {
-        await RemoveAccount(id);
+        await this.transport.call<void>('RemoveAccount', [id]);
         await this.refresh();
     }
 }

@@ -1,4 +1,4 @@
-package app
+package core
 
 import (
 	"os"
@@ -47,7 +47,7 @@ func newResetFixture(t *testing.T) *resetFixture {
 	if err := f.app.init(); err != nil {
 		t.Fatal(err)
 	}
-	t.Cleanup(func() { f.app.shutdown(nil) })
+	t.Cleanup(func() { f.app.Stop() })
 
 	downloads := f.app.settings.DownloadsDir
 	os.MkdirAll(downloads, 0o755)

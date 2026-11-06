@@ -1,13 +1,10 @@
-package app
+package core
 
 import (
 	"errors"
 	"fmt"
 	"os"
-	"path/filepath"
 	"strconv"
-
-	"github.com/wailsapp/wails/v2/pkg/runtime"
 
 	"ytgrabber/internal/platform"
 	"ytgrabber/internal/storage"
@@ -87,34 +84,27 @@ func clampConcurrency(n int) int {
 }
 
 // GetSettings возвращает текущие настройки.
-func (a *App) GetSettings() Settings {
+func (a *App) GetSettings(user UserID) Settings {
+	return a.currentSettings()
+}
+
+func (a *App) currentSettings() Settings {
 	a.mu.RLock()
 	defer a.mu.RUnlock()
 	return a.settings
 }
 
-// ChooseDownloadsDir открывает системный диалог выбора папки загрузок.
-// Отмена диалога не считается ошибкой — возвращаются текущие настройки.
-func (a *App) ChooseDownloadsDir() (Settings, error) {
+// SetDownloadsDir меняет папку загрузок на dir (выбранную в диалоге
+// адаптером) после проверки, что в неё можно писать.
+func (a *App) SetDownloadsDir(user UserID, dir string) (Settings, error) {
 	if err := a.ensureReady(); err != nil {
-		return a.GetSettings(), err
-	}
-
-	current := a.GetSettings()
-	dir, err := runtime.OpenDirectoryDialog(a.ctx, runtime.OpenDialogOptions{
-		Title:                "Папка для загрузок",
-		DefaultDirectory:     existingDirOrHome(current.DownloadsDir),
-		CanCreateDirectories: true,
-	})
-	if err != nil {
-		return current, fmt.Errorf("не удалось открыть диалог: %w", err)
+		return a.currentSettings(), err
 	}
 	if dir == "" {
-		return current, nil
+		return a.currentSettings(), errors.New("не указана папка")
 	}
-
 	if err := ensureWritableDir(dir); err != nil {
-		return current, err
+		return a.currentSettings(), err
 	}
 
 	return a.updateSettings(func(s *Settings) {
@@ -122,29 +112,19 @@ func (a *App) ChooseDownloadsDir() (Settings, error) {
 	}, settingDownloadsDir, dir)
 }
 
-// ChooseToolPath позволяет указать исполняемый файл yt-dlp или ffmpeg
-// вручную, если автоматический поиск его не находит.
-func (a *App) ChooseToolPath(tool string) (Settings, error) {
+// SetToolPath задаёт исполняемый файл yt-dlp или ffmpeg вручную, если
+// автоматический поиск его не находит.
+func (a *App) SetToolPath(tool string, path string) (Settings, error) {
 	if err := a.ensureReady(); err != nil {
-		return a.GetSettings(), err
+		return a.currentSettings(), err
 	}
 
 	key, err := toolSettingKey(tool)
 	if err != nil {
-		return a.GetSettings(), err
-	}
-
-	path, err := runtime.OpenFileDialog(a.ctx, runtime.OpenDialogOptions{
-		Title: fmt.Sprintf("Исполняемый файл %s", tool),
-	})
-	if err != nil {
-		return a.GetSettings(), fmt.Errorf("не удалось открыть диалог: %w", err)
-	}
-	if path == "" {
-		return a.GetSettings(), nil
+		return a.currentSettings(), err
 	}
 	if !platform.IsExecutableFile(path) {
-		return a.GetSettings(), fmt.Errorf("%s не является исполняемым файлом", path)
+		return a.currentSettings(), fmt.Errorf("%s не является исполняемым файлом", path)
 	}
 
 	return a.setToolPath(tool, key, path)
@@ -153,12 +133,12 @@ func (a *App) ChooseToolPath(tool string) (Settings, error) {
 // ResetToolPath возвращает автоматический поиск инструмента.
 func (a *App) ResetToolPath(tool string) (Settings, error) {
 	if err := a.ensureReady(); err != nil {
-		return a.GetSettings(), err
+		return a.currentSettings(), err
 	}
 
 	key, err := toolSettingKey(tool)
 	if err != nil {
-		return a.GetSettings(), err
+		return a.currentSettings(), err
 	}
 	return a.setToolPath(tool, key, "")
 }
@@ -167,7 +147,7 @@ func (a *App) ResetToolPath(tool string) (Settings, error) {
 // очереди подхватываются сразу, если лимит увеличился.
 func (a *App) SetMaxConcurrentDownloads(n int) (Settings, error) {
 	if err := a.ensureReady(); err != nil {
-		return a.GetSettings(), err
+		return a.currentSettings(), err
 	}
 
 	n = clampConcurrency(n)
@@ -181,8 +161,8 @@ func (a *App) SetMaxConcurrentDownloads(n int) (Settings, error) {
 }
 
 // OpenDownloadsDir открывает папку загрузок в файловом менеджере.
-func (a *App) OpenDownloadsDir() error {
-	dir := a.GetSettings().DownloadsDir
+func (a *App) OpenDownloadsDir(user UserID) error {
+	dir := a.GetSettings(user).DownloadsDir
 	if err := os.MkdirAll(dir, 0o755); err != nil {
 		return fmt.Errorf("не удалось создать папку %s: %w", dir, err)
 	}
@@ -207,7 +187,7 @@ func (a *App) setToolPath(tool string, key string, path string) (Settings, error
 // locations are re-resolved on every change since they depend on settings.
 func (a *App) updateSettings(apply func(*Settings), key string, value string) (Settings, error) {
 	if err := a.db.SetSetting(key, value); err != nil {
-		return a.GetSettings(), fmt.Errorf("не удалось сохранить настройку: %w", err)
+		return a.currentSettings(), fmt.Errorf("не удалось сохранить настройку: %w", err)
 	}
 
 	a.mu.Lock()
@@ -247,13 +227,4 @@ func ensureWritableDir(dir string) error {
 		return fmt.Errorf("нет прав на запись в папку %s", dir)
 	}
 	return nil
-}
-
-func existingDirOrHome(dir string) string {
-	for current := dir; current != "" && current != filepath.Dir(current); current = filepath.Dir(current) {
-		if info, err := os.Stat(current); err == nil && info.IsDir() {
-			return current
-		}
-	}
-	return platform.HomeDir()
 }

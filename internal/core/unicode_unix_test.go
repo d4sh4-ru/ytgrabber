@@ -1,6 +1,6 @@
 //go:build !windows
 
-package app
+package core
 
 import (
 	"os"
@@ -37,12 +37,12 @@ func TestNonLatinTitle(t *testing.T) {
 	app, events := newAppWithFakeTools(t)
 	os.WriteFile(app.settings.YtDlpPath, []byte(fakeYtDlpEncoding), 0o755)
 
-	if _, err := app.DownloadVideo("https://example.com/watch?v=abc", "best", true); err != nil {
+	if _, err := app.DownloadVideo(LocalUser, "https://example.com/watch?v=abc", "best", true); err != nil {
 		t.Fatal(err)
 	}
 	waitFor(t, "library entry", func() bool { return events.count("library-changed") > 0 })
 
-	videos, _ := app.GetLibrary()
+	videos, _ := app.GetLibrary(LocalUser)
 	if len(videos) != 1 {
 		t.Fatalf("library = %+v", videos)
 	}
@@ -59,10 +59,10 @@ func TestFinishJobFindsMangledPath(t *testing.T) {
 	script := strings.Replace(fakeYtDlpEncoding, `if [ "$enc" = "utf-8" ]; then`, `if false; then`, 1)
 	os.WriteFile(app.settings.YtDlpPath, []byte(script), 0o755)
 
-	app.DownloadVideo("https://example.com/watch?v=abc", "best", true)
+	app.DownloadVideo(LocalUser, "https://example.com/watch?v=abc", "best", true)
 	waitFor(t, "library entry", func() bool { return events.count("library-changed") > 0 })
 
-	videos, _ := app.GetLibrary()
+	videos, _ := app.GetLibrary(LocalUser)
 	want := filepath.Join(app.settings.DownloadsDir, "Привет мир [abc].mp4")
 	if len(videos) != 1 || videos[0].FilePath != want || videos[0].Title != "Привет мир" {
 		t.Errorf("library = %+v", videos)

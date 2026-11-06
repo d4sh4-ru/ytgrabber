@@ -6,7 +6,7 @@ import { UpdateProgress, UpdateService } from './services/update.service';
 import { DownloadService } from './services/download.service';
 import { SettingsService } from './services/settings.service';
 import { ToolInstallService, ToolInstallState } from './services/tool-install.service';
-import { app, model, tools } from './wailsjs/wailsjs/go/models';
+import { core, model, tools } from './api/models';
 
 class DownloadServiceStub {
     public readonly progress$ = new Subject<model.DownloadJob>();
@@ -40,16 +40,16 @@ class SettingsServiceStub {
         this.dependencies$ = this.dependenciesSubject$.asObservable();
     }
 
-    public getAppInfo(): Promise<app.AppInfo> {
-        return Promise.resolve(app.AppInfo.createFrom({ startupError: this.startupError }));
+    public getAppInfo(): Promise<core.AppInfo> {
+        return Promise.resolve(core.AppInfo.createFrom({ startupError: this.startupError }));
     }
 
-    public getSettings(): Promise<app.Settings> {
-        return Promise.resolve(app.Settings.createFrom({ downloadsDir: '/d' }));
+    public getSettings(): Promise<core.Settings> {
+        return Promise.resolve(core.Settings.createFrom({ downloadsDir: '/d' }));
     }
 
-    public getStorageInfo(): Promise<app.StorageInfo> {
-        return Promise.resolve(app.StorageInfo.createFrom({}));
+    public getStorageInfo(): Promise<core.StorageInfo> {
+        return Promise.resolve(core.StorageInfo.createFrom({}));
     }
 
     public refreshDependencies(): Promise<tools.Report> {
@@ -84,13 +84,13 @@ class AccountsServiceStub {
 }
 
 class UpdateServiceStub {
-    public readonly info$ = new BehaviorSubject<app.UpdateInfo | null>(null);
+    public readonly info$ = new BehaviorSubject<core.UpdateInfo | null>(null);
     public readonly progress$ = new BehaviorSubject<UpdateProgress | null>(null);
     public installs = 0;
     public pageOpened = 0;
 
-    public load(): Promise<app.UpdateInfo> {
-        return Promise.resolve(this.info$.value ?? app.UpdateInfo.createFrom({}));
+    public load(): Promise<core.UpdateInfo> {
+        return Promise.resolve(this.info$.value ?? core.UpdateInfo.createFrom({}));
     }
 
     public install(): Promise<void> {
@@ -204,7 +204,7 @@ describe('App', () => {
 
     it('offers an available update and installs it', async () => {
         updateService.info$.next(
-            app.UpdateInfo.createFrom({ available: true, version: '1.3.0', canInstall: true }),
+            core.UpdateInfo.createFrom({ available: true, version: '1.3.0', canInstall: true }),
         );
         const fixture = TestBed.createComponent(App);
         fixture.detectChanges();
@@ -222,7 +222,7 @@ describe('App', () => {
 
     it('links to the release page when the update cannot be installed in place', async () => {
         updateService.info$.next(
-            app.UpdateInfo.createFrom({
+            core.UpdateInfo.createFrom({
                 available: true,
                 version: '1.3.0',
                 canInstall: false,

@@ -16,7 +16,7 @@ import {
 } from '../../services/tool-install.service';
 import { AccountsService } from '../../services/accounts.service';
 import { UpdateProgress, UpdateService } from '../../services/update.service';
-import { app, model, tools } from '../../wailsjs/wailsjs/go/models';
+import { core, model, tools } from '../../api/models';
 import { formatBytes } from '../../shared/format-bytes';
 import { formatRelativeTime } from '../../shared/format-relative-time';
 import { connectedMessage, cookieCountLabel } from '../../shared/account-summary';
@@ -51,7 +51,7 @@ export class SettingsComponent implements OnInit, OnDestroy {
     private readonly destroy$ = new Subject<void>();
 
     // --- Settings ---
-    protected settings: app.Settings | null = null;
+    protected settings: core.Settings | null = null;
     protected readonly concurrencyOptions = CONCURRENCY_OPTIONS;
 
     // --- Accounts ---
@@ -72,17 +72,17 @@ export class SettingsComponent implements OnInit, OnDestroy {
     protected installState: ToolInstallState = { isRunning: false, progress: {} };
 
     // --- App info ---
-    protected appInfo: app.AppInfo | null = null;
+    protected appInfo: core.AppInfo | null = null;
 
     // --- Updates ---
-    protected update: app.UpdateInfo | null = null;
+    protected update: core.UpdateInfo | null = null;
     protected updateProgress: UpdateProgress | null = null;
     protected isCheckingUpdate = false;
     protected isInstallingUpdate = false;
     protected hasCheckedUpdate = false;
 
     // --- Delete all data ---
-    protected storage: app.StorageInfo | null = null;
+    protected storage: core.StorageInfo | null = null;
     protected resetStep: ResetStep = 'idle';
     protected resetDeleteMedia = false;
     protected isResetting = false;
@@ -153,7 +153,7 @@ export class SettingsComponent implements OnInit, OnDestroy {
 
         this.updateService.info$
             .pipe(takeUntil(this.destroy$))
-            .subscribe((info: app.UpdateInfo | null): void => {
+            .subscribe((info: core.UpdateInfo | null): void => {
                 this.update = info;
                 this.changeDetectorRef.markForCheck();
             });
@@ -217,7 +217,7 @@ export class SettingsComponent implements OnInit, OnDestroy {
         }
     }
 
-    private async applySettings(request: Promise<app.Settings>): Promise<void> {
+    private async applySettings(request: Promise<core.Settings>): Promise<void> {
         try {
             this.settings = await request;
         } catch (error: unknown) {

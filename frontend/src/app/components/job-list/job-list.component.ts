@@ -5,7 +5,7 @@ import {
     inject,
     Input,
 } from '@angular/core';
-import { model } from '../../wailsjs/wailsjs/go/models';
+import { model } from '../../api/models';
 import { DownloadService } from '../../services/download.service';
 import { NotificationService } from '../../services/notification.service';
 import { AccountsService } from '../../services/accounts.service';

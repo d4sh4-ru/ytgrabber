@@ -1,4 +1,4 @@
-package app
+package core
 
 import (
 	"database/sql"
@@ -59,7 +59,7 @@ func TestConnectFirefoxProfile(t *testing.T) {
 		t.Errorf("match = %+v", m)
 	}
 
-	account, err := app.ConnectBrowserProfile("instagram.com", "firefox", profileDir)
+	account, err := app.ConnectBrowserProfile(LocalUser, "instagram.com", "firefox", profileDir)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -74,14 +74,14 @@ func TestConnectFirefoxProfile(t *testing.T) {
 
 	// Refresh re-reads the same profile.
 	setFirefoxCookies(t, profileDir, "s2")
-	if _, err := app.RefreshAccount(account.ID); err != nil {
+	if _, err := app.RefreshAccount(LocalUser, account.ID); err != nil {
 		t.Fatal(err)
 	}
 	cookies, _ = app.accounts.Load(account.ID, "instagram.com")
 	if len(cookies) != 1 || cookies[0].Value != "s2" {
 		t.Errorf("refreshed snapshot = %+v", cookies)
 	}
-	if list, _ := app.GetAccounts(); len(list) != 1 || list[0].BrowserName != "Firefox" {
+	if list, _ := app.GetAccounts(LocalUser); len(list) != 1 || list[0].BrowserName != "Firefox" {
 		t.Errorf("accounts = %+v", list)
 	}
 }
@@ -90,10 +90,10 @@ func TestConnectBrowserProfileRejectsUnknownProfiles(t *testing.T) {
 	app, _ := newTestApp(t)
 	withFirefoxProfile(t, app)
 
-	if _, err := app.ConnectBrowserProfile("instagram.com", "firefox", t.TempDir()); err == nil {
+	if _, err := app.ConnectBrowserProfile(LocalUser, "instagram.com", "firefox", t.TempDir()); err == nil {
 		t.Error("connected a directory that is not a known profile")
 	}
-	if _, err := app.ConnectBrowserProfile("vk.com", "firefox", filepath.Join(app.browserEnv.Home, ".mozilla", "firefox", "abc.default-release")); err == nil {
+	if _, err := app.ConnectBrowserProfile(LocalUser, "vk.com", "firefox", filepath.Join(app.browserEnv.Home, ".mozilla", "firefox", "abc.default-release")); err == nil {
 		t.Error("connected a profile without the site's cookies")
 	}
 }
@@ -106,7 +106,7 @@ func TestRefreshFileAccountNeedsNewFile(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := app.RefreshAccount(account.ID); err == nil {
+	if _, err := app.RefreshAccount(LocalUser, account.ID); err == nil {
 		t.Error("refreshed a file account without a file")
 	}
 }

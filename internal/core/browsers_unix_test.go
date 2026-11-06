@@ -1,6 +1,6 @@
 //go:build !windows
 
-package app
+package core
 
 import (
 	"database/sql"
@@ -87,7 +87,7 @@ func TestConnectChromeProfile(t *testing.T) {
 		t.Fatalf("matches = %+v", matches)
 	}
 
-	account, err := app.ConnectBrowserProfile("instagram.com", "chrome", profileDir)
+	account, err := app.ConnectBrowserProfile(LocalUser, "instagram.com", "chrome", profileDir)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -106,7 +106,7 @@ func TestConnectChromeProfile(t *testing.T) {
 		t.Errorf("left behind in run/: %v", entries)
 	}
 
-	if _, err := app.RefreshAccount(account.ID); err != nil {
+	if _, err := app.RefreshAccount(LocalUser, account.ID); err != nil {
 		t.Errorf("refresh: %v", err)
 	}
 }
@@ -115,15 +115,15 @@ func TestConnectChromeProfileErrors(t *testing.T) {
 	app, _ := newTestApp(t)
 	root, _ := withChromeProfiles(t, app)
 
-	_, err := app.ConnectBrowserProfile("instagram.com", "chrome", filepath.Join(root, "Locked"))
+	_, err := app.ConnectBrowserProfile(LocalUser, "instagram.com", "chrome", filepath.Join(root, "Locked"))
 	if err == nil || !strings.Contains(err.Error(), "закройте браузер") {
 		t.Errorf("locked database error = %v", err)
 	}
-	_, err = app.ConnectBrowserProfile("instagram.com", "chrome", filepath.Join(root, "NoKey"))
+	_, err = app.ConnectBrowserProfile(LocalUser, "instagram.com", "chrome", filepath.Join(root, "NoKey"))
 	if err == nil || !strings.Contains(err.Error(), "не смог расшифровать") {
 		t.Errorf("decryption error = %v", err)
 	}
-	if list, _ := app.GetAccounts(); len(list) != 0 {
+	if list, _ := app.GetAccounts(LocalUser); len(list) != 0 {
 		t.Errorf("failed extractions created accounts: %+v", list)
 	}
 	if entries, _ := os.ReadDir(app.paths.RunDir()); len(entries) != 0 {
@@ -145,7 +145,7 @@ func TestConnectRefusesAppBoundProfiles(t *testing.T) {
 	os.WriteFile(filepath.Join(winRoot, "Last Version"), []byte("131.0.6778.86"), 0o644)
 	app.browserEnv = browsers.Env{GOOS: "windows", Home: app.browserEnv.Home, Vars: map[string]string{"LOCALAPPDATA": local}}
 
-	_, err := app.ConnectBrowserProfile("instagram.com", "chrome", filepath.Join(winRoot, "Default"))
+	_, err := app.ConnectBrowserProfile(LocalUser, "instagram.com", "chrome", filepath.Join(winRoot, "Default"))
 	if err == nil || !strings.Contains(err.Error(), "Firefox") {
 		t.Errorf("error = %v", err)
 	}

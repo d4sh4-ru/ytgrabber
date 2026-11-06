@@ -13,7 +13,7 @@ import { SettingsService } from './services/settings.service';
 import { ToolInstallService, ToolInstallState } from './services/tool-install.service';
 import { UpdateService } from './services/update.service';
 import { PlaybackService } from './services/playback.service';
-import { app, model, tools } from './wailsjs/wailsjs/go/models';
+import { core, model, tools } from './api/models';
 import { DownloadFormComponent } from './components/download-form/download-form.component';
 import { LibraryComponent } from './components/video-library/library.component';
 import { VideoPlayerModalComponent } from './components/video-player-modal/video-player-modal.component';
@@ -64,7 +64,7 @@ export class App implements OnInit, OnDestroy {
     private readonly removedJobIds = new Set<string>();
 
     // --- Updates ---
-    protected update: app.UpdateInfo | null = null;
+    protected update: core.UpdateInfo | null = null;
     protected isUpdateDismissed = false;
     protected isInstallingUpdate = false;
 
@@ -156,7 +156,7 @@ export class App implements OnInit, OnDestroy {
 
         this.updateService.info$
             .pipe(takeUntil(this.destroy$))
-            .subscribe((info: app.UpdateInfo | null): void => {
+            .subscribe((info: core.UpdateInfo | null): void => {
                 this.update = info;
                 this.changeDetectorRef.markForCheck();
             });

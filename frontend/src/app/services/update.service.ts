@@ -1,17 +1,11 @@
-import { Injectable } from '@angular/core';
+import { inject, Injectable } from '@angular/core';
 import { BehaviorSubject, Observable } from 'rxjs';
-import {
-    CheckForUpdates,
-    GetUpdateInfo,
-    InstallUpdate,
-    OpenReleasePage,
-} from '../wailsjs/wailsjs/go/app/App';
-import { app } from '../wailsjs/wailsjs/go/models';
-import { fromWailsEvent } from '../shared/wails-event';
+import { core } from '../api/models';
+import { Transport } from '../api/transport';
 
 export type UpdateStage = 'verifying' | 'downloading' | 'installing';
 
-/** Mirrors app.UpdateProgress in Go (sent as an event, so Wails generates no class for it). */
+/** Mirrors core.UpdateProgress in Go (sent as an event, so Wails generates no class for it). */
 export interface UpdateProgress {
     readonly stage: UpdateStage;
     readonly done: number;
@@ -25,10 +19,11 @@ export interface UpdateProgress {
  */
 @Injectable({ providedIn: 'root' })
 export class UpdateService {
-    public readonly info$: Observable<app.UpdateInfo | null>;
+    public readonly info$: Observable<core.UpdateInfo | null>;
     public readonly progress$: Observable<UpdateProgress | null>;
 
-    private readonly infoSubject$ = new BehaviorSubject<app.UpdateInfo | null>(null);
+    private readonly transport = inject(Transport);
+    private readonly infoSubject$ = new BehaviorSubject<core.UpdateInfo | null>(null);
     private readonly progressSubject$ = new BehaviorSubject<UpdateProgress | null>(null);
 
     public constructor() {
@@ -36,23 +31,23 @@ export class UpdateService {
         this.progress$ = this.progressSubject$.asObservable();
 
         // Root service: lives as long as the app, so the subscriptions do too.
-        fromWailsEvent<app.UpdateInfo>('update-available').subscribe((info: app.UpdateInfo): void =>
-            this.infoSubject$.next(info),
-        );
-        fromWailsEvent<UpdateProgress>('update-progress').subscribe(
-            (progress: UpdateProgress): void => this.progressSubject$.next(progress),
-        );
+        this.transport
+            .events$<core.UpdateInfo>('update-available')
+            .subscribe((info: core.UpdateInfo): void => this.infoSubject$.next(info));
+        this.transport
+            .events$<UpdateProgress>('update-progress')
+            .subscribe((progress: UpdateProgress): void => this.progressSubject$.next(progress));
     }
 
     /** The last check's result, in case it finished before anyone listened. */
-    public async load(): Promise<app.UpdateInfo> {
-        const info = await GetUpdateInfo();
+    public async load(): Promise<core.UpdateInfo> {
+        const info = await this.transport.call<core.UpdateInfo>('GetUpdateInfo');
         this.infoSubject$.next(info);
         return info;
     }
 
-    public async check(): Promise<app.UpdateInfo> {
-        const info = await CheckForUpdates();
+    public async check(): Promise<core.UpdateInfo> {
+        const info = await this.transport.call<core.UpdateInfo>('CheckForUpdates');
         this.infoSubject$.next(info);
         return info;
     }
@@ -60,7 +55,7 @@ export class UpdateService {
     /** Downloads and installs the update; the app restarts once it resolves. */
     public async install(): Promise<void> {
         try {
-            await InstallUpdate();
+            await this.transport.call<void>('InstallUpdate');
         } catch (error: unknown) {
             this.progressSubject$.next(null);
             throw error;
@@ -68,6 +63,6 @@ export class UpdateService {
     }
 
     public openReleasePage(): Promise<void> {
-        return OpenReleasePage();
+        return this.transport.call<void>('OpenReleasePage');
     }
 }

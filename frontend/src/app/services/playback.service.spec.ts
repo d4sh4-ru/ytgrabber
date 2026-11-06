@@ -1,34 +1,49 @@
 import { TestBed } from '@angular/core/testing';
+import { NEVER, Observable } from 'rxjs';
 import { vi } from 'vitest';
+import { Transport } from '../api/transport';
 import { PlaybackService } from './playback.service';
 
-type Saver = (id: string, seconds: number) => Promise<number>;
+/** Answers SavePlaybackPosition the way answer says; records every call. */
+class FakeTransport extends Transport {
+    public readonly saved: [string, number][] = [];
+    public answer: (seconds: number) => number = (seconds: number): number => seconds;
+
+    public call<T>(method: string, args: readonly unknown[] = []): Promise<T> {
+        if (method !== 'SavePlaybackPosition') {
+            return Promise.reject(new Error(`unexpected call ${method}`));
+        }
+        const [id, seconds] = args as [string, number];
+        this.saved.push([id, seconds]);
+        return Promise.resolve(this.answer(seconds) as T);
+    }
+
+    public events$<T>(): Observable<T> {
+        return NEVER;
+    }
+}
 
 describe('PlaybackService', () => {
     let saved: [string, number][];
+    let transport: FakeTransport;
     let service: PlaybackService;
 
     // The backend rounds positions near the start or end down to 0.
     function installBackend(answer: (seconds: number) => number): void {
-        const save: Saver = (id: string, seconds: number): Promise<number> => {
-            saved.push([id, seconds]);
-            return Promise.resolve(answer(seconds));
-        };
-        (window as unknown as { go: unknown }).go = {
-            app: { App: { SavePlaybackPosition: save } },
-        };
+        transport.answer = answer;
     }
 
     beforeEach(() => {
-        saved = [];
-        installBackend((seconds: number): number => seconds);
-        TestBed.configureTestingModule({});
+        transport = new FakeTransport();
+        saved = transport.saved;
+        TestBed.configureTestingModule({
+            providers: [{ provide: Transport, useValue: transport }],
+        });
         service = TestBed.inject(PlaybackService);
     });
 
     afterEach(() => {
         vi.useRealTimers();
-        delete (window as unknown as { go?: unknown }).go;
     });
 
     it('saves progress at most every few seconds', () => {
