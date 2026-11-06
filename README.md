@@ -34,9 +34,9 @@
 
 Для сборки:
 
-- go версии ^1.25.0
+- go версии ^1.26.0
 - node версии ^24.11.1 (см. `.nvmrc`)
-- wails CLI v2.13.0: `go install github.com/wailsapp/wails/v2/cmd/wails@v2.13.0`
+- wails CLI v2.17.1: `go install github.com/wailsapp/wails/v2/cmd/wails@v2.17.1`
 - Linux: `libgtk-3-dev` и `libwebkit2gtk-4.1-dev` (Debian/Ubuntu), для воспроизведения видео — плагины GStreamer (`gstreamer1.0-plugins-good`, `gstreamer1.0-libav`)
 
 Для работы приложения:
