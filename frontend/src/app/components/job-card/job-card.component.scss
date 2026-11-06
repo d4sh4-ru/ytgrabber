@@ -120,10 +120,67 @@
         border-radius: v.$radius-sm;
         background: v.$bg-elevated;
         color: v.$error;
+        font-size: 12px;
+    }
+
+    &__error-summary {
+        display: flex;
+        align-items: flex-start;
+        gap: 6px;
+    }
+
+    &__error-icon,
+    &__error-toggle {
+        display: inline-flex;
+        flex-shrink: 0;
+        align-items: center;
+        gap: 2px;
+        padding: 1px 2px;
+        color: inherit;
+    }
+
+    &__error-toggle {
+        border: none;
+        border-radius: v.$radius-sm;
+        background: transparent;
+        cursor: pointer;
+
+        &:hover {
+            background: v.$bg-primary;
+        }
+
+        &:focus-visible {
+            outline: 2px solid v.$accent;
+            outline-offset: 1px;
+        }
+    }
+
+    &__error-chevron {
+        display: inline-flex;
+        transition: transform 0.15s ease;
+
+        &--open {
+            transform: rotate(180deg);
+        }
+    }
+
+    &__error-text,
+    &__error-details {
+        margin: 0;
+        min-width: 0;
         font-family: monospace;
         font-size: 12px;
         white-space: pre-wrap;
         word-break: break-word;
+    }
+
+    &__error-details {
+        max-height: 240px;
+        margin-top: 6px;
+        padding-top: 6px;
+        border-top: 1px solid v.$border-subtle;
+        overflow: auto;
+        color: v.$text-secondary;
     }
 }
 

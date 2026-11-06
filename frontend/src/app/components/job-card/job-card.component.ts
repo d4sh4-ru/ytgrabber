@@ -1,5 +1,6 @@
 import { ChangeDetectionStrategy, Component, EventEmitter, Input, Output } from '@angular/core';
 import { model } from '../../api/models';
+import { IconComponent } from '../icon/icon.component';
 
 const STATUS_LABELS: Record<string, string> = {
     pending: 'в очереди',
@@ -17,7 +18,7 @@ const TRACK_LABELS: Record<string, string> = {
 @Component({
     selector: 'app-job-card',
     standalone: true,
-    imports: [],
+    imports: [IconComponent],
     templateUrl: './job-card.component.html',
     styleUrl: './job-card.component.scss',
     changeDetection: ChangeDetectionStrategy.OnPush,
@@ -35,6 +36,9 @@ export class JobCardComponent {
     /** The site wants a login: connect or refresh its account, then retry. */
     @Output()
     public readonly loginRequested = new EventEmitter<model.DownloadJob>();
+
+    /** The full error output (errorDetails) is unfolded under the summary. */
+    protected isErrorExpanded = false;
 
     protected get displayTitle(): string {
         return this.job.title || this.job.url;
@@ -54,6 +58,20 @@ export class JobCardComponent {
 
     protected get isLoginRequired(): boolean {
         return this.isError && this.job.errorKind === 'login_required';
+    }
+
+    /** Details worth unfolding: present and not just the summary again. */
+    protected get hasErrorDetails(): boolean {
+        const details = this.job.errorDetails?.trim() ?? '';
+        return details !== '' && details !== (this.job.error ?? '').trim();
+    }
+
+    protected get errorDetailsId(): string {
+        return `job-error-details-${this.job.id}`;
+    }
+
+    protected get errorToggleLabel(): string {
+        return this.isErrorExpanded ? 'Скрыть подробности ошибки' : 'Показать подробности ошибки';
     }
 
     protected get loginHint(): string {
@@ -79,6 +97,10 @@ export class JobCardComponent {
 
     protected trackPercent(progress: number): number {
         return Math.min(100, Math.max(0, Math.round(progress)));
+    }
+
+    protected toggleErrorDetails(): void {
+        this.isErrorExpanded = !this.isErrorExpanded;
     }
 
     protected onRemove(): void {

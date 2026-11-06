@@ -124,6 +124,7 @@ func (a *App) RetryJob(user UserID, id string, useAccount bool) error {
 	}
 	j.Status = model.StatusPending
 	j.Error = ""
+	j.ErrorDetails = ""
 	j.ErrorKind = model.ErrorGeneric
 	j.AccountUsed = false
 	j.UseAccount = useAccount
@@ -293,7 +294,12 @@ func (a *App) runDownload(ctx context.Context, j *job) {
 		if loginRequired {
 			kind = model.ErrorLoginRequired
 		}
-		a.setErrorKind(j, err.Error(), kind)
+		details := ""
+		var exitErr *ytdlp.ExitError
+		if errors.As(err, &exitErr) {
+			details = exitErr.Details
+		}
+		a.setErrorKind(j, err.Error(), details, kind)
 		return
 	}
 
@@ -352,7 +358,7 @@ func (a *App) execYtDlp(ctx context.Context, j *job, toolSet tools.Set, download
 		if ctx.Err() != nil {
 			return ctx.Err()
 		}
-		return errors.New(ytdlp.ExtractErrorMessage(stderrTail.Lines()))
+		return ytdlp.NewExitError(stderrTail.Lines())
 	}
 	return nil
 }
@@ -516,13 +522,14 @@ func (a *App) setStatus(j *job, status model.DownloadStatus) {
 }
 
 func (a *App) setError(j *job, message string) {
-	a.setErrorKind(j, message, model.ErrorGeneric)
+	a.setErrorKind(j, message, "", model.ErrorGeneric)
 }
 
-func (a *App) setErrorKind(j *job, message string, kind model.ErrorKind) {
+func (a *App) setErrorKind(j *job, message string, details string, kind model.ErrorKind) {
 	a.mu.Lock()
 	j.Status = model.StatusError
 	j.Error = message
+	j.ErrorDetails = details
 	j.ErrorKind = kind
 	a.mu.Unlock()
 	a.saveAndPublish(j, "download-status")
