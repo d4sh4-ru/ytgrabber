@@ -93,6 +93,13 @@ func NormalizeURL(raw string) (string, error) {
 	return parsed.String(), nil
 }
 
+// youtubeClients is yt-dlp's default set of YouTube clients minus
+// web_embedded: signed in, yt-dlp takes the best audio from it, and
+// YouTube rejects that stream with HTTP 403 (yt-dlp 2026.10.26 logs
+// "Detected experiment to bind GVS PO Token to video ID"). The tv client
+// next in line serves the same formats. Other sites ignore the argument.
+const youtubeClients = "youtube:player_client=default,-web_embedded"
+
 // BuildArgs maps the UI quality choice onto yt-dlp flags.
 //
 //   - --ignore-config: a user's yt-dlp config could change the output
@@ -108,7 +115,10 @@ func NormalizeURL(raw string) (string, error) {
 //   - video qualities force an mp4 container and every quality asks for a
 //     jpg thumbnail: WebKit (macOS/Linux) can't play webm or show webp.
 //   - cookiesPath, when set, is a cookies.txt yt-dlp reads and, on exit,
-//     writes the updated cookies back to (see package accounts).
+//     writes the updated cookies back to (see package accounts). With
+//     cookies yt-dlp starts with YouTube's web_embedded client, whose
+//     streams now answer 403 without a PO token bound to the video, so
+//     that client is dropped (see youtubeClients).
 //   - "--" ends option parsing, so the URL can never be read as a flag.
 func BuildArgs(sourceURL string, quality string, downloadsDir string, ffmpegPath string, cookiesPath string) []string {
 	// The directory is part of the -o template, where "%" is special.
@@ -133,7 +143,7 @@ func BuildArgs(sourceURL string, quality string, downloadsDir string, ffmpegPath
 		args = append(args, "--ffmpeg-location", ffmpegPath)
 	}
 	if cookiesPath != "" {
-		args = append(args, "--cookies", cookiesPath)
+		args = append(args, "--cookies", cookiesPath, "--extractor-args", youtubeClients)
 	}
 
 	switch quality {

@@ -78,6 +78,12 @@ func TestBuildYtDlpArgs(t *testing.T) {
 	if i := slices.Index(withCookies, "--cookies"); i == -1 || withCookies[i+1] != "/data/run/job.cookies" || i > slices.Index(withCookies, "--") {
 		t.Errorf("cookies file not passed before the URL: %q", withCookies)
 	}
+	if i := slices.Index(withCookies, "--extractor-args"); i == -1 || withCookies[i+1] != youtubeClients {
+		t.Errorf("signed-in download must skip the web_embedded client: %q", withCookies)
+	}
+	if slices.Contains(args, "--extractor-args") {
+		t.Errorf("client list changed without cookies: %q", args)
+	}
 
 	audio := BuildArgs("https://example.com/v", "audio", "/tmp", "", "")
 	if !slices.Contains(audio, "-x") || slices.Contains(audio, "--merge-output-format") {
