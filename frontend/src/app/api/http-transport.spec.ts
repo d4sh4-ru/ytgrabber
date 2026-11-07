@@ -16,7 +16,11 @@ describe('HttpTransport', () => {
         reply = new Response(null, { status: 204 });
         vi.stubGlobal('fetch', async (request: Request): Promise<Response> => {
             const url = new URL(request.url);
-            const body = await request.text();
+            // A multipart body holds jsdom's File, which the test Request
+            // can't always stream (it hung in CI): the upload test checks
+            // the form itself instead.
+            const isForm = request.headers.get('Content-Type')?.startsWith('multipart/');
+            const body = isForm ? '' : await request.text();
             requests.push({
                 url: url.pathname + url.search,
                 method: request.method,
