@@ -31,14 +31,15 @@ export class AccountsService {
     }
 
     /**
-     * Opens a file dialog and connects (or refreshes) the site's account
-     * from the chosen cookies.txt. Resolves to null if the dialog was
-     * cancelled.
+     * Connects (or refreshes) the site's account from a cookies.txt: on the
+     * desktop the backend opens a file dialog, a browser passes the file
+     * the user picked. Resolves to null if the dialog was cancelled.
      */
-    public async importCookiesFile(site: string): Promise<model.Account | null> {
-        const account = await this.transport.call<model.Account | null>('ImportCookiesFile', [
-            site,
-        ]);
+    public async importCookiesFile(site: string, file?: File): Promise<model.Account | null> {
+        const account = await this.transport.call<model.Account | null>(
+            'ImportCookiesFile',
+            file ? [site, file] : [site],
+        );
         await this.refresh();
         return account ?? null;
     }

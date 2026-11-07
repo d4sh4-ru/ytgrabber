@@ -1,10 +1,18 @@
 import { TestBed } from '@angular/core/testing';
 import { MediaCardComponent } from './media-card.component';
 import { model } from '../../api/models';
+import { Transport } from '../../api/transport';
+import { FakeTransport } from '../../testing/fake-transport';
 
 describe('MediaCardComponent', () => {
+    let transport: FakeTransport;
+
     beforeEach(async () => {
-        await TestBed.configureTestingModule({ imports: [MediaCardComponent] }).compileComponents();
+        transport = new FakeTransport();
+        await TestBed.configureTestingModule({
+            imports: [MediaCardComponent],
+            providers: [{ provide: Transport, useValue: transport }],
+        }).compileComponents();
     });
 
     function render(item: Partial<model.VideoRecord>): HTMLElement {
@@ -36,6 +44,22 @@ describe('MediaCardComponent', () => {
             render({ durationSeconds: 0, positionSeconds: 30 }).querySelector(
                 '.media-card__watched',
             ),
+        ).toBeNull();
+    });
+
+    it('reveals the file on the desktop and downloads it from a browser', () => {
+        const desktop = render({ mediaUrl: '/media/v/file.mp4' });
+        expect(desktop.querySelector('[aria-label="Показать в папке"]')).not.toBeNull();
+        expect(desktop.querySelector('a[download]')).toBeNull();
+
+        transport.isDesktop = false;
+        const browser = render({ mediaUrl: '/media/v/file.mp4' });
+        expect(browser.querySelector('[aria-label="Показать в папке"]')).toBeNull();
+        expect(browser.querySelector('a[download]')?.getAttribute('href')).toBe(
+            '/media/v/file.mp4?download=1',
+        );
+        expect(
+            render({ mediaUrl: '/media/v/file.mp4', fileMissing: true }).querySelector('a'),
         ).toBeNull();
     });
 });

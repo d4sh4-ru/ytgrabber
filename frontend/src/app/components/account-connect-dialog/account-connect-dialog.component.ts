@@ -2,12 +2,15 @@ import {
     ChangeDetectionStrategy,
     ChangeDetectorRef,
     Component,
+    ElementRef,
     EventEmitter,
     inject,
     Input,
     OnInit,
     Output,
+    ViewChild,
 } from '@angular/core';
+import { Transport } from '../../api/transport';
 import { AccountsService } from '../../services/accounts.service';
 import { NotificationService } from '../../services/notification.service';
 import { connectedMessage, cookieCountLabel } from '../../shared/account-summary';
@@ -33,6 +36,12 @@ export class AccountConnectDialogComponent implements OnInit {
     private readonly accountsService = inject(AccountsService);
     private readonly notificationService = inject(NotificationService);
     private readonly changeDetectorRef = inject(ChangeDetectorRef);
+
+    /** A server can't read browser profiles: there the file comes as an upload. */
+    protected readonly isDesktop = inject(Transport).isDesktop;
+
+    @ViewChild('fileInput')
+    private fileInput?: ElementRef<HTMLInputElement>;
 
     /** The site to connect; when empty the user types a link or domain. */
     @Input()
@@ -67,7 +76,7 @@ export class AccountConnectDialogComponent implements OnInit {
     public ngOnInit(): void {
         // A known site (refresh, or a failed download) is scanned right
         // away; the scan reads cookie names only.
-        if (this.site) {
+        if (this.site && this.isDesktop) {
             void this.onScan();
         }
     }
@@ -132,11 +141,29 @@ export class AccountConnectDialogComponent implements OnInit {
             this.notificationService.error('Укажите ссылку или домен сайта');
             return;
         }
+        if (!this.isDesktop) {
+            // The upload starts once a file is picked (onFileChosen).
+            this.fileInput?.nativeElement.click();
+            return;
+        }
+        await this.importCookies(site);
+    }
 
+    protected async onFileChosen(event: Event): Promise<void> {
+        const input = event.target as HTMLInputElement;
+        const file = input.files?.[0];
+        // Picking the same file again must fire change again.
+        input.value = '';
+        if (file) {
+            await this.importCookies(this.site || this.siteInput.trim(), file);
+        }
+    }
+
+    private async importCookies(site: string, file?: File): Promise<void> {
         this.isImporting = true;
         this.changeDetectorRef.markForCheck();
         try {
-            const account = await this.accountsService.importCookiesFile(site);
+            const account = await this.accountsService.importCookiesFile(site, file);
             if (account) {
                 this.notificationService.info(connectedMessage(account));
                 this.connected.emit(account);
