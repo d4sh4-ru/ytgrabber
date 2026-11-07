@@ -126,14 +126,14 @@ func (s *Server) routes() []route {
 		{
 			method: "GET", path: "/info", summary: "Версия, пути и ошибка запуска",
 			response: core.AppInfo{},
-			handle: func(*http.Request) (any, error) { return s.app.GetAppInfo(), nil },
+			handle:   func(*http.Request) (any, error) { return s.app.GetAppInfo(), nil },
 		},
 
 		// Downloads.
 		{
 			method: "GET", path: "/jobs", summary: "Очередь загрузок",
 			response: []model.DownloadJob{},
-			handle: func(*http.Request) (any, error) { return s.app.GetJobs(user) },
+			handle:   func(*http.Request) (any, error) { return s.app.GetJobs(user) },
 		},
 		{
 			method: "POST", path: "/jobs", summary: "Поставить ссылку в очередь; возвращает id задачи",
@@ -160,7 +160,7 @@ func (s *Server) routes() []route {
 		{
 			method: "GET", path: "/library", summary: "Скачанные видео и аудио",
 			response: []*model.VideoRecord{},
-			handle: func(*http.Request) (any, error) { return s.app.GetLibrary(user) },
+			handle:   func(*http.Request) (any, error) { return s.app.GetLibrary(user) },
 		},
 		{
 			method: "DELETE", path: "/library/{id}", summary: "Убрать из библиотеки",

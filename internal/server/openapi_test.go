@@ -95,6 +95,9 @@ func TestResponsesMatchSpec(t *testing.T) {
 		if c.method == "POST" && c.path == "/jobs" && resp.StatusCode == http.StatusOK {
 			jobID, _ = value.(string)
 		}
+		if c.body != "" && strings.Contains(c.body, "example.com") && resp.StatusCode != http.StatusOK {
+			t.Errorf("%s %s: %d %s", c.method, c.path, resp.StatusCode, data)
+		}
 
 		operation := spec["paths"].(map[string]any)[c.specPath].(map[string]any)[strings.ToLower(c.method)].(map[string]any)
 		response, ok := operation["responses"].(map[string]any)[fmt.Sprint(resp.StatusCode)].(map[string]any)

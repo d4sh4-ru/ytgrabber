@@ -232,7 +232,7 @@ func Spec(routes []route) ([]byte, error) {
 			"description": "API self-hosted сервера ytgrabber. Авторизация: заголовок " +
 				"«Authorization: Bearer <токен>» или cookie сессии после POST /session.",
 		},
-		"servers": []any{schema{"url": apiPrefix}},
+		"servers":  []any{schema{"url": apiPrefix}},
 		"security": []any{schema{"bearer": []string{}}, schema{"session": []string{}}},
 		"paths":    paths,
 		"components": schema{
