@@ -1,0 +1,5 @@
+# Generated files are compared byte for byte (TestOpenAPISpec, the CI
+# check of the API client): keep them LF on every OS, also on Windows
+# with core.autocrlf=true.
+internal/server/openapi.json text eol=lf
+frontend/src/app/api/openapi.ts text eol=lf
