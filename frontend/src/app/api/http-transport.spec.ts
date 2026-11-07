@@ -14,9 +14,19 @@ describe('HttpTransport', () => {
     beforeEach(() => {
         requests = [];
         reply = new Response(null, { status: 204 });
-        vi.stubGlobal('fetch', (url: string, init: RequestInit): Promise<Response> => {
-            requests.push({ url, method: init.method ?? 'GET', body: init.body });
-            return Promise.resolve(reply);
+        vi.stubGlobal('fetch', async (request: Request): Promise<Response> => {
+            const url = new URL(request.url);
+            // A multipart body holds jsdom's File, which the test Request
+            // can't always stream (it hung in CI): the upload test checks
+            // the form itself instead.
+            const isForm = request.headers.get('Content-Type')?.startsWith('multipart/');
+            const body = isForm ? '' : await request.text();
+            requests.push({
+                url: url.pathname + url.search,
+                method: request.method,
+                body: body === '' ? undefined : body,
+            });
+            return reply;
         });
     });
 
@@ -72,14 +82,26 @@ describe('HttpTransport', () => {
     });
 
     it('uploads cookies.txt as a form', async () => {
+        // jsdom's File doesn't survive the test Request's multipart
+        // encoding, so check what goes into the form instead.
+        const append = vi.spyOn(FormData.prototype, 'append');
         reply = json(200, { domain: 'youtube.com' });
         const file = new File(['# Netscape HTTP Cookie File'], 'cookies.txt');
         await new HttpTransport().call('ImportCookiesFile', ['youtube.com', file]);
 
-        const form = requests[0].body as FormData;
-        expect(requests[0].url).toBe('/api/v1/accounts');
-        expect(form.get('site')).toBe('youtube.com');
-        expect((form.get('file') as File).name).toBe('cookies.txt');
+        expect(requests[0]).toMatchObject({ url: '/api/v1/accounts', method: 'POST' });
+        expect(append.mock.calls).toEqual([
+            ['site', 'youtube.com'],
+            ['file', file],
+        ]);
+        append.mockRestore();
+    });
+
+    it('refuses an upload without a file', async () => {
+        await expect(
+            new HttpTransport().call('ImportCookiesFile', ['youtube.com', null]),
+        ).rejects.toThrow('Не выбран файл');
+        expect(requests).toEqual([]);
     });
 
     it('signs in with the token', async () => {

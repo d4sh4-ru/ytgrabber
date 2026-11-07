@@ -80,6 +80,15 @@ jobs:
       - name: Go tests
         run: go test ${{ matrix.race }} ./...
 
+      # openapi.json is checked by the Go tests; the TS types made from it
+      # must match it too.
+      - name: API client is up to date
+        if: runner.os == 'Linux'
+        working-directory: frontend
+        run: |
+          npm run generate:api
+          git diff --exit-code -- src/app/api/openapi.ts
+
       - name: Frontend format check
         if: runner.os == 'Linux'
         working-directory: frontend

@@ -67,7 +67,7 @@ func (a *auth) tokenMatches(token string) bool {
 func (a *auth) require(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if !a.authorized(r) {
-			writeJSON(w, http.StatusUnauthorized, map[string]string{"error": "нужен вход"})
+			writeJSON(w, http.StatusUnauthorized, errorResponse{Error: "нужен вход"})
 			return
 		}
 		next.ServeHTTP(w, r)
@@ -76,25 +76,23 @@ func (a *auth) require(next http.Handler) http.Handler {
 
 // getSession tells the frontend whether it has to show the login screen.
 func (a *auth) getSession(w http.ResponseWriter, r *http.Request) {
-	writeJSON(w, http.StatusOK, map[string]bool{"authenticated": a.authorized(r)})
+	writeJSON(w, http.StatusOK, sessionResponse{Authenticated: a.authorized(r)})
 }
 
 // login exchanges the token for the session cookie.
 func (a *auth) login(w http.ResponseWriter, r *http.Request) {
 	if a.limited() {
-		writeJSON(w, http.StatusTooManyRequests, map[string]string{"error": "слишком много попыток, подождите минуту"})
+		writeJSON(w, http.StatusTooManyRequests, errorResponse{Error: "слишком много попыток, подождите минуту"})
 		return
 	}
-	var body struct {
-		Token string `json:"token"`
-	}
+	var body loginRequest
 	if err := decodeJSON(r, &body); err != nil || !a.tokenMatches(strings.TrimSpace(body.Token)) {
 		a.recordFailure()
-		writeJSON(w, http.StatusUnauthorized, map[string]string{"error": "неверный токен"})
+		writeJSON(w, http.StatusUnauthorized, errorResponse{Error: "неверный токен"})
 		return
 	}
 	http.SetCookie(w, a.cookie(r, a.session, int(sessionMaxAge.Seconds())))
-	writeJSON(w, http.StatusOK, map[string]bool{"authenticated": true})
+	writeJSON(w, http.StatusOK, sessionResponse{Authenticated: true})
 }
 
 func (a *auth) logout(w http.ResponseWriter, r *http.Request) {

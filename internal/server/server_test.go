@@ -32,6 +32,7 @@ type fixture struct {
 func newFixture(t *testing.T) *fixture {
 	t.Helper()
 	dir := t.TempDir()
+	installFakeTools(t, filepath.Join(dir, "data"))
 	app := core.New(platform.Paths{
 		DataDir:             filepath.Join(dir, "data"),
 		DefaultDownloadsDir: filepath.Join(dir, "media"),
@@ -53,6 +54,24 @@ func newFixture(t *testing.T) *fixture {
 		app.Stop()
 	})
 	return &fixture{t: t, srv: srv, http: ts, webDir: webDir}
+}
+
+// installFakeTools puts stand-ins for yt-dlp and ffmpeg into the app's
+// tools folder, so a download can be queued whatever is installed on the
+// machine. They exit with an error at once: a queued job fails without
+// touching the network.
+func installFakeTools(t *testing.T, dataDir string) {
+	t.Helper()
+	toolsDir := platform.Paths{DataDir: dataDir}.ToolsDir()
+	if err := os.MkdirAll(toolsDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	for _, name := range []string{"yt-dlp", "ffmpeg"} {
+		path := filepath.Join(toolsDir, platform.ExecutableName(name))
+		if err := os.WriteFile(path, []byte("#!/bin/sh\nexit 1\n"), 0o755); err != nil {
+			t.Fatal(err)
+		}
+	}
 }
 
 // do sends a request with the token unless token is "".

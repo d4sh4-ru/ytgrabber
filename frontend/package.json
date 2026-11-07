@@ -8,7 +8,8 @@
     "watch": "ng build --watch --configuration development",
     "test": "ng test --watch=false",
     "format": "prettier --write \"src/**/*.{ts,html,scss}\"",
-    "format:check": "prettier --check \"src/**/*.{ts,html,scss}\""
+    "format:check": "prettier --check \"src/**/*.{ts,html,scss}\"",
+    "generate:api": "openapi-typescript ../internal/server/openapi.json -o src/app/api/openapi.ts && prettier --write src/app/api/openapi.ts"
   },
   "private": true,
   "packageManager": "npm@11.6.2",
@@ -19,6 +20,7 @@
     "@angular/forms": "^21.2.0",
     "@angular/platform-browser": "^21.2.0",
     "@angular/router": "^21.2.0",
+    "openapi-fetch": "0.17.0",
     "rxjs": "~7.8.0",
     "tslib": "^2.3.0"
   },
@@ -27,6 +29,7 @@
     "@angular/cli": "^21.2.19",
     "@angular/compiler-cli": "^21.2.0",
     "jsdom": "^28.0.0",
+    "openapi-typescript": "7.13.0",
     "prettier": "^3.8.1",
     "typescript": "~5.9.2",
     "vitest": "^4.0.8"

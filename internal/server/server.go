@@ -57,124 +57,26 @@ func New(app *core.App, cfg Config) (*Server, error) {
 	}, nil
 }
 
-// Handler routes every request. Only /api/v1/health, the session
-// endpoints and the frontend's own files are reachable without a token:
-// the login screen is part of the frontend.
+// Handler routes every request: the API table (routes.go), library files
+// under /media/ and the frontend. Only the routes marked public and the
+// frontend's own files are reachable without a token: the login screen
+// is part of the frontend.
 func (s *Server) Handler() http.Handler {
 	mux := http.NewServeMux()
 	protect := s.auth.require
 
-	mux.HandleFunc("GET /api/v1/health", func(w http.ResponseWriter, r *http.Request) {
-		writeJSON(w, http.StatusOK, map[string]string{"status": "ok", "version": core.Version})
-	})
-	mux.HandleFunc("GET /api/v1/session", s.auth.getSession)
-	mux.HandleFunc("POST /api/v1/session", s.auth.login)
-	mux.HandleFunc("DELETE /api/v1/session", s.auth.logout)
-
-	mux.Handle("GET /api/v1/events", protect(http.HandlerFunc(s.Events.serveWS)))
-
-	api := func(pattern string, h func(*http.Request) (any, error)) {
-		mux.Handle(pattern, protect(apiHandler(h)))
+	for _, rt := range s.routes() {
+		var h http.Handler = rt.raw
+		if rt.handle != nil {
+			h = apiHandler(rt.handle)
+		}
+		if !rt.public {
+			h = protect(h)
+		}
+		mux.Handle(rt.method+" "+apiPrefix+rt.path, h)
 	}
-
-	api("GET /api/v1/info", func(*http.Request) (any, error) {
-		return s.app.GetAppInfo(), nil
-	})
-
-	// Downloads.
-	api("GET /api/v1/jobs", func(*http.Request) (any, error) {
-		return s.app.GetJobs(user)
-	})
-	api("POST /api/v1/jobs", func(r *http.Request) (any, error) {
-		var body struct {
-			URL        string `json:"url"`
-			Quality    string `json:"quality"`
-			UseAccount bool   `json:"useAccount"`
-		}
-		if err := decodeJSON(r, &body); err != nil {
-			return nil, err
-		}
-		return s.app.DownloadVideo(user, body.URL, body.Quality, body.UseAccount)
-	})
-	api("POST /api/v1/jobs/{id}/retry", func(r *http.Request) (any, error) {
-		var body struct {
-			UseAccount bool `json:"useAccount"`
-		}
-		if err := decodeJSON(r, &body); err != nil {
-			return nil, err
-		}
-		return nil, s.app.RetryJob(user, r.PathValue("id"), body.UseAccount)
-	})
-	api("DELETE /api/v1/jobs/{id}", func(r *http.Request) (any, error) {
-		return nil, s.app.RemoveJob(user, r.PathValue("id"))
-	})
-
-	// Library.
-	api("GET /api/v1/library", func(*http.Request) (any, error) {
-		return s.app.GetLibrary(user)
-	})
-	api("DELETE /api/v1/library/{id}", func(r *http.Request) (any, error) {
-		return nil, s.app.DeleteVideo(user, r.PathValue("id"), r.URL.Query().Get("deleteFiles") == "true")
-	})
-	api("PUT /api/v1/library/{id}/position", func(r *http.Request) (any, error) {
-		var body struct {
-			Seconds float64 `json:"seconds"`
-		}
-		if err := decodeJSON(r, &body); err != nil {
-			return nil, err
-		}
-		return s.app.SavePlaybackPosition(user, r.PathValue("id"), body.Seconds)
-	})
-	mux.Handle("GET /media/", protect(core.MediaHandler(s.app)))
-
-	// Site accounts. Browsers aren't scanned on a server: cookies come
-	// as an uploaded cookies.txt.
-	api("GET /api/v1/accounts", func(*http.Request) (any, error) {
-		return s.app.GetAccounts(user)
-	})
-	api("POST /api/v1/accounts", s.importCookies)
-	api("POST /api/v1/accounts/{id}/check", func(r *http.Request) (any, error) {
-		return s.app.CheckAccount(user, r.PathValue("id"))
-	})
-	api("DELETE /api/v1/accounts/{id}", func(r *http.Request) (any, error) {
-		return nil, s.app.RemoveAccount(user, r.PathValue("id"))
-	})
-
-	// Settings that make sense on a server: the downloads folder and tool
-	// paths are fixed by its configuration.
-	api("GET /api/v1/settings", func(*http.Request) (any, error) {
-		return s.app.GetSettings(user), nil
-	})
-	api("PUT /api/v1/settings/max-concurrent-downloads", func(r *http.Request) (any, error) {
-		var body struct {
-			Value int `json:"value"`
-		}
-		if err := decodeJSON(r, &body); err != nil {
-			return nil, err
-		}
-		return s.app.SetMaxConcurrentDownloads(body.Value)
-	})
-
-	// Tools.
-	api("GET /api/v1/tools", func(*http.Request) (any, error) {
-		return s.app.GetDependencies(), nil
-	})
-	api("POST /api/v1/tools/install", func(r *http.Request) (any, error) {
-		var body struct {
-			Names []string `json:"names"`
-		}
-		if err := decodeJSON(r, &body); err != nil {
-			return nil, err
-		}
-		return s.app.InstallTools(body.Names)
-	})
-	api("POST /api/v1/tools/install/cancel", func(*http.Request) (any, error) {
-		s.app.CancelToolInstall()
-		return nil, nil
-	})
-	api("POST /api/v1/tools/yt-dlp/update", func(*http.Request) (any, error) {
-		return s.app.UpdateYtDlp()
-	})
+	mux.Handle("GET /api/v1/openapi.json", http.HandlerFunc(serveSpec))
+	mux.Handle("GET "+mediaPrefix, protect(core.MediaHandler(s.app)))
 
 	mux.Handle("/api/", http.NotFoundHandler())
 	if s.webDir != "" {
@@ -182,6 +84,10 @@ func (s *Server) Handler() http.Handler {
 	}
 	return securityHeaders(mux)
 }
+
+// mediaPrefix serves library files (core.MediaHandler); the URLs come in
+// model.VideoRecord.
+const mediaPrefix = "/media/"
 
 // maxCookiesUpload matches the limit accounts.ParseCookies applies.
 const maxCookiesUpload = 16 << 20
@@ -246,7 +152,7 @@ func apiHandler(h func(*http.Request) (any, error)) http.Handler {
 			if errors.As(err, &known) {
 				status = known.status
 			}
-			writeJSON(w, status, map[string]string{"error": err.Error()})
+			writeJSON(w, status, errorResponse{Error: err.Error()})
 			return
 		}
 		if result == nil {

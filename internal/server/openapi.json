@@ -1,0 +1,1768 @@
+{
+  "components": {
+    "schemas": {
+      "core.AppInfo": {
+        "properties": {
+          "dataDir": {
+            "type": "string"
+          },
+          "logPath": {
+            "type": "string"
+          },
+          "platform": {
+            "type": "string"
+          },
+          "startupError": {
+            "type": "string"
+          },
+          "version": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "version",
+          "platform",
+          "dataDir",
+          "logPath",
+          "startupError"
+        ],
+        "type": "object"
+      },
+      "core.Settings": {
+        "properties": {
+          "autoCheckUpdates": {
+            "type": "boolean"
+          },
+          "downloadsDir": {
+            "type": "string"
+          },
+          "ffmpegPath": {
+            "type": "string"
+          },
+          "maxConcurrentDownloads": {
+            "type": "integer"
+          },
+          "prereleaseUpdates": {
+            "type": "boolean"
+          },
+          "ytDlpPath": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "downloadsDir",
+          "ytDlpPath",
+          "ffmpegPath",
+          "maxConcurrentDownloads",
+          "autoCheckUpdates",
+          "prereleaseUpdates"
+        ],
+        "type": "object"
+      },
+      "model.Account": {
+        "properties": {
+          "browser": {
+            "type": "string"
+          },
+          "browserName": {
+            "type": "string"
+          },
+          "cookieCount": {
+            "type": "integer"
+          },
+          "createdAt": {
+            "type": "string"
+          },
+          "domain": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          },
+          "lastUsedAt": {
+            "type": "string"
+          },
+          "loggedIn": {
+            "type": "boolean"
+          },
+          "loginKnown": {
+            "type": "boolean"
+          },
+          "profile": {
+            "type": "string"
+          },
+          "refreshedAt": {
+            "type": "string"
+          },
+          "source": {
+            "enum": [
+              "file",
+              "browser"
+            ],
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "ok",
+              "expired",
+              "error"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "domain",
+          "source",
+          "browser",
+          "browserName",
+          "profile",
+          "cookieCount",
+          "loginKnown",
+          "loggedIn",
+          "status",
+          "createdAt",
+          "refreshedAt",
+          "lastUsedAt"
+        ],
+        "type": "object"
+      },
+      "model.DownloadJob": {
+        "properties": {
+          "accountUsed": {
+            "type": "boolean"
+          },
+          "createdAt": {
+            "type": "string"
+          },
+          "error": {
+            "type": "string"
+          },
+          "errorDetails": {
+            "type": "string"
+          },
+          "errorKind": {
+            "enum": [
+              "",
+              "login_required"
+            ],
+            "type": "string"
+          },
+          "filePath": {
+            "type": "string"
+          },
+          "format": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          },
+          "quality": {
+            "type": "string"
+          },
+          "site": {
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "pending",
+              "downloading",
+              "processing",
+              "done",
+              "error"
+            ],
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "tracks": {
+            "items": {
+              "$ref": "#/components/schemas/model.DownloadTrack"
+            },
+            "type": "array"
+          },
+          "url": {
+            "type": "string"
+          },
+          "useAccount": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "id",
+          "url",
+          "title",
+          "quality",
+          "format",
+          "filePath",
+          "status",
+          "tracks",
+          "errorKind",
+          "createdAt",
+          "useAccount",
+          "site",
+          "accountUsed"
+        ],
+        "type": "object"
+      },
+      "model.DownloadTrack": {
+        "properties": {
+          "filename": {
+            "type": "string"
+          },
+          "kind": {
+            "enum": [
+              "video",
+              "audio"
+            ],
+            "type": "string"
+          },
+          "progress": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "kind",
+          "progress",
+          "filename"
+        ],
+        "type": "object"
+      },
+      "model.VideoRecord": {
+        "properties": {
+          "downloadedAt": {
+            "type": "string"
+          },
+          "durationSeconds": {
+            "type": "number"
+          },
+          "fileMissing": {
+            "type": "boolean"
+          },
+          "filePath": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          },
+          "mediaKind": {
+            "enum": [
+              "video",
+              "audio"
+            ],
+            "type": "string"
+          },
+          "mediaUrl": {
+            "type": "string"
+          },
+          "positionSeconds": {
+            "type": "number"
+          },
+          "sourceUrl": {
+            "type": "string"
+          },
+          "thumbnailUrl": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "sourceUrl",
+          "mediaKind",
+          "filePath",
+          "durationSeconds",
+          "positionSeconds",
+          "downloadedAt",
+          "mediaUrl",
+          "thumbnailUrl",
+          "fileMissing"
+        ],
+        "type": "object"
+      },
+      "tools.Report": {
+        "properties": {
+          "ready": {
+            "type": "boolean"
+          },
+          "tools": {
+            "items": {
+              "$ref": "#/components/schemas/tools.Status"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "ready",
+          "tools"
+        ],
+        "type": "object"
+      },
+      "tools.Status": {
+        "properties": {
+          "custom": {
+            "type": "boolean"
+          },
+          "found": {
+            "type": "boolean"
+          },
+          "hint": {
+            "type": "string"
+          },
+          "installSource": {
+            "type": "string"
+          },
+          "installable": {
+            "type": "boolean"
+          },
+          "managed": {
+            "type": "boolean"
+          },
+          "name": {
+            "type": "string"
+          },
+          "path": {
+            "type": "string"
+          },
+          "purpose": {
+            "type": "string"
+          },
+          "required": {
+            "type": "boolean"
+          },
+          "version": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "purpose",
+          "required",
+          "found",
+          "custom",
+          "managed",
+          "installable",
+          "installSource",
+          "path",
+          "version",
+          "hint"
+        ],
+        "type": "object"
+      }
+    },
+    "securitySchemes": {
+      "bearer": {
+        "scheme": "bearer",
+        "type": "http"
+      },
+      "session": {
+        "in": "cookie",
+        "name": "ytg_session",
+        "type": "apiKey"
+      }
+    }
+  },
+  "info": {
+    "description": "API self-hosted сервера ytgrabber. Авторизация: заголовок «Authorization: Bearer \u003cтокен\u003e» или cookie сессии после POST /session.",
+    "title": "ytgrabber-server",
+    "version": "1"
+  },
+  "openapi": "3.1.0",
+  "paths": {
+    "/accounts": {
+      "get": {
+        "operationId": "getAccounts",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/model.Account"
+                  },
+                  "type": "array"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Ошибка; текст для пользователя"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Нужен вход"
+          }
+        },
+        "summary": "Подключённые сайты"
+      },
+      "post": {
+        "operationId": "postAccounts",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "properties": {
+                  "file": {
+                    "description": "cookies.txt",
+                    "format": "binary",
+                    "type": "string"
+                  },
+                  "site": {
+                    "description": "ссылка или домен сайта",
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "site",
+                  "file"
+                ],
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/model.Account"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Ошибка; текст для пользователя"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Нужен вход"
+          }
+        },
+        "summary": "Подключить сайт из cookies.txt"
+      }
+    },
+    "/accounts/{id}": {
+      "delete": {
+        "operationId": "deleteAccountsId",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Готово"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Ошибка; текст для пользователя"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Нужен вход"
+          }
+        },
+        "summary": "Отключить сайт и удалить cookies"
+      }
+    },
+    "/accounts/{id}/check": {
+      "post": {
+        "operationId": "postAccountsIdCheck",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/model.Account"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Ошибка; текст для пользователя"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Нужен вход"
+          }
+        },
+        "summary": "Проверить, действует ли вход"
+      }
+    },
+    "/events": {
+      "get": {
+        "description": "WebSocket. Каждое сообщение — JSON {\"name\": ..., \"data\": ...}: download-status и download-progress (model.DownloadJob), job-removed (id задачи), library-changed, accounts-changed, tool-install-progress. После переподключения состояние нужно перечитать: пропущенные события не повторяются.",
+        "operationId": "getEvents",
+        "responses": {
+          "204": {
+            "description": "Готово"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Нужен вход"
+          }
+        },
+        "summary": "События (WebSocket)"
+      }
+    },
+    "/health": {
+      "get": {
+        "operationId": "getHealth",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "status": {
+                      "type": "string"
+                    },
+                    "version": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "status",
+                    "version"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Ошибка; текст для пользователя"
+          }
+        },
+        "security": [],
+        "summary": "Сервер работает"
+      }
+    },
+    "/info": {
+      "get": {
+        "operationId": "getInfo",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/core.AppInfo"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Ошибка; текст для пользователя"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Нужен вход"
+          }
+        },
+        "summary": "Версия, пути и ошибка запуска"
+      }
+    },
+    "/jobs": {
+      "get": {
+        "operationId": "getJobs",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/model.DownloadJob"
+                  },
+                  "type": "array"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Ошибка; текст для пользователя"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Нужен вход"
+          }
+        },
+        "summary": "Очередь загрузок"
+      },
+      "post": {
+        "operationId": "postJobs",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "properties": {
+                  "quality": {
+                    "enum": [
+                      "best",
+                      "1080p",
+                      "720p",
+                      "audio"
+                    ],
+                    "type": "string"
+                  },
+                  "url": {
+                    "type": "string"
+                  },
+                  "useAccount": {
+                    "type": "boolean"
+                  }
+                },
+                "required": [
+                  "url",
+                  "quality",
+                  "useAccount"
+                ],
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Ошибка; текст для пользователя"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Нужен вход"
+          }
+        },
+        "summary": "Поставить ссылку в очередь; возвращает id задачи"
+      }
+    },
+    "/jobs/{id}": {
+      "delete": {
+        "operationId": "deleteJobsId",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Готово"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Ошибка; текст для пользователя"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Нужен вход"
+          }
+        },
+        "summary": "Отменить или убрать задачу"
+      }
+    },
+    "/jobs/{id}/retry": {
+      "post": {
+        "operationId": "postJobsIdRetry",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "properties": {
+                  "useAccount": {
+                    "type": "boolean"
+                  }
+                },
+                "required": [
+                  "useAccount"
+                ],
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "Готово"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Ошибка; текст для пользователя"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Нужен вход"
+          }
+        },
+        "summary": "Повторить задачу с ошибкой"
+      }
+    },
+    "/library": {
+      "get": {
+        "operationId": "getLibrary",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/model.VideoRecord"
+                  },
+                  "type": "array"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Ошибка; текст для пользователя"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Нужен вход"
+          }
+        },
+        "summary": "Скачанные видео и аудио"
+      }
+    },
+    "/library/{id}": {
+      "delete": {
+        "operationId": "deleteLibraryId",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "true — удалить и файлы с диска",
+            "in": "query",
+            "name": "deleteFiles",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Готово"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Ошибка; текст для пользователя"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Нужен вход"
+          }
+        },
+        "summary": "Убрать из библиотеки"
+      }
+    },
+    "/library/{id}/position": {
+      "put": {
+        "operationId": "putLibraryIdPosition",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "properties": {
+                  "seconds": {
+                    "type": "number"
+                  }
+                },
+                "required": [
+                  "seconds"
+                ],
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "number"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Ошибка; текст для пользователя"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Нужен вход"
+          }
+        },
+        "summary": "Запомнить место просмотра; возвращает сохранённое (0 у начала и конца)"
+      }
+    },
+    "/media/{id}/{file}": {
+      "get": {
+        "description": "Поддерживает Range для перемотки. С ?download=1 отдаётся вложением под своим именем.",
+        "operationId": "getMedia",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "file",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "download",
+            "schema": {
+              "enum": [
+                "1"
+              ],
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/octet-stream": {
+                "schema": {
+                  "format": "binary",
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Файл"
+          },
+          "206": {
+            "description": "Часть файла (Range)"
+          },
+          "404": {
+            "description": "Нет такого файла"
+          }
+        },
+        "summary": "Файл из библиотеки: mediaUrl и thumbnailUrl в model.VideoRecord"
+      },
+      "servers": [
+        {
+          "url": "/"
+        }
+      ]
+    },
+    "/session": {
+      "delete": {
+        "operationId": "deleteSession",
+        "responses": {
+          "204": {
+            "description": "Готово"
+          }
+        },
+        "security": [],
+        "summary": "Выйти: удаляет cookie сессии"
+      },
+      "get": {
+        "operationId": "getSession",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "authenticated": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "authenticated"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "security": [],
+        "summary": "Вошёл ли клиент"
+      },
+      "post": {
+        "operationId": "postSession",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "properties": {
+                  "token": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "token"
+                ],
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "authenticated": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "authenticated"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Ошибка; текст для пользователя"
+          }
+        },
+        "security": [],
+        "summary": "Войти по токену: ставит cookie сессии"
+      }
+    },
+    "/settings": {
+      "get": {
+        "operationId": "getSettings",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/core.Settings"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Ошибка; текст для пользователя"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Нужен вход"
+          }
+        },
+        "summary": "Настройки"
+      }
+    },
+    "/settings/max-concurrent-downloads": {
+      "put": {
+        "operationId": "putSettingsMaxConcurrentDownloads",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "properties": {
+                  "value": {
+                    "type": "integer"
+                  }
+                },
+                "required": [
+                  "value"
+                ],
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/core.Settings"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Ошибка; текст для пользователя"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Нужен вход"
+          }
+        },
+        "summary": "Сколько загрузок идёт одновременно"
+      }
+    },
+    "/tools": {
+      "get": {
+        "operationId": "getTools",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/tools.Report"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Ошибка; текст для пользователя"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Нужен вход"
+          }
+        },
+        "summary": "yt-dlp, ffmpeg, deno: найдены ли и какие версии"
+      }
+    },
+    "/tools/install": {
+      "post": {
+        "operationId": "postToolsInstall",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "properties": {
+                  "names": {
+                    "items": {
+                      "type": "string"
+                    },
+                    "type": "array"
+                  }
+                },
+                "required": [
+                  "names"
+                ],
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/tools.Report"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Ошибка; текст для пользователя"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Нужен вход"
+          }
+        },
+        "summary": "Установить программы; прогресс — событиями tool-install-progress"
+      }
+    },
+    "/tools/install/cancel": {
+      "post": {
+        "operationId": "postToolsInstallCancel",
+        "responses": {
+          "204": {
+            "description": "Готово"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Ошибка; текст для пользователя"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Нужен вход"
+          }
+        },
+        "summary": "Прервать установку"
+      }
+    },
+    "/tools/yt-dlp/update": {
+      "post": {
+        "operationId": "postToolsYtDlpUpdate",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Ошибка; текст для пользователя"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Нужен вход"
+          }
+        },
+        "summary": "Обновить yt-dlp; возвращает его вывод"
+      }
+    }
+  },
+  "security": [
+    {
+      "bearer": []
+    },
+    {
+      "session": []
+    }
+  ],
+  "servers": [
+    {
+      "url": "/api/v1"
+    }
+  ]
+}
