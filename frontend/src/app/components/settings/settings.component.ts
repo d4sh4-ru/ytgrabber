@@ -25,6 +25,7 @@ import {
     ConfirmDialogResult,
 } from '../confirm-dialog/confirm-dialog.component';
 import { AccountConnectDialogComponent } from '../account-connect-dialog/account-connect-dialog.component';
+import { Transport } from '../../api/transport';
 
 const CONFIGURABLE_TOOLS: ReadonlySet<string> = new Set<ConfigurableTool>(['yt-dlp', 'ffmpeg']);
 const CONCURRENCY_OPTIONS: readonly number[] = [1, 2, 3, 4, 5];
@@ -49,6 +50,9 @@ export class SettingsComponent implements OnInit, OnDestroy {
     private readonly notificationService = inject(NotificationService);
     private readonly changeDetectorRef = inject(ChangeDetectorRef);
     private readonly destroy$ = new Subject<void>();
+
+    /** Folder pickers, updates and "delete all data" exist only on the desktop. */
+    protected readonly isDesktop = inject(Transport).isDesktop;
 
     // --- Settings ---
     protected settings: core.Settings | null = null;
@@ -206,7 +210,7 @@ export class SettingsComponent implements OnInit, OnDestroy {
             const [settings, appInfo, storage] = await Promise.all([
                 this.settingsService.getSettings(),
                 this.settingsService.getAppInfo(),
-                this.settingsService.getStorageInfo(),
+                this.isDesktop ? this.settingsService.getStorageInfo() : Promise.resolve(null),
             ]);
             this.settings = settings;
             this.appInfo = appInfo;
@@ -258,12 +262,17 @@ export class SettingsComponent implements OnInit, OnDestroy {
     }
 
     protected accountRefreshLabel(account: model.Account): string {
-        return account.source === 'browser' ? 'Обновить' : 'Загрузить новый';
+        return this.canRefreshFromBrowser(account) ? 'Обновить' : 'Загрузить новый';
+    }
+
+    /** A server can't read browser profiles: every account is refreshed with a file there. */
+    private canRefreshFromBrowser(account: model.Account): boolean {
+        return account.source === 'browser' && this.isDesktop;
     }
 
     /** Browser accounts re-read their profile in one click; files need a new file. */
     protected async onRefreshAccount(account: model.Account): Promise<void> {
-        if (account.source !== 'browser') {
+        if (!this.canRefreshFromBrowser(account)) {
             this.connectSite = account.domain;
             return;
         }

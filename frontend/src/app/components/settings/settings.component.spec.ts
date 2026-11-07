@@ -1,4 +1,6 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { Transport } from '../../api/transport';
+import { FakeTransport } from '../../testing/fake-transport';
 import { BehaviorSubject } from 'rxjs';
 import { SettingsComponent } from './settings.component';
 import { SettingsService } from '../../services/settings.service';
@@ -34,7 +36,10 @@ class SettingsServiceStub {
         return Promise.resolve(core.AppInfo.createFrom({ version: '1.0.0' }));
     }
 
+    public storageRequests = 0;
+
     public getStorageInfo(): Promise<core.StorageInfo> {
+        this.storageRequests++;
         return Promise.resolve(
             core.StorageInfo.createFrom({
                 dataBytes: 2048,
@@ -80,12 +85,17 @@ class AccountsServiceStub {
         return Promise.resolve(this.accounts$.value);
     }
 
-    public importCookiesFile(site: string): Promise<model.Account | null> {
+    public readonly importedFiles: (File | undefined)[] = [];
+    public scans = 0;
+
+    public importCookiesFile(site: string, file?: File): Promise<model.Account | null> {
         this.imported.push(site);
+        this.importedFiles.push(file);
         return Promise.resolve(null);
     }
 
     public scanBrowsers(): Promise<browsers.Match[]> {
+        this.scans++;
         return Promise.resolve(this.matches);
     }
 
@@ -133,6 +143,7 @@ class UpdateServiceStub {
 }
 
 describe('SettingsComponent: delete all data', () => {
+    let transport: FakeTransport;
     let fixture: ComponentFixture<SettingsComponent>;
     let service: SettingsServiceStub;
 
@@ -157,10 +168,12 @@ describe('SettingsComponent: delete all data', () => {
     }
 
     beforeEach(async () => {
+        transport = new FakeTransport();
         service = new SettingsServiceStub();
         await TestBed.configureTestingModule({
             imports: [SettingsComponent],
             providers: [
+                { provide: Transport, useValue: transport },
                 { provide: SettingsService, useValue: service },
                 { provide: ToolInstallService, useValue: new ToolInstallServiceStub() },
                 { provide: AccountsService, useValue: new AccountsServiceStub() },
@@ -214,16 +227,19 @@ describe('SettingsComponent: delete all data', () => {
 });
 
 describe('SettingsComponent: installing tools', () => {
+    let transport: FakeTransport;
     let fixture: ComponentFixture<SettingsComponent>;
     let service: SettingsServiceStub;
     let installer: ToolInstallServiceStub;
 
     beforeEach(async () => {
+        transport = new FakeTransport();
         service = new SettingsServiceStub();
         installer = new ToolInstallServiceStub();
         await TestBed.configureTestingModule({
             imports: [SettingsComponent],
             providers: [
+                { provide: Transport, useValue: transport },
                 { provide: SettingsService, useValue: service },
                 { provide: ToolInstallService, useValue: installer },
                 { provide: AccountsService, useValue: new AccountsServiceStub() },
@@ -289,6 +305,7 @@ describe('SettingsComponent: installing tools', () => {
 });
 
 describe('SettingsComponent: accounts', () => {
+    let transport: FakeTransport;
     let fixture: ComponentFixture<SettingsComponent>;
     let accounts: AccountsServiceStub;
     let notifications: NotificationService;
@@ -310,6 +327,7 @@ describe('SettingsComponent: accounts', () => {
     }
 
     beforeEach(async () => {
+        transport = new FakeTransport();
         accounts = new AccountsServiceStub();
         accounts.accounts$.next([
             model.Account.createFrom({
@@ -369,6 +387,7 @@ describe('SettingsComponent: accounts', () => {
         await TestBed.configureTestingModule({
             imports: [SettingsComponent],
             providers: [
+                { provide: Transport, useValue: transport },
                 { provide: SettingsService, useValue: new SettingsServiceStub() },
                 { provide: ToolInstallService, useValue: new ToolInstallServiceStub() },
                 { provide: AccountsService, useValue: accounts },
@@ -475,6 +494,7 @@ describe('SettingsComponent: accounts', () => {
 });
 
 describe('SettingsComponent: updates', () => {
+    let transport: FakeTransport;
     let fixture: ComponentFixture<SettingsComponent>;
     let settings: SettingsServiceStub;
     let updates: UpdateServiceStub;
@@ -496,11 +516,13 @@ describe('SettingsComponent: updates', () => {
     }
 
     beforeEach(async () => {
+        transport = new FakeTransport();
         settings = new SettingsServiceStub();
         updates = new UpdateServiceStub();
         await TestBed.configureTestingModule({
             imports: [SettingsComponent],
             providers: [
+                { provide: Transport, useValue: transport },
                 { provide: SettingsService, useValue: settings },
                 { provide: ToolInstallService, useValue: new ToolInstallServiceStub() },
                 { provide: AccountsService, useValue: new AccountsServiceStub() },
@@ -552,5 +574,70 @@ describe('SettingsComponent: updates', () => {
         boxes[1].click();
         await settle();
         expect(settings.updateSettingsCalls).toEqual([[true, true]]);
+    });
+});
+
+describe('SettingsComponent: on a server', () => {
+    let fixture: ComponentFixture<SettingsComponent>;
+    let settings: SettingsServiceStub;
+    let accounts: AccountsServiceStub;
+
+    function text(): string {
+        return (fixture.nativeElement as HTMLElement).textContent ?? '';
+    }
+
+    async function settle(): Promise<void> {
+        await new Promise((resolve) => setTimeout(resolve));
+        fixture.detectChanges();
+    }
+
+    beforeEach(async () => {
+        const transport = new FakeTransport();
+        transport.isDesktop = false;
+        settings = new SettingsServiceStub();
+        accounts = new AccountsServiceStub();
+        accounts.accounts$.next([
+            model.Account.createFrom({ id: 'b', domain: 'youtube.com', source: 'browser' }),
+        ]);
+        await TestBed.configureTestingModule({
+            imports: [SettingsComponent],
+            providers: [
+                { provide: Transport, useValue: transport },
+                { provide: SettingsService, useValue: settings },
+                { provide: ToolInstallService, useValue: new ToolInstallServiceStub() },
+                { provide: AccountsService, useValue: accounts },
+                { provide: UpdateService, useValue: new UpdateServiceStub() },
+            ],
+        }).compileComponents();
+        fixture = TestBed.createComponent(SettingsComponent);
+        fixture.detectChanges();
+        await settle();
+    });
+
+    it('hides what only the desktop can do', () => {
+        for (const label of ['Изменить…', 'Указать…', 'Проверить обновления', 'Удалить всё']) {
+            expect(text()).not.toContain(label);
+        }
+        expect(settings.storageRequests).toBe(0);
+    });
+
+    it('refreshes any account with an uploaded cookies.txt', async () => {
+        const refresh = Array.from(
+            (fixture.nativeElement as HTMLElement).querySelectorAll('button'),
+        ).find((button) => button.textContent?.includes('Загрузить новый'));
+        refresh!.click();
+        await settle();
+        expect(text()).not.toContain('Найти в браузерах');
+        expect(accounts.scans).toBe(0);
+
+        const input = (fixture.nativeElement as HTMLElement).querySelector<HTMLInputElement>(
+            'app-account-connect-dialog input[type=file]',
+        )!;
+        const file = new File(['# Netscape HTTP Cookie File'], 'cookies.txt');
+        Object.defineProperty(input, 'files', { value: [file] });
+        input.dispatchEvent(new Event('change'));
+        await settle();
+        expect(accounts.imported).toEqual(['youtube.com']);
+        expect(accounts.importedFiles).toEqual([file]);
     });
 });

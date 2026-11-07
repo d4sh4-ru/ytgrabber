@@ -82,6 +82,7 @@ type App struct {
 	// updater finds and downloads new versions; detectInstall says how
 	// this copy can be replaced (both swapped out in tests).
 	updater       *updater.Client
+	selfUpdate    bool
 	detectInstall func() updater.Install
 	updateMu      sync.Mutex
 	update        updateState
@@ -117,8 +118,18 @@ type AppInfo struct {
 	StartupError string `json:"startupError"`
 }
 
-func New(paths platform.Paths) *App {
+// Option adjusts how New sets up the core.
+type Option func(*App)
+
+// WithoutSelfUpdate turns off checking for and installing new versions of
+// the app itself: a server is updated by replacing its image, not in place.
+func WithoutSelfUpdate() Option {
+	return func(a *App) { a.selfUpdate = false }
+}
+
+func New(paths platform.Paths, opts ...Option) *App {
 	a := &App{
+		selfUpdate: true,
 		paths:      paths,
 		events:     EventFunc(func(string, ...interface{}) {}),
 		quit:       func() {},
@@ -132,6 +143,9 @@ func New(paths platform.Paths) *App {
 		stopWatching:  func() {},
 	}
 	a.startHelper = a.startCleanupHelper
+	for _, opt := range opts {
+		opt(a)
+	}
 	a.installer = installer.Installer{
 		Dir:       paths.ToolsDir(),
 		Client:    &http.Client{Timeout: installTimeout},
@@ -168,9 +182,11 @@ func (a *App) Start(events EventSink, quit func()) {
 		return
 	}
 
-	watchCtx, stop := context.WithCancel(context.Background())
-	a.stopWatching = stop
-	go a.watchForUpdates(watchCtx)
+	if a.selfUpdate {
+		watchCtx, stop := context.WithCancel(context.Background())
+		a.stopWatching = stop
+		go a.watchForUpdates(watchCtx)
+	}
 }
 
 // init opens the database, loads settings, locates tools and restores the

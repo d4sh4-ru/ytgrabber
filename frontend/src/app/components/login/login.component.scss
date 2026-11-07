@@ -1,0 +1,45 @@
+@use '../../../styles/variables' as v;
+
+.login {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    width: 100%;
+    max-width: 360px;
+    margin: 15vh auto 0;
+    padding: 0 16px;
+    box-sizing: border-box;
+
+    &__title {
+        margin: 0;
+        font-size: 22px;
+    }
+
+    &__text {
+        margin: 0;
+        color: v.$text-secondary;
+        font-size: 13px;
+        line-height: 1.5;
+    }
+
+    &__input {
+        padding: 10px 12px;
+        border: 1px solid v.$border-subtle;
+        border-radius: v.$radius-sm;
+        background: v.$bg-surface;
+        color: v.$text-primary;
+        // 16px keeps iOS Safari from zooming into the field.
+        font-size: 16px;
+
+        &:focus {
+            outline: none;
+            border-color: v.$accent;
+        }
+    }
+
+    &__error {
+        margin: 0;
+        color: v.$error;
+        font-size: 13px;
+    }
+}

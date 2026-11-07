@@ -1,4 +1,6 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { Transport } from './api/transport';
+import { FakeTransport } from './testing/fake-transport';
 import { BehaviorSubject, Observable, Subject } from 'rxjs';
 import { App } from './app';
 import { AccountsService } from './services/accounts.service';
@@ -109,12 +111,14 @@ function job(id: string, status: string): model.DownloadJob {
 }
 
 describe('App', () => {
+    let transport: FakeTransport;
     let downloadService: DownloadServiceStub;
     let settingsService: SettingsServiceStub;
     let toolInstallService: ToolInstallServiceStub;
     let updateService: UpdateServiceStub;
 
     beforeEach(async () => {
+        transport = new FakeTransport();
         downloadService = new DownloadServiceStub();
         settingsService = new SettingsServiceStub();
         toolInstallService = new ToolInstallServiceStub();
@@ -123,6 +127,7 @@ describe('App', () => {
         await TestBed.configureTestingModule({
             imports: [App],
             providers: [
+                { provide: Transport, useValue: transport },
                 { provide: DownloadService, useValue: downloadService },
                 { provide: SettingsService, useValue: settingsService },
                 { provide: ToolInstallService, useValue: toolInstallService },
@@ -149,6 +154,27 @@ describe('App', () => {
     it('renders the title', async () => {
         const compiled = await render();
         expect(compiled.querySelector('h1')?.textContent).toContain('YT Grabber');
+    });
+
+    it('asks a server user to sign in before loading anything', async () => {
+        transport.isDesktop = false;
+        transport.isAuthenticated = false;
+        const fixture = TestBed.createComponent(App);
+        fixture.detectChanges();
+        await settle(fixture);
+        const element = fixture.nativeElement as HTMLElement;
+        expect(element.querySelector('app-login')).not.toBeNull();
+        expect(element.querySelector('app-download-form')).toBeNull();
+
+        const input = element.querySelector<HTMLInputElement>('app-login input');
+        input!.value = 'token';
+        input!.dispatchEvent(new Event('input'));
+        fixture.detectChanges();
+        element.querySelector<HTMLButtonElement>('app-login button[type=submit]')!.click();
+        await settle(fixture);
+        await settle(fixture);
+        expect(element.querySelector('app-login')).toBeNull();
+        expect(element.querySelector('app-download-form')).not.toBeNull();
     });
 
     it('shows the startup error instead of the UI', async () => {

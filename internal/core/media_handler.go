@@ -1,6 +1,7 @@
 package core
 
 import (
+	"mime"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -14,7 +15,8 @@ const mediaRoutePrefix = "/media/"
 // as the Wails asset server fallback. Files are looked up by record id, so
 // only files that are in the library can ever be served — no path from the
 // URL reaches the filesystem. http.ServeContent handles Range requests,
-// which <video> needs for seeking.
+// which <video> needs for seeking. With ?download=1 the file comes as an
+// attachment under its own name, for "save to device".
 func MediaHandler(a *App) http.Handler {
 	return mediaHandler{app: a}
 }
@@ -68,5 +70,11 @@ func (h mediaHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	http.ServeContent(w, r, filepath.Base(path), info.ModTime(), file)
+	name = filepath.Base(path)
+	if r.URL.Query().Get("download") == "1" {
+		// FormatMediaType writes non-ASCII names as filename*=utf-8''…
+		// (RFC 2231/5987), so Cyrillic titles survive the download.
+		w.Header().Set("Content-Disposition", mime.FormatMediaType("attachment", map[string]string{"filename": name}))
+	}
+	http.ServeContent(w, r, name, info.ModTime(), file)
 }

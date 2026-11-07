@@ -1,10 +1,12 @@
 package core
 
 import (
+	"mime"
 	"net/http"
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -195,6 +197,48 @@ func TestMediaHandler(t *testing.T) {
 		if rec.Code != http.StatusNotFound {
 			t.Errorf("%s: status %d, want 404", path, rec.Code)
 		}
+	}
+}
+
+func TestMediaHandlerDownload(t *testing.T) {
+	app, _ := newTestApp(t)
+	media := filepath.Join(t.TempDir(), "Клип [id].mp3")
+	os.WriteFile(media, []byte("abc"), 0o644)
+	app.db.SaveVideo(&model.VideoRecord{ID: "a1", Title: "Клип", MediaKind: model.MediaAudio, FilePath: media, DownloadedAt: "1"})
+
+	handler := mediaHandler{app: app}
+	rec := httptest.NewRecorder()
+	handler.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/media/a1/file.mp3", nil))
+	if got := rec.Header().Get("Content-Disposition"); got != "" {
+		t.Errorf("playback must not be an attachment, got %q", got)
+	}
+
+	rec = httptest.NewRecorder()
+	handler.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/media/a1/file.mp3?download=1", nil))
+	_, params, err := mime.ParseMediaType(rec.Header().Get("Content-Disposition"))
+	if rec.Code != http.StatusOK || err != nil || params["filename"] != "Клип [id].mp3" {
+		t.Errorf("download: %d %q (%v)", rec.Code, rec.Header().Get("Content-Disposition"), err)
+	}
+}
+
+func TestImportCookiesFromReader(t *testing.T) {
+	app, events := newTestApp(t)
+	file := "# Netscape HTTP Cookie File\n" +
+		".example.com\tTRUE\t/\tTRUE\t0\tsid\tvalue\n" +
+		".other.com\tTRUE\t/\tTRUE\t0\tsid\tleak\n"
+
+	account, err := app.ImportCookies(LocalUser, "https://www.example.com/watch", strings.NewReader(file))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if account.Domain != "example.com" || account.CookieCount != 1 {
+		t.Errorf("account = %+v", account)
+	}
+	if events.count("accounts-changed") == 0 {
+		t.Error("accounts-changed not emitted")
+	}
+	if _, err := app.ImportCookies(LocalUser, "example.com", strings.NewReader("not cookies")); err == nil {
+		t.Error("garbage accepted as cookies.txt")
 	}
 }
 
