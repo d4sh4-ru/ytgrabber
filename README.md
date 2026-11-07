@@ -114,7 +114,7 @@ go build ./cmd/ytgrabber-server
 
 Пока сервер однопользовательский: несколько пользователей и вход с устройств — [#14](https://github.com/d4sh4-ru/ytgrabber/issues/14), мобильная вёрстка и PWA — [#16](https://github.com/d4sh4-ru/ytgrabber/issues/16).
 
-API — `/api/v1` (JSON, авторизация заголовком `Authorization: Bearer <токен>` или cookie после входа), события — WebSocket `/api/v1/events`, файлы — `/media/<id>/file.<ext>` (поддерживает Range, с `?download=1` отдаётся как вложение).
+API — `/api/v1`, описание в OpenAPI: [`internal/server/openapi.json`](internal/server/openapi.json), его же отдаёт сервер по `/api/v1/openapi.json` (JSON, авторизация заголовком `Authorization: Bearer <токен>` или cookie после входа), события — WebSocket `/api/v1/events`, файлы — `/media/<id>/file.<ext>` (поддерживает Range, с `?download=1` отдаётся как вложение).
 
 ### Разработка
 
@@ -130,6 +130,15 @@ wails dev
 go test -race ./...
 cd frontend && npm test && npm run format:check
 ```
+
+API сервера описано таблицей маршрутов в `internal/server/routes.go`; из неё строится `openapi.json`, а из него — типы веб-клиента `frontend/src/app/api/openapi.ts`. После изменения маршрутов или типов, которые они возвращают:
+
+```bash
+go test ./internal/server -run TestOpenAPISpec -update
+cd frontend && npm run generate:api
+```
+
+Тесты и CI падают, если файлы устарели.
 
 CI (`.github/workflows/ci.yml`) собирает приложение и прогоняет тесты на macOS, Windows и Linux.
 

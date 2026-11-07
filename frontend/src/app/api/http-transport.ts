@@ -1,16 +1,23 @@
+import createClient, { Client } from 'openapi-fetch';
 import { filter, map, Observable, Subject } from 'rxjs';
+import type { paths } from './openapi';
 import type { Transport } from './transport';
 
-const API = '/api/v1';
+/** Typed client for the server's API, generated from internal/server/openapi.json. */
+type Api = Client<paths>;
 
-type HttpMethod = 'GET' | 'POST' | 'PUT' | 'DELETE';
-
-/** How a backend method maps onto the server's REST API (internal/server). */
-interface Route {
-    method: HttpMethod;
-    path: (args: readonly unknown[]) => string;
-    body?: (args: readonly unknown[]) => unknown;
+/** What every openapi-fetch call resolves to. */
+interface ApiResult {
+    data?: unknown;
+    error?: unknown;
+    response: Response;
 }
+
+/** How one backend method is called over HTTP; args as the desktop binding takes them. */
+type Call = (api: Api, args: readonly unknown[]) => Promise<ApiResult>;
+
+type Quality = paths['/jobs']['post']['requestBody']['content']['application/json']['quality'];
+type ErrorBody = paths['/jobs']['post']['responses'][400]['content']['application/json'];
 
 /** One message on the events WebSocket. */
 interface ServerEvent {
@@ -18,76 +25,81 @@ interface ServerEvent {
     data: unknown;
 }
 
-interface ErrorBody {
-    error?: string;
-}
+const API_PREFIX = '/api/v1';
 
-const id = (args: readonly unknown[]): string => encodeURIComponent(String(args[0]));
+const idOf = (args: readonly unknown[]): { path: { id: string } } => ({
+    path: { id: String(args[0]) },
+});
 
-const ROUTES: Readonly<Record<string, Route>> = {
-    GetAppInfo: { method: 'GET', path: () => '/info' },
-    GetSettings: { method: 'GET', path: () => '/settings' },
-    SetMaxConcurrentDownloads: {
-        method: 'PUT',
-        path: () => '/settings/max-concurrent-downloads',
-        body: (args) => ({ value: args[0] }),
-    },
+/**
+ * The backend methods the server has (internal/server/routes.go). The
+ * rest exist only in the desktop app; the UI hides them on a server.
+ */
+const CALLS: Readonly<Record<string, Call>> = {
+    GetAppInfo: (api) => api.GET('/info'),
+    GetSettings: (api) => api.GET('/settings'),
+    SetMaxConcurrentDownloads: (api, [value]) =>
+        api.PUT('/settings/max-concurrent-downloads', { body: { value: Number(value) } }),
 
-    GetDependencies: { method: 'GET', path: () => '/tools' },
-    InstallTools: {
-        method: 'POST',
-        path: () => '/tools/install',
-        body: (args) => ({ names: args[0] }),
-    },
-    CancelToolInstall: { method: 'POST', path: () => '/tools/install/cancel' },
-    UpdateYtDlp: { method: 'POST', path: () => '/tools/yt-dlp/update' },
+    GetDependencies: (api) => api.GET('/tools'),
+    InstallTools: (api, [names]) =>
+        api.POST('/tools/install', { body: { names: [...(names as readonly string[])] } }),
+    CancelToolInstall: (api) => api.POST('/tools/install/cancel'),
+    UpdateYtDlp: (api) => api.POST('/tools/yt-dlp/update'),
 
-    DownloadVideo: {
-        method: 'POST',
-        path: () => '/jobs',
-        body: (args) => ({ url: args[0], quality: args[1], useAccount: args[2] }),
-    },
-    GetJobs: { method: 'GET', path: () => '/jobs' },
-    RetryJob: {
-        method: 'POST',
-        path: (args) => `/jobs/${id(args)}/retry`,
-        body: (args) => ({ useAccount: args[1] }),
-    },
-    RemoveJob: { method: 'DELETE', path: (args) => `/jobs/${id(args)}` },
+    DownloadVideo: (api, [url, quality, useAccount]) =>
+        api.POST('/jobs', {
+            body: {
+                url: String(url),
+                quality: quality as Quality,
+                useAccount: useAccount === true,
+            },
+        }),
+    GetJobs: (api) => api.GET('/jobs'),
+    RetryJob: (api, args) =>
+        api.POST('/jobs/{id}/retry', {
+            params: idOf(args),
+            body: { useAccount: args[1] === true },
+        }),
+    RemoveJob: (api, args) => api.DELETE('/jobs/{id}', { params: idOf(args) }),
 
-    GetLibrary: { method: 'GET', path: () => '/library' },
-    DeleteVideo: {
-        method: 'DELETE',
-        path: (args) => `/library/${id(args)}?deleteFiles=${args[1] === true}`,
-    },
-    SavePlaybackPosition: {
-        method: 'PUT',
-        path: (args) => `/library/${id(args)}/position`,
-        body: (args) => ({ seconds: args[1] }),
-    },
+    GetLibrary: (api) => api.GET('/library'),
+    DeleteVideo: (api, args) =>
+        api.DELETE('/library/{id}', {
+            params: { ...idOf(args), query: { deleteFiles: String(args[1] === true) } },
+        }),
+    SavePlaybackPosition: (api, args) =>
+        api.PUT('/library/{id}/position', {
+            params: idOf(args),
+            body: { seconds: Number(args[1]) },
+        }),
 
-    GetAccounts: { method: 'GET', path: () => '/accounts' },
-    CheckAccount: { method: 'POST', path: (args) => `/accounts/${id(args)}/check` },
-    RemoveAccount: { method: 'DELETE', path: (args) => `/accounts/${id(args)}` },
+    GetAccounts: (api) => api.GET('/accounts'),
+    CheckAccount: (api, args) => api.POST('/accounts/{id}/check', { params: idOf(args) }),
+    RemoveAccount: (api, args) => api.DELETE('/accounts/{id}', { params: idOf(args) }),
+    // ImportCookiesFile(site, file): the browser uploads the file the user picked.
+    ImportCookiesFile: (api, [site, file]) => {
+        if (!(file instanceof File)) {
+            return Promise.reject(new Error('Не выбран файл cookies.txt'));
+        }
+        return api.POST('/accounts', {
+            // The spec types a binary field as string; the serializer sends the File.
+            body: { site: String(site), file: file as unknown as string },
+            bodySerializer: (): FormData => {
+                const form = new FormData();
+                form.append('site', String(site));
+                form.append('file', file);
+                return form;
+            },
+        });
+    },
 };
-
-/** The body as JSON; a proxy's HTML or plain-text error page is not. */
-function parseJSON(text: string): unknown {
-    if (!text) {
-        return undefined;
-    }
-    try {
-        return JSON.parse(text) as unknown;
-    } catch {
-        return undefined;
-    }
-}
 
 const RECONNECT_MIN_MS = 1000;
 const RECONNECT_MAX_MS = 30000;
 
 /**
- * The browser transport: backend methods become REST calls to
+ * The browser transport: backend methods become calls to the REST API of
  * ytgrabber-server, events arrive over one shared WebSocket that
  * reconnects by itself. Auth is the session cookie the login sets, which
  * <video> and <img> send too.
@@ -95,6 +107,13 @@ const RECONNECT_MAX_MS = 30000;
 export class HttpTransport implements Transport {
     public readonly isDesktop = false;
     public readonly reconnected$: Observable<void>;
+
+    private readonly api: Api = createClient<paths>({
+        baseUrl: location.origin + API_PREFIX,
+        credentials: 'same-origin',
+        // Looked up per call, so tests can stub the global.
+        fetch: (request: Request): Promise<Response> => fetch(request),
+    });
 
     private readonly reconnectedSubject$ = new Subject<void>();
     private readonly eventsSubject$ = new Subject<ServerEvent>();
@@ -105,19 +124,12 @@ export class HttpTransport implements Transport {
         this.reconnected$ = this.reconnectedSubject$.asObservable();
     }
 
-    public call<T>(method: string, args: readonly unknown[] = []): Promise<T> {
-        if (method === 'ImportCookiesFile') {
-            return this.importCookies<T>(args);
+    public async call<T>(method: string, args: readonly unknown[] = []): Promise<T> {
+        const call = CALLS[method];
+        if (!call) {
+            throw new Error(`На сервере это недоступно (${method})`);
         }
-        const route = ROUTES[method];
-        if (!route) {
-            return Promise.reject(new Error(`На сервере это недоступно (${method})`));
-        }
-        const body = route.body?.(args);
-        return this.request<T>(route.method, route.path(args), {
-            body: body === undefined ? undefined : JSON.stringify(body),
-            headers: body === undefined ? undefined : { 'Content-Type': 'application/json' },
-        });
+        return unwrap<T>(await call(this.api, args));
     }
 
     public events$<T>(name: string): Observable<T> {
@@ -129,49 +141,15 @@ export class HttpTransport implements Transport {
     }
 
     public async checkSession(): Promise<boolean> {
-        const session = await this.request<{ authenticated: boolean }>('GET', '/session');
+        const session = unwrap<{ authenticated: boolean }>(await this.api.GET('/session'));
         return session.authenticated;
     }
 
     public async login(token: string): Promise<void> {
-        await this.request<unknown>('POST', '/session', {
-            body: JSON.stringify({ token }),
-            headers: { 'Content-Type': 'application/json' },
-        });
+        unwrap(await this.api.POST('/session', { body: { token } }));
         // A socket opened before the login was refused; retry right away.
         this.reconnectDelay = RECONNECT_MIN_MS;
         this.socket?.close();
-    }
-
-    // --- Requests ---
-    private async request<T>(method: HttpMethod, path: string, init: RequestInit = {}): Promise<T> {
-        const response = await fetch(API + path, {
-            ...init,
-            method,
-            credentials: 'same-origin',
-        });
-        if (response.status === 204) {
-            return undefined as T;
-        }
-        const text = await response.text();
-        const payload = parseJSON(text);
-        if (!response.ok) {
-            const message = (payload as ErrorBody | undefined)?.error;
-            throw new Error(message || `Ошибка сервера ${response.status}`);
-        }
-        return payload as T;
-    }
-
-    /** ImportCookiesFile(site, file): the browser uploads the chosen file. */
-    private importCookies<T>(args: readonly unknown[]): Promise<T> {
-        const [site, file] = args as [string, File | undefined];
-        if (!(file instanceof File)) {
-            return Promise.reject(new Error('Не выбран файл cookies.txt'));
-        }
-        const form = new FormData();
-        form.append('site', site);
-        form.append('file', file);
-        return this.request<T>('POST', '/accounts', { body: form });
     }
 
     // --- Events ---
@@ -180,7 +158,7 @@ export class HttpTransport implements Transport {
             return;
         }
         const scheme = location.protocol === 'https:' ? 'wss' : 'ws';
-        const socket = new WebSocket(`${scheme}://${location.host}${API}/events`);
+        const socket = new WebSocket(`${scheme}://${location.host}${API_PREFIX}/events`);
         this.socket = socket;
 
         socket.onopen = (): void => {
@@ -203,4 +181,18 @@ export class HttpTransport implements Transport {
             setTimeout((): void => this.connect(), delay);
         };
     }
+}
+
+/** The response data, or an Error with the server's message. */
+function unwrap<T>(result: ApiResult): T {
+    if (result.response.ok) {
+        return result.data as T;
+    }
+    // A proxy's HTML error page parses to a string, not an ErrorBody.
+    const message = (result.error as Partial<ErrorBody> | undefined)?.error;
+    throw new Error(
+        typeof message === 'string' && message
+            ? message
+            : `Ошибка сервера ${result.response.status}`,
+    );
 }
