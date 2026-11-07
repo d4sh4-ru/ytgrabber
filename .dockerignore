@@ -1,0 +1,14 @@
+.git
+.github
+.idea
+.claude
+build/bin
+data
+downloads
+frontend/node_modules
+frontend/dist
+frontend/.angular
+frontend/src/app/wailsjs
+*.db
+/ytgrabber
+/ytgrabber.exe

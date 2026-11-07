@@ -8,12 +8,16 @@
                     settings.downloadsDir
                 }}</code>
             </div>
-            <div class="settings__buttons">
-                <button type="button" class="btn" (click)="onOpenDownloadsDir()">Открыть</button>
-                <button type="button" class="btn" (click)="onChooseDownloadsDir()">
-                    Изменить…
-                </button>
-            </div>
+            @if (isDesktop) {
+                <div class="settings__buttons">
+                    <button type="button" class="btn" (click)="onOpenDownloadsDir()">
+                        Открыть
+                    </button>
+                    <button type="button" class="btn" (click)="onChooseDownloadsDir()">
+                        Изменить…
+                    </button>
+                </div>
+            }
         </div>
         <div class="settings__row">
             <label class="settings__label" for="concurrency">Одновременных загрузок</label>
@@ -189,7 +193,7 @@
                         Установить
                     </button>
                 }
-                @if (isConfigurable(tool)) {
+                @if (isDesktop && isConfigurable(tool)) {
                     <button type="button" class="btn" (click)="onChooseTool(tool)">Указать…</button>
                     @if (tool.custom) {
                         <button type="button" class="btn" (click)="onResetTool(tool)">Авто</button>
@@ -222,99 +226,103 @@
             </dd>
         </dl>
 
-        <div class="settings__update">
-            <div class="settings__row">
-                <div class="settings__label">
-                    @if (update?.available) {
-                        <strong>
-                            Доступна версия {{ update?.version }}
-                            @if (update?.prerelease) {
-                                (тестовая)
+        @if (isDesktop) {
+            <div class="settings__update">
+                <div class="settings__row">
+                    <div class="settings__label">
+                        @if (update?.available) {
+                            <strong>
+                                Доступна версия {{ update?.version }}
+                                @if (update?.prerelease) {
+                                    (тестовая)
+                                }
+                            </strong>
+                            @if (!update?.canInstall) {
+                                <span class="settings__muted"
+                                    >Установите вручную: {{ update?.installNote }}</span
+                                >
                             }
-                        </strong>
-                        @if (!update?.canInstall) {
-                            <span class="settings__muted"
-                                >Установите вручную: {{ update?.installNote }}</span
-                            >
+                        } @else if (hasCheckedUpdate) {
+                            <span class="settings__ok">Установлена последняя версия</span>
+                        } @else {
+                            <span>Обновления</span>
                         }
-                    } @else if (hasCheckedUpdate) {
-                        <span class="settings__ok">Установлена последняя версия</span>
-                    } @else {
-                        <span>Обновления</span>
-                    }
-                </div>
-                <div class="settings__buttons">
-                    @if (update?.available) {
-                        @if (update?.canInstall) {
-                            <button
-                                type="button"
-                                class="btn btn--primary"
-                                [disabled]="isInstallingUpdate"
-                                (click)="onInstallUpdate()"
-                            >
-                                Обновить и перезапустить
+                    </div>
+                    <div class="settings__buttons">
+                        @if (update?.available) {
+                            @if (update?.canInstall) {
+                                <button
+                                    type="button"
+                                    class="btn btn--primary"
+                                    [disabled]="isInstallingUpdate"
+                                    (click)="onInstallUpdate()"
+                                >
+                                    Обновить и перезапустить
+                                </button>
+                            }
+                            <button type="button" class="btn" (click)="onOpenReleasePage()">
+                                Страница релиза
                             </button>
                         }
-                        <button type="button" class="btn" (click)="onOpenReleasePage()">
-                            Страница релиза
+                        <button
+                            type="button"
+                            class="btn"
+                            [disabled]="isCheckingUpdate || isInstallingUpdate"
+                            (click)="onCheckUpdates()"
+                        >
+                            {{ isCheckingUpdate ? 'Проверка…' : 'Проверить обновления' }}
                         </button>
-                    }
-                    <button
-                        type="button"
-                        class="btn"
-                        [disabled]="isCheckingUpdate || isInstallingUpdate"
-                        (click)="onCheckUpdates()"
-                    >
-                        {{ isCheckingUpdate ? 'Проверка…' : 'Проверить обновления' }}
-                    </button>
+                    </div>
                 </div>
-            </div>
-            @if (isInstallingUpdate) {
-                <span class="settings__install">{{ updateProgressLabel }}</span>
-                @if (updatePercent; as percent) {
-                    <progress class="settings__progress" [value]="percent" max="100"></progress>
+                @if (isInstallingUpdate) {
+                    <span class="settings__install">{{ updateProgressLabel }}</span>
+                    @if (updatePercent; as percent) {
+                        <progress class="settings__progress" [value]="percent" max="100"></progress>
+                    }
                 }
-            }
-            @if (update?.available && update?.notes) {
-                <pre class="settings__output settings__notes">{{ update?.notes }}</pre>
-            }
-            @if (settings) {
-                <label class="settings__check">
-                    <input
-                        type="checkbox"
-                        [checked]="settings.autoCheckUpdates"
-                        (change)="onAutoCheckChange($event)"
-                    />
-                    Проверять обновления при запуске и раз в день
-                </label>
-                <label class="settings__check">
-                    <input
-                        type="checkbox"
-                        [checked]="settings.prereleaseUpdates"
-                        (change)="onPrereleaseChange($event)"
-                    />
-                    Предлагать тестовые версии
-                </label>
-            }
-        </div>
+                @if (update?.available && update?.notes) {
+                    <pre class="settings__output settings__notes">{{ update?.notes }}</pre>
+                }
+                @if (settings) {
+                    <label class="settings__check">
+                        <input
+                            type="checkbox"
+                            [checked]="settings.autoCheckUpdates"
+                            (change)="onAutoCheckChange($event)"
+                        />
+                        Проверять обновления при запуске и раз в день
+                    </label>
+                    <label class="settings__check">
+                        <input
+                            type="checkbox"
+                            [checked]="settings.prereleaseUpdates"
+                            (change)="onPrereleaseChange($event)"
+                        />
+                        Предлагать тестовые версии
+                    </label>
+                }
+            </div>
+        }
     </section>
 }
 
-<section class="settings__section settings__section--danger">
-    <h2 class="settings__heading">Удаление данных</h2>
-    <div class="settings__row">
-        <div class="settings__label">
-            <span>Удалить все данные приложения и закрыть его</span>
-            <span class="settings__muted">
-                База, настройки, журнал и кэш: {{ dataSizeLabel }}. Скачанные файлы:
-                {{ storage?.mediaFiles ?? 0 }} шт., {{ mediaSizeLabel }}.
-            </span>
+@if (isDesktop) {
+    <section class="settings__section settings__section--danger">
+        <h2 class="settings__heading">Удаление данных</h2>
+        <div class="settings__row">
+            <div class="settings__label">
+                <span>Удалить все данные приложения и закрыть его</span>
+                <span class="settings__muted">
+                    База, настройки, журнал и кэш: {{ dataSizeLabel }}. Скачанные файлы:
+                    {{ storage?.mediaFiles ?? 0 }} шт., {{ mediaSizeLabel }}.
+                </span>
+            </div>
+            <button type="button" class="btn btn--destructive" (click)="onResetRequested()">
+                Удалить всё…
+            </button>
         </div>
-        <button type="button" class="btn btn--destructive" (click)="onResetRequested()">
-            Удалить всё…
-        </button>
-    </div>
-</section>
+    </section>
+}
 
 @switch (resetStep) {
     @case ('choose') {

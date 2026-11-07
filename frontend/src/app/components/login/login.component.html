@@ -1,0 +1,23 @@
+<form class="login" (submit)="onSubmit($event)">
+    <h1 class="login__title">YT Grabber</h1>
+    <p class="login__text">
+        Введите токен доступа к серверу. Он выводится в журнал при первом запуске и хранится в файле
+        <code>token</code> в папке данных сервера.
+    </p>
+    <input
+        class="login__input"
+        type="password"
+        name="token"
+        autocomplete="current-password"
+        placeholder="Токен"
+        [value]="token"
+        [disabled]="isSubmitting"
+        (input)="onTokenInput($event)"
+    />
+    @if (error) {
+        <p class="login__error">{{ error }}</p>
+    }
+    <button type="submit" class="btn btn--primary" [disabled]="isSubmitting || !token.trim()">
+        {{ isSubmitting ? 'Вход…' : 'Войти' }}
+    </button>
+</form>

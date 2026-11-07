@@ -20,6 +20,8 @@ import { VideoPlayerModalComponent } from './components/video-player-modal/video
 import { AudioPlayerBarComponent } from './components/audio-player-bar/audio-player-bar.component';
 import { SettingsComponent } from './components/settings/settings.component';
 import { ToastHostComponent } from './components/toast-host/toast-host.component';
+import { LoginComponent } from './components/login/login.component';
+import { Transport } from './api/transport';
 
 type AppTab = 'add' | 'library' | 'settings';
 
@@ -35,6 +37,7 @@ const ACTIVE_JOB_STATUSES: ReadonlySet<string> = new Set(['pending', 'downloadin
         AudioPlayerBarComponent,
         SettingsComponent,
         ToastHostComponent,
+        LoginComponent,
     ],
     templateUrl: './app.html',
     styleUrl: './app.scss',
@@ -49,7 +52,12 @@ export class App implements OnInit, OnDestroy {
     private readonly playbackService = inject(PlaybackService);
     private readonly notificationService = inject(NotificationService);
     private readonly changeDetectorRef = inject(ChangeDetectorRef);
+    private readonly transport = inject(Transport);
     private readonly destroy$ = new Subject<void>();
+
+    // --- Session (server only) ---
+    protected isLoginRequired = false;
+    private isStarted = false;
 
     // --- Navigation ---
     protected activeTab: AppTab = 'add';
@@ -98,6 +106,36 @@ export class App implements OnInit, OnDestroy {
         // lost; the load result is then merged with whatever arrived.
         this.subscribeToEvents();
 
+        if (!(await this.hasSession())) {
+            this.isLoginRequired = true;
+            this.changeDetectorRef.markForCheck();
+            return;
+        }
+        await this.start();
+    }
+
+    public ngOnDestroy(): void {
+        this.destroy$.next();
+        this.destroy$.complete();
+    }
+
+    // --- Session ---
+    protected onLoggedIn(): void {
+        this.isLoginRequired = false;
+        this.changeDetectorRef.markForCheck();
+        void this.start();
+    }
+
+    private async hasSession(): Promise<boolean> {
+        try {
+            return await this.transport.checkSession();
+        } catch (error: unknown) {
+            this.notificationService.error(error);
+            return false;
+        }
+    }
+
+    private async start(): Promise<void> {
         const info = await this.settingsService.getAppInfo();
         this.startupError = info.startupError;
         this.changeDetectorRef.markForCheck();
@@ -105,13 +143,16 @@ export class App implements OnInit, OnDestroy {
             return;
         }
 
-        await Promise.all([this.loadJobs(), this.refreshLibrary(), this.refreshDependencies()]);
-        void this.updateService.load().catch((): void => undefined);
+        this.isStarted = true;
+        await this.reload();
+        // A server is updated by replacing its image, not from the UI.
+        if (this.transport.isDesktop) {
+            void this.updateService.load().catch((): void => undefined);
+        }
     }
 
-    public ngOnDestroy(): void {
-        this.destroy$.next();
-        this.destroy$.complete();
+    private async reload(): Promise<void> {
+        await Promise.all([this.loadJobs(), this.refreshLibrary(), this.refreshDependencies()]);
     }
 
     // --- Navigation ---
@@ -121,6 +162,13 @@ export class App implements OnInit, OnDestroy {
 
     // --- Jobs ---
     private subscribeToEvents(): void {
+        // Events sent while the connection was down are lost: reload.
+        this.transport.reconnected$.pipe(takeUntil(this.destroy$)).subscribe((): void => {
+            if (this.isStarted) {
+                void this.reload();
+            }
+        });
+
         merge(this.downloadService.progress$, this.downloadService.status$)
             .pipe(takeUntil(this.destroy$))
             .subscribe((job: model.DownloadJob): void => this.onJobUpdated(job));

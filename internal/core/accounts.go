@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"log"
 	"net/url"
 	"os"
@@ -56,14 +57,31 @@ func (a *App) ImportCookiesFile(user UserID, site string, path string) (*model.A
 	return a.importCookiesFromPath(domain, path)
 }
 
+// ImportCookies — то же, что ImportCookiesFile, но cookies.txt приходит
+// потоком: сервер получает файл загрузкой, а не путём на диске.
+func (a *App) ImportCookies(user UserID, site string, r io.Reader) (*model.Account, error) {
+	if err := a.ensureReady(); err != nil {
+		return nil, err
+	}
+	domain, err := accounts.SiteFromInput(site)
+	if err != nil {
+		return nil, err
+	}
+	return a.importCookies(domain, r)
+}
+
 // importCookiesFromPath is ImportCookiesFile with the site already checked.
 func (a *App) importCookiesFromPath(domain string, path string) (*model.Account, error) {
 	file, err := os.Open(path)
 	if err != nil {
 		return nil, fmt.Errorf("не удалось открыть файл: %w", err)
 	}
-	parsed, err := accounts.ParseCookies(file)
-	file.Close()
+	defer file.Close()
+	return a.importCookies(domain, file)
+}
+
+func (a *App) importCookies(domain string, r io.Reader) (*model.Account, error) {
+	parsed, err := accounts.ParseCookies(r)
 	if err != nil {
 		return nil, err
 	}
