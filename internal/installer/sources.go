@@ -46,6 +46,38 @@ func Source(tool string) string {
 	return ""
 }
 
+// Channel is the yt-dlp release channel: its stable releases, or the
+// nightly builds that get site fixes days before a release.
+type Channel string
+
+const (
+	Stable  Channel = "stable"
+	Nightly Channel = "nightly"
+)
+
+// ParseChannel accepts "stable", "nightly" or "" (stable).
+func ParseChannel(name string) (Channel, error) {
+	switch Channel(name) {
+	case "", Stable:
+		return Stable, nil
+	case Nightly:
+		return Nightly, nil
+	}
+	return "", fmt.Errorf("неизвестный канал yt-dlp %q: нужен stable или nightly", name)
+}
+
+// repo is where the channel's builds are published on GitHub.
+func (c Channel) repo() string {
+	if c == Nightly {
+		return "yt-dlp/yt-dlp-nightly-builds"
+	}
+	return "yt-dlp/yt-dlp"
+}
+
+// githubURL is where releases are downloaded from; tests point it at a
+// fake server.
+var githubURL = "https://github.com"
+
 // Tools are the names Install accepts. ffprobe comes with ffmpeg.
 var Tools = []string{"yt-dlp", "ffmpeg", "deno"}
 
@@ -54,7 +86,7 @@ var Tools = []string{"yt-dlp", "ffmpeg", "deno"}
 // own builds, the ffmpeg builds the yt-dlp project maintains for Windows
 // and Linux, Martin Riedl's signed builds for macOS (yt-dlp provides none),
 // and Deno's releases.
-func artifacts(tool string, goos string, goarch string) ([]artifact, error) {
+func artifacts(tool string, goos string, goarch string, channel Channel) ([]artifact, error) {
 	exe := func(name string) string {
 		if goos == "windows" {
 			return name + ".exe"
@@ -75,7 +107,7 @@ func artifacts(tool string, goos string, goarch string) ([]artifact, error) {
 		if asset == "" {
 			break
 		}
-		const base = "https://github.com/yt-dlp/yt-dlp/releases/latest/download/"
+		base := githubURL + "/" + channel.repo() + "/releases/latest/download/"
 		return []artifact{{
 			url:          base + asset,
 			checksumURL:  base + "SHA2-256SUMS",

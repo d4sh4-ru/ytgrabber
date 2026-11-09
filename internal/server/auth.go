@@ -107,8 +107,8 @@ func (a *auth) cookie(r *http.Request, value string, maxAge int) *http.Cookie {
 		Path:     "/",
 		MaxAge:   maxAge,
 		HttpOnly: true,
-		// Behind "tailscale serve" or another TLS proxy the browser talks
-		// HTTPS even though this server doesn't.
+		// Behind a TLS reverse proxy (Caddy, nginx, tailscale serve, ...)
+		// the browser talks HTTPS even though this server doesn't.
 		Secure:   r.TLS != nil || r.Header.Get("X-Forwarded-Proto") == "https",
 		SameSite: http.SameSiteStrictMode,
 	}

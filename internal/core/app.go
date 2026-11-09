@@ -83,6 +83,7 @@ type App struct {
 	// this copy can be replaced (both swapped out in tests).
 	updater       *updater.Client
 	selfUpdate    bool
+	ytDlpChannel  installer.Channel
 	detectInstall func() updater.Install
 	updateMu      sync.Mutex
 	update        updateState
@@ -127,6 +128,12 @@ func WithoutSelfUpdate() Option {
 	return func(a *App) { a.selfUpdate = false }
 }
 
+// WithYtDlpChannel makes installs and automatic updates of yt-dlp take
+// builds from channel (stable by default).
+func WithYtDlpChannel(channel installer.Channel) Option {
+	return func(a *App) { a.ytDlpChannel = channel }
+}
+
 func New(paths platform.Paths, opts ...Option) *App {
 	a := &App{
 		selfUpdate: true,
@@ -150,6 +157,7 @@ func New(paths platform.Paths, opts ...Option) *App {
 		Dir:       paths.ToolsDir(),
 		Client:    &http.Client{Timeout: installTimeout},
 		UserAgent: "ytgrabber/" + Version,
+		Channel:   a.ytDlpChannel,
 	}
 	return a
 }

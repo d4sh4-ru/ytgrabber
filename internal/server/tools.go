@@ -46,3 +46,35 @@ func missingInstallable(app *core.App) bool {
 	}
 	return false
 }
+
+// updateRetry is how soon a failed yt-dlp update check is tried again
+// when the interval is longer.
+const updateRetry = time.Hour
+
+// ytDlpUpdater is the part of core.App AutoUpdateYtDlp needs.
+type ytDlpUpdater interface {
+	UpdateYtDlpIfOutdated(ctx context.Context) (version string, updated bool, err error)
+}
+
+// AutoUpdateYtDlp keeps the yt-dlp the server installed up to date: sites
+// break old versions within days, and a server has nobody to press
+// "update". It checks right away (after EnsureTools, so the tools are
+// there) and then every interval until ctx ends.
+func AutoUpdateYtDlp(ctx context.Context, app ytDlpUpdater, interval time.Duration) {
+	for {
+		delay := interval
+		version, updated, err := app.UpdateYtDlpIfOutdated(ctx)
+		switch {
+		case err != nil:
+			log.Printf("ytgrabber-server: checking for a yt-dlp update failed: %v", err)
+			delay = min(interval, updateRetry)
+		case updated:
+			log.Printf("ytgrabber-server: yt-dlp updated to %s", version)
+		}
+		select {
+		case <-ctx.Done():
+			return
+		case <-time.After(delay):
+		}
+	}
+}

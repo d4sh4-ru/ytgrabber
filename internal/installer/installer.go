@@ -60,6 +60,8 @@ type Installer struct {
 	UserAgent string
 	// GOOS/GOARCH default to the running platform; tests override them.
 	GOOS, GOARCH string
+	// Channel picks yt-dlp's stable or nightly builds; empty is stable.
+	Channel Channel
 }
 
 func (in Installer) platform() (string, string) {
@@ -79,11 +81,46 @@ func (in Installer) platform() (string, string) {
 // executable behind.
 func (in Installer) Install(ctx context.Context, tool string, report func(Progress)) error {
 	goos, goarch := in.platform()
-	list, err := artifacts(tool, goos, goarch)
+	list, err := artifacts(tool, goos, goarch, in.Channel)
 	if err != nil {
 		return err
 	}
 	return in.installArtifacts(ctx, tool, list, report)
+}
+
+// LatestYtDlp returns the version of the newest yt-dlp build in the
+// channel, as "yt-dlp --version" prints it: the release tag. GitHub
+// answers ".../releases/latest" with a redirect to that tag, so this
+// costs one request and no API rate limit. It is a GET: GitHub answers
+// HEAD there with 504 every now and then.
+func (in Installer) LatestYtDlp(ctx context.Context) (string, error) {
+	url := githubURL + "/" + in.Channel.repo() + "/releases/latest"
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+	if err != nil {
+		return "", err
+	}
+	if in.UserAgent != "" {
+		req.Header.Set("User-Agent", in.UserAgent)
+	}
+	client := http.Client{
+		CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse },
+	}
+	if in.Client != nil {
+		client.Transport = in.Client.Transport
+		client.Timeout = in.Client.Timeout
+	}
+	resp, err := client.Do(req)
+	if err != nil {
+		return "", fmt.Errorf("не удалось узнать последнюю версию yt-dlp: %w", err)
+	}
+	resp.Body.Close()
+
+	location := resp.Header.Get("Location")
+	_, tag, found := strings.Cut(location, "/releases/tag/")
+	if resp.StatusCode/100 != 3 || !found || tag == "" || strings.Contains(tag, "/") {
+		return "", fmt.Errorf("не удалось узнать последнюю версию yt-dlp: %s ответил %s %q", url, resp.Status, location)
+	}
+	return tag, nil
 }
 
 func (in Installer) installArtifacts(ctx context.Context, tool string, list []artifact, report func(Progress)) error {

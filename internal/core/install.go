@@ -126,3 +126,42 @@ func (a *App) installQueue(names []string) ([]string, error) {
 	}
 	return queue, nil
 }
+
+// UpdateYtDlpIfOutdated installs the newest yt-dlp of the channel when
+// the copy the app installed itself is older, and returns the version in
+// use afterwards. A yt-dlp from PATH or a custom path is left alone: it
+// is updated by whoever installed it. Downloads already running finish
+// with the old file (it is replaced by a rename); the next ones take the
+// new one.
+func (a *App) UpdateYtDlpIfOutdated(ctx context.Context) (version string, updated bool, err error) {
+	var current tools.Status
+	for _, status := range a.GetDependencies().Tools {
+		if status.Name == tools.YtDlp {
+			current = status
+		}
+	}
+	if !current.Found || !current.Managed {
+		return current.Version, false, nil
+	}
+
+	latest, err := a.installer.LatestYtDlp(ctx)
+	if err != nil {
+		return current.Version, false, err
+	}
+	if latest == current.Version {
+		return current.Version, false, nil
+	}
+
+	log.Printf("ytgrabber: updating yt-dlp %s → %s (%s)", current.Version, latest, a.channel())
+	if _, err := a.InstallTools([]string{tools.YtDlp}); err != nil {
+		return current.Version, false, err
+	}
+	return latest, true, nil
+}
+
+func (a *App) channel() installer.Channel {
+	if a.installer.Channel == "" {
+		return installer.Stable
+	}
+	return a.installer.Channel
+}

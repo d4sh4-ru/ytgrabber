@@ -10,6 +10,8 @@
 //	           YTG_TOKEN       access token; YTG_TOKEN_FILE reads it from
 //	                           a file (Docker secrets). Without either, a
 //	                           token is generated once and kept in the data dir.
+//	-ytdlp-update   YTG_YTDLP_UPDATE   how often to update yt-dlp (24h, 0 = never)
+//	-ytdlp-channel  YTG_YTDLP_CHANNEL  stable or nightly yt-dlp builds (stable)
 //
 // "ytgrabber-server healthcheck" asks the running server for
 // /api/v1/health and exits non-zero if it doesn't answer: the Docker
@@ -34,6 +36,7 @@ import (
 	"time"
 
 	"ytgrabber/internal/core"
+	"ytgrabber/internal/installer"
 	"ytgrabber/internal/platform"
 	"ytgrabber/internal/server"
 )
@@ -54,7 +57,21 @@ func run() error {
 	dataDir := flag.String("data", env("YTG_DATA_DIR", "data"), "data directory")
 	mediaDir := flag.String("media", env("YTG_MEDIA_DIR", "media"), "downloads directory")
 	webDir := flag.String("web", env("YTG_WEB_DIR", ""), "built frontend directory")
+	ytDlpUpdate := flag.String("ytdlp-update", env("YTG_YTDLP_UPDATE", "24h"), "how often to update yt-dlp; 0 turns it off")
+	ytDlpChannel := flag.String("ytdlp-channel", env("YTG_YTDLP_CHANNEL", "stable"), "yt-dlp builds: stable or nightly")
 	flag.Parse()
+
+	updateInterval, err := time.ParseDuration(*ytDlpUpdate)
+	if err != nil || updateInterval < 0 {
+		return fmt.Errorf("YTG_YTDLP_UPDATE: %q is not a duration like 24h, 12h or 0", *ytDlpUpdate)
+	}
+	if updateInterval > 0 && updateInterval < time.Hour {
+		return fmt.Errorf("YTG_YTDLP_UPDATE: %s is too often, the minimum is 1h", updateInterval)
+	}
+	channel, err := installer.ParseChannel(*ytDlpChannel)
+	if err != nil {
+		return fmt.Errorf("YTG_YTDLP_CHANNEL: %w", err)
+	}
 
 	data := platform.AbsOrSelf(*dataDir)
 	media := platform.AbsOrSelf(*mediaDir)
@@ -73,7 +90,7 @@ func run() error {
 		DataDir:             data,
 		DefaultDownloadsDir: media,
 		LegacyDownloadsDir:  media,
-	}, core.WithoutSelfUpdate())
+	}, core.WithoutSelfUpdate(), core.WithYtDlpChannel(channel))
 
 	srv, err := server.New(app, server.Config{Token: token, WebDir: *webDir})
 	if err != nil {
@@ -97,7 +114,12 @@ func run() error {
 		log.Printf("ytgrabber-server: listening on %s — make sure it is reachable only through your VPN", *listen)
 	}
 
-	go server.EnsureTools(ctx, app)
+	go func() {
+		server.EnsureTools(ctx, app)
+		if updateInterval > 0 {
+			server.AutoUpdateYtDlp(ctx, app, updateInterval)
+		}
+	}()
 
 	httpServer := &http.Server{
 		Addr:              *listen,
