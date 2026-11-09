@@ -301,16 +301,20 @@ func (s *Set) FillVersions() {
 			status.Version = snapshot.version(*status)
 		}(status)
 	}
+	// The goroutines above copy whole Status values, so the previous
+	// version is written only after they are done.
+	previous := ""
 	if s.YtDlp.Found && s.YtDlp.Managed {
 		if prev := platform.PreviousCopy(s.YtDlp.Path); platform.IsExecutableFile(prev) {
 			wg.Add(1)
 			go func() {
 				defer wg.Done()
-				s.YtDlp.PreviousVersion = snapshot.version(Status{Name: YtDlp, Path: prev})
+				previous = snapshot.version(Status{Name: YtDlp, Path: prev})
 			}()
 		}
 	}
 	wg.Wait()
+	s.YtDlp.PreviousVersion = previous
 }
 
 func (s Set) version(status Status) string {
