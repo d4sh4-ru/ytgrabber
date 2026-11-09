@@ -420,6 +420,21 @@ export class SettingsComponent implements OnInit, OnDestroy {
         this.changeDetectorRef.markForCheck();
     }
 
+    protected async onRollbackYtDlp(tool: tools.Status): Promise<void> {
+        this.isUpdatingYtDlp = true;
+        this.updateOutput = '';
+        this.changeDetectorRef.markForCheck();
+        try {
+            const report = await this.settingsService.rollbackYtDlp();
+            const ytDlp = report.tools.find((status) => status.name === tool.name);
+            this.updateOutput = `Возвращена версия yt-dlp ${ytDlp?.version ?? tool.previousVersion}. Автообновление её не заменит, пока вы не нажмёте «Обновить».`;
+        } catch (error: unknown) {
+            this.notificationService.error(error);
+        }
+        this.isUpdatingYtDlp = false;
+        this.changeDetectorRef.markForCheck();
+    }
+
     // --- Updates ---
     protected async onCheckUpdates(): Promise<void> {
         this.isCheckingUpdate = true;

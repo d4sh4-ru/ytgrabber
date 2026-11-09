@@ -187,6 +187,17 @@
                     >
                         {{ isUpdatingYtDlp ? 'Обновление…' : 'Обновить' }}
                     </button>
+                    @if (tool.managed && tool.previousVersion) {
+                        <button
+                            type="button"
+                            class="btn"
+                            [disabled]="isUpdatingYtDlp"
+                            [title]="'Если новая версия сломала какой-то сайт'"
+                            (click)="onRollbackYtDlp(tool)"
+                        >
+                            Вернуть {{ tool.previousVersion }}
+                        </button>
+                    }
                 }
                 @if (!tool.found && !tool.custom && tool.installable && !installState.isRunning) {
                     <button type="button" class="btn" (click)="onInstall([tool.name])">

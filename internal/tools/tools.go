@@ -43,7 +43,10 @@ type Status struct {
 	InstallSource string `json:"installSource"`
 	Path          string `json:"path"`
 	Version       string `json:"version"`
-	Hint          string `json:"hint"`
+	// PreviousVersion is the version an update replaced, still kept next
+	// to the copy the app installed (yt-dlp only); empty if there is none.
+	PreviousVersion string `json:"previousVersion,omitempty"`
+	Hint            string `json:"hint"`
 }
 
 // Report is what the UI shows on the settings screen and uses to decide
@@ -298,7 +301,20 @@ func (s *Set) FillVersions() {
 			status.Version = snapshot.version(*status)
 		}(status)
 	}
+	// The goroutines above copy whole Status values, so the previous
+	// version is written only after they are done.
+	previous := ""
+	if s.YtDlp.Found && s.YtDlp.Managed {
+		if prev := platform.PreviousCopy(s.YtDlp.Path); platform.IsExecutableFile(prev) {
+			wg.Add(1)
+			go func() {
+				defer wg.Done()
+				previous = snapshot.version(Status{Name: YtDlp, Path: prev})
+			}()
+		}
+	}
 	wg.Wait()
+	s.YtDlp.PreviousVersion = previous
 }
 
 func (s Set) version(status Status) string {

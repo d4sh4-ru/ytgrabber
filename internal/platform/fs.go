@@ -28,6 +28,16 @@ func AbsOrSelf(path string) string {
 	return abs
 }
 
+// PreviousCopy is where the version of an executable that was replaced
+// by an update is kept: "yt-dlp.prev", "yt-dlp.prev.exe" (Windows runs a
+// file by its extension).
+func PreviousCopy(path string) string {
+	if ext := filepath.Ext(path); ext == ".exe" {
+		return path[:len(path)-len(ext)] + ".prev" + ext
+	}
+	return path + ".prev"
+}
+
 // ExecutableName adds ".exe" on Windows.
 func ExecutableName(name string) string {
 	if goruntime.GOOS == "windows" && filepath.Ext(name) == "" {

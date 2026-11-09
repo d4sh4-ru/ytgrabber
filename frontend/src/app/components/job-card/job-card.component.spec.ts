@@ -108,6 +108,15 @@ describe('JobCardComponent', () => {
         expect(element.querySelector('.job-card__error-text')?.textContent).toBe('HTTP Error 404');
     });
 
+    it('says which tool a queued job waits for', () => {
+        const status = (element: HTMLElement): string =>
+            element.querySelector('.job-card__status')?.textContent?.trim() ?? '';
+        expect(status(render({ status: 'pending', waitingFor: 'yt-dlp, ffmpeg' }))).toBe(
+            'ожидает установки yt-dlp, ffmpeg',
+        );
+        expect(status(render({ status: 'pending' }))).toBe('в очереди');
+    });
+
     describe('quality', () => {
         function quality(element: HTMLElement): string {
             return element.querySelector('.job-card__quality')?.textContent?.trim() ?? '';

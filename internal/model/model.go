@@ -67,6 +67,9 @@ type DownloadJob struct {
 	// ErrorDetails is the full tool output behind Error (e.g. yt-dlp's
 	// stderr), shown on demand; empty when Error says it all.
 	ErrorDetails string `json:"errorDetails,omitempty"`
+	// WaitingFor lists the tools a queued job waits for while the server
+	// installs them ("yt-dlp, ffmpeg"); empty otherwise. Not stored.
+	WaitingFor string `json:"waitingFor,omitempty"`
 }
 
 type AccountSource string

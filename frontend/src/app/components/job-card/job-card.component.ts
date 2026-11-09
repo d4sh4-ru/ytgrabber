@@ -51,6 +51,10 @@ export class JobCardComponent {
     }
 
     protected get statusLabel(): string {
+        // The server is still installing a tool the download needs.
+        if (this.job.status === 'pending' && this.job.waitingFor) {
+            return `ожидает установки ${this.job.waitingFor}`;
+        }
         return STATUS_LABELS[this.job.status] ?? this.job.status;
     }
 

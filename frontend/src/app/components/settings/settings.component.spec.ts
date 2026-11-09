@@ -14,6 +14,17 @@ class SettingsServiceStub {
     public readonly dependencies$ = new BehaviorSubject<tools.Report | null>(null);
     public readonly resetCalls: boolean[] = [];
     public readonly updateSettingsCalls: [boolean, boolean][] = [];
+    public rollbackCalls = 0;
+
+    public rollbackYtDlp(): Promise<tools.Report> {
+        this.rollbackCalls++;
+        return Promise.resolve(
+            tools.Report.createFrom({
+                ready: true,
+                tools: [{ name: 'yt-dlp', found: true, managed: true, version: '2026.01.01' }],
+            }),
+        );
+    }
 
     public setUpdateSettings(autoCheck: boolean, prerelease: boolean): Promise<core.Settings> {
         this.updateSettingsCalls.push([autoCheck, prerelease]);
@@ -301,6 +312,35 @@ describe('SettingsComponent: installing tools', () => {
         expect(text().match(/Скачивание: 1\.0 МБ из 4\.0 МБ/g)?.length).toBe(2);
         expect(text()).toContain('Отменить установку');
         expect(text()).not.toContain('Установить недостающие');
+    });
+
+    it('offers to roll yt-dlp back only to a kept version', async () => {
+        expect(text()).not.toContain('Вернуть');
+
+        service.dependencies$.next(
+            tools.Report.createFrom({
+                ready: true,
+                tools: [
+                    {
+                        name: 'yt-dlp',
+                        found: true,
+                        managed: true,
+                        version: '2026.02.02',
+                        previousVersion: '2026.01.01',
+                    },
+                ],
+            }),
+        );
+        fixture.detectChanges();
+        const button = Array.from(
+            (fixture.nativeElement as HTMLElement).querySelectorAll('button'),
+        ).find((candidate) => candidate.textContent?.trim() === 'Вернуть 2026.01.01');
+        button!.click();
+        await new Promise((resolve) => setTimeout(resolve));
+        fixture.detectChanges();
+
+        expect(service.rollbackCalls).toBe(1);
+        expect(text()).toContain('Возвращена версия yt-dlp 2026.01.01');
     });
 });
 

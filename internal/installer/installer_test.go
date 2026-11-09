@@ -229,7 +229,7 @@ func TestArtifactsCoverReleasePlatforms(t *testing.T) {
 	for _, goos := range []string{"darwin", "windows", "linux"} {
 		for _, goarch := range []string{"amd64", "arm64"} {
 			for _, tool := range Tools {
-				list, err := artifacts(tool, goos, goarch)
+				list, err := artifacts(tool, goos, goarch, Stable)
 				if err != nil || len(list) == 0 {
 					t.Errorf("%s on %s/%s: %v", tool, goos, goarch, err)
 				}
@@ -246,7 +246,7 @@ func TestArtifactsCoverReleasePlatforms(t *testing.T) {
 			}
 		}
 	}
-	if _, err := artifacts("ffmpeg", "freebsd", "amd64"); err == nil {
+	if _, err := artifacts("ffmpeg", "freebsd", "amd64", Stable); err == nil {
 		t.Error("unsupported platform accepted")
 	}
 }
@@ -290,5 +290,95 @@ func assertOnly(t *testing.T, dir string, names ...string) {
 	}
 	if strings.Join(got, ",") != strings.Join(names, ",") {
 		t.Errorf("dir contains %v, want %v", got, names)
+	}
+}
+
+func TestLatestYtDlp(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/yt-dlp/yt-dlp/releases/latest":
+			http.Redirect(w, r, "/yt-dlp/yt-dlp/releases/tag/2026.10.26", http.StatusFound)
+		case "/yt-dlp/yt-dlp-nightly-builds/releases/latest":
+			http.Redirect(w, r, "https://github.com/yt-dlp/yt-dlp-nightly-builds/releases/tag/2026.11.04.232659", http.StatusFound)
+		default:
+			http.NotFound(w, r)
+		}
+	}))
+	defer server.Close()
+	defer func(saved string) { githubURL = saved }(githubURL)
+	githubURL = server.URL
+
+	for channel, want := range map[Channel]string{"": "2026.10.26", Stable: "2026.10.26", Nightly: "2026.11.04.232659"} {
+		got, err := Installer{Channel: channel}.LatestYtDlp(context.Background())
+		if err != nil || got != want {
+			t.Errorf("%q: %q, %v", channel, got, err)
+		}
+	}
+
+	githubURL = server.URL + "/elsewhere"
+	if got, err := (Installer{}).LatestYtDlp(context.Background()); err == nil {
+		t.Errorf("no redirect accepted: %q", got)
+	}
+}
+
+func TestChannels(t *testing.T) {
+	for name, want := range map[string]Channel{"": Stable, "stable": Stable, "nightly": Nightly} {
+		if got, err := ParseChannel(name); err != nil || got != want {
+			t.Errorf("%q: %q, %v", name, got, err)
+		}
+	}
+	if _, err := ParseChannel("master"); err == nil {
+		t.Error("unknown channel accepted")
+	}
+
+	list, err := artifacts("yt-dlp", "linux", "amd64", Nightly)
+	if err != nil || !strings.HasPrefix(list[0].url, "https://github.com/yt-dlp/yt-dlp-nightly-builds/releases/latest/download/") ||
+		!strings.HasPrefix(list[0].checksumURL, "https://github.com/yt-dlp/yt-dlp-nightly-builds/") {
+		t.Errorf("nightly = %+v, %v", list, err)
+	}
+}
+
+// Installing yt-dlp keeps the version it replaces; Rollback swaps the two.
+func TestYtDlpKeepsPreviousVersionForRollback(t *testing.T) {
+	builds := map[string][]byte{"v1": []byte("#!/bin/sh\necho v1\n"), "v2": []byte("#!/bin/sh\necho v2\n")}
+	dir := t.TempDir()
+	// Linux file names on every OS: the fake release installs "yt-dlp".
+	in := Installer{Dir: dir, GOOS: "linux", GOARCH: "amd64"}
+	dest := filepath.Join(dir, "yt-dlp")
+	read := func(path string) string {
+		data, _ := os.ReadFile(path)
+		return string(data)
+	}
+
+	for _, version := range []string{"v1", "v2"} {
+		release := newFakeRelease(t, map[string][]byte{
+			"/yt-dlp_linux": builds[version],
+			"/SHA2-256SUMS": []byte(sha(builds[version]) + "  yt-dlp_linux\n"),
+		})
+		err := in.installArtifacts(context.Background(), "yt-dlp", []artifact{{
+			url: release.url("/yt-dlp_linux"), checksumURL: release.url("/SHA2-256SUMS"), checksumName: "yt-dlp_linux",
+			archive: archiveNone, files: map[string]string{"yt-dlp_linux": "yt-dlp"},
+		}}, func(Progress) {})
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
+	if read(dest) != string(builds["v2"]) || read(dest+".prev") != string(builds["v1"]) {
+		t.Fatalf("after update: %q, prev %q", read(dest), read(dest+".prev"))
+	}
+
+	if err := in.Rollback("yt-dlp"); err != nil {
+		t.Fatal(err)
+	}
+	if read(dest) != string(builds["v1"]) || read(dest+".prev") != string(builds["v2"]) {
+		t.Errorf("after rollback: %q, prev %q", read(dest), read(dest+".prev"))
+	}
+	if info, _ := os.Stat(dest); goruntime.GOOS != "windows" && info.Mode().Perm()&0o111 == 0 {
+		t.Error("rolled back yt-dlp is not executable")
+	}
+	assertOnly(t, dir, "yt-dlp", "yt-dlp.prev")
+
+	if err := (Installer{Dir: t.TempDir(), GOOS: "linux"}).Rollback("yt-dlp"); err == nil {
+		t.Error("rollback without a previous version")
 	}
 }

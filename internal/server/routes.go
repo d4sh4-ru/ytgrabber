@@ -240,7 +240,13 @@ func (s *Server) routes() []route {
 			},
 		},
 		{
-			method: "POST", path: "/tools/yt-dlp/update", summary: "Обновить yt-dlp; возвращает его вывод",
+			method: "POST", path: "/tools/yt-dlp/rollback",
+			summary:  "Вернуть версию yt-dlp, которую заменило последнее обновление",
+			response: tools.Report{},
+			handle:   func(*http.Request) (any, error) { return s.app.RollbackYtDlp() },
+		},
+		{
+			method: "POST", path: "/tools/yt-dlp/update", summary: "Обновить yt-dlp; возвращает, что получилось",
 			response: "",
 			handle:   func(*http.Request) (any, error) { return s.app.UpdateYtDlp() },
 		},

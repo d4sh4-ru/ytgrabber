@@ -83,6 +83,8 @@ type App struct {
 	// this copy can be replaced (both swapped out in tests).
 	updater       *updater.Client
 	selfUpdate    bool
+	ytDlpChannel  installer.Channel
+	waitForTools  bool
 	detectInstall func() updater.Install
 	updateMu      sync.Mutex
 	update        updateState
@@ -127,6 +129,19 @@ func WithoutSelfUpdate() Option {
 	return func(a *App) { a.selfUpdate = false }
 }
 
+// WithToolsInstalledAutomatically is for a server that installs the
+// tools itself (see server.EnsureTools): a download added before they are
+// there waits in the queue, showing what for, instead of failing.
+func WithToolsInstalledAutomatically() Option {
+	return func(a *App) { a.waitForTools = true }
+}
+
+// WithYtDlpChannel makes installs and automatic updates of yt-dlp take
+// builds from channel (stable by default).
+func WithYtDlpChannel(channel installer.Channel) Option {
+	return func(a *App) { a.ytDlpChannel = channel }
+}
+
 func New(paths platform.Paths, opts ...Option) *App {
 	a := &App{
 		selfUpdate: true,
@@ -150,6 +165,7 @@ func New(paths platform.Paths, opts ...Option) *App {
 		Dir:       paths.ToolsDir(),
 		Client:    &http.Client{Timeout: installTimeout},
 		UserAgent: "ytgrabber/" + Version,
+		Channel:   a.ytDlpChannel,
 	}
 	return a
 }
@@ -325,14 +341,9 @@ func (a *App) GetDependencies() tools.Report {
 	toolSet := a.tools
 	a.mu.Unlock()
 
+	// Queued jobs may have been waiting for a tool that is there now.
+	a.schedule()
+
 	toolSet.FillVersions()
 	return withInstallInfo(toolSet.Report())
-}
-
-// UpdateYtDlp запускает самообновление yt-dlp и возвращает его вывод.
-func (a *App) UpdateYtDlp() (string, error) {
-	a.mu.RLock()
-	toolSet := a.tools
-	a.mu.RUnlock()
-	return toolSet.UpdateYtDlp()
 }
