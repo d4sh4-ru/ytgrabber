@@ -81,4 +81,11 @@ export class SettingsService {
         await this.refreshDependencies();
         return output;
     }
+
+    /** Puts back the yt-dlp the last update replaced; a second call undoes it. */
+    public async rollbackYtDlp(): Promise<tools.Report> {
+        const report = await this.transport.call<tools.Report>('RollbackYtDlp');
+        this.dependenciesSubject$.next(report);
+        return report;
+    }
 }

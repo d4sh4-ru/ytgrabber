@@ -337,6 +337,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    '/tools/yt-dlp/rollback': {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Вернуть версию yt-dlp, которую заменило последнее обновление */
+        post: operations['postToolsYtDlpRollback'];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     '/tools/yt-dlp/update': {
         parameters: {
             query?: never;
@@ -346,7 +363,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Обновить yt-dlp; возвращает его вывод */
+        /** Обновить yt-dlp; возвращает, что получилось */
         post: operations['postToolsYtDlpUpdate'];
         delete?: never;
         options?: never;
@@ -408,6 +425,7 @@ export interface components {
             tracks: components['schemas']['model.DownloadTrack'][];
             url: string;
             useAccount: boolean;
+            waitingFor?: string;
         };
         'model.DownloadTrack': {
             filename: string;
@@ -442,6 +460,7 @@ export interface components {
             managed: boolean;
             name: string;
             path: string;
+            previousVersion?: string;
             purpose: string;
             required: boolean;
             version: string;
@@ -1375,6 +1394,48 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description Ошибка; текст для пользователя */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': {
+                        error: string;
+                    };
+                };
+            };
+            /** @description Нужен вход */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': {
+                        error: string;
+                    };
+                };
+            };
+        };
+    };
+    postToolsYtDlpRollback: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['tools.Report'];
+                };
             };
             /** @description Ошибка; текст для пользователя */
             400: {

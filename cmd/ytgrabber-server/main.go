@@ -10,6 +10,9 @@
 //	           YTG_TOKEN       access token; YTG_TOKEN_FILE reads it from
 //	                           a file (Docker secrets). Without either, a
 //	                           token is generated once and kept in the data dir.
+//	-tools          YTG_TOOLS          managed: install and update yt-dlp, ffmpeg
+//	                                   and deno in the data dir (default);
+//	                                   system: use the ones on PATH, install nothing
 //	-ytdlp-update   YTG_YTDLP_UPDATE   how often to update yt-dlp (24h, 0 = never)
 //	-ytdlp-channel  YTG_YTDLP_CHANNEL  stable or nightly yt-dlp builds (stable)
 //
@@ -57,6 +60,7 @@ func run() error {
 	dataDir := flag.String("data", env("YTG_DATA_DIR", "data"), "data directory")
 	mediaDir := flag.String("media", env("YTG_MEDIA_DIR", "media"), "downloads directory")
 	webDir := flag.String("web", env("YTG_WEB_DIR", ""), "built frontend directory")
+	toolsMode := flag.String("tools", env("YTG_TOOLS", "managed"), "managed or system")
 	ytDlpUpdate := flag.String("ytdlp-update", env("YTG_YTDLP_UPDATE", "24h"), "how often to update yt-dlp; 0 turns it off")
 	ytDlpChannel := flag.String("ytdlp-channel", env("YTG_YTDLP_CHANNEL", "stable"), "yt-dlp builds: stable or nightly")
 	flag.Parse()
@@ -72,6 +76,10 @@ func run() error {
 	if err != nil {
 		return fmt.Errorf("YTG_YTDLP_CHANNEL: %w", err)
 	}
+	if *toolsMode != "managed" && *toolsMode != "system" {
+		return fmt.Errorf("YTG_TOOLS: %q, want managed or system", *toolsMode)
+	}
+	managed := *toolsMode == "managed"
 
 	data := platform.AbsOrSelf(*dataDir)
 	media := platform.AbsOrSelf(*mediaDir)
@@ -90,7 +98,7 @@ func run() error {
 		DataDir:             data,
 		DefaultDownloadsDir: media,
 		LegacyDownloadsDir:  media,
-	}, core.WithoutSelfUpdate(), core.WithYtDlpChannel(channel))
+	}, coreOptions(managed, channel)...)
 
 	srv, err := server.New(app, server.Config{Token: token, WebDir: *webDir})
 	if err != nil {
@@ -114,12 +122,16 @@ func run() error {
 		log.Printf("ytgrabber-server: listening on %s — make sure it is reachable only through your VPN", *listen)
 	}
 
-	go func() {
-		server.EnsureTools(ctx, app)
-		if updateInterval > 0 {
-			server.AutoUpdateYtDlp(ctx, app, updateInterval)
-		}
-	}()
+	// With YTG_TOOLS=system the image is built with its own tools, and
+	// whoever built it keeps them up to date.
+	if managed {
+		go func() {
+			server.EnsureTools(ctx, app)
+			if updateInterval > 0 {
+				server.AutoUpdateYtDlp(ctx, app, updateInterval)
+			}
+		}()
+	}
 
 	httpServer := &http.Server{
 		Addr:              *listen,
@@ -147,6 +159,15 @@ func run() error {
 		httpServer.Close()
 	}
 	return nil
+}
+
+func coreOptions(managedTools bool, channel installer.Channel) []core.Option {
+	opts := []core.Option{core.WithoutSelfUpdate(), core.WithYtDlpChannel(channel)}
+	if managedTools {
+		// Downloads added while the tools are still being installed wait.
+		opts = append(opts, core.WithToolsInstalledAutomatically())
+	}
+	return opts
 }
 
 // healthcheck probes the server on the port YTG_LISTEN names.

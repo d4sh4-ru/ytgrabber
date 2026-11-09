@@ -29,6 +29,10 @@ func (a *App) UpdateYtDlp() (string, error) {
 	return a.core.UpdateYtDlp()
 }
 
+func (a *App) RollbackYtDlp() (tools.Report, error) {
+	return a.core.RollbackYtDlp()
+}
+
 func (a *App) InstallTools(names []string) (tools.Report, error) {
 	return a.core.InstallTools(names)
 }

@@ -46,6 +46,7 @@ const CALLS: Readonly<Record<string, Call>> = {
         api.POST('/tools/install', { body: { names: [...(names as readonly string[])] } }),
     CancelToolInstall: (api) => api.POST('/tools/install/cancel'),
     UpdateYtDlp: (api) => api.POST('/tools/yt-dlp/update'),
+    RollbackYtDlp: (api) => api.POST('/tools/yt-dlp/rollback'),
 
     DownloadVideo: (api, [url, quality, useAccount]) =>
         api.POST('/jobs', {

@@ -71,7 +71,7 @@ func (a *App) DownloadVideo(user UserID, rawURL string, quality string, useAccou
 	if !ytdlp.IsValidQuality(quality) {
 		return "", fmt.Errorf("неизвестное качество %q", quality)
 	}
-	if err := a.checkToolsReady(); err != nil {
+	if err := a.checkToolsReady(); err != nil && !a.waitForTools {
 		return "", err
 	}
 
@@ -109,7 +109,7 @@ func (a *App) RetryJob(user UserID, id string, useAccount bool) error {
 	if err := a.ensureReady(); err != nil {
 		return err
 	}
-	if err := a.checkToolsReady(); err != nil {
+	if err := a.checkToolsReady(); err != nil && !a.waitForTools {
 		return err
 	}
 
@@ -198,26 +198,58 @@ func (a *App) GetJobs(user UserID) ([]model.DownloadJob, error) {
 
 func (a *App) checkToolsReady() error {
 	a.mu.RLock()
-	toolSet := a.tools
+	missing := missingTools(a.tools)
 	a.mu.RUnlock()
 
-	if !toolSet.YtDlp.Found {
-		return errors.New("yt-dlp не найден. Установите его или укажите путь в настройках.")
-	}
-	if !toolSet.Ffmpeg.Found {
-		return errors.New("ffmpeg не найден. Установите его или укажите путь в настройках.")
+	if len(missing) > 0 {
+		return fmt.Errorf("%s не найден. Установите его или укажите путь в настройках.", missing[0])
 	}
 	return nil
 }
 
+// missingTools lists the tools a download can't start without.
+func missingTools(toolSet tools.Set) []string {
+	var missing []string
+	if !toolSet.YtDlp.Found {
+		missing = append(missing, tools.YtDlp)
+	}
+	if !toolSet.Ffmpeg.Found {
+		missing = append(missing, tools.Ffmpeg)
+	}
+	return missing
+}
+
 // schedule starts queued jobs while fewer than MaxConcurrentDownloads are
-// running. It is called whenever a slot may have opened up.
+// running. It is called whenever a slot may have opened up, and whenever
+// the tools may have changed: while one is missing (the server is still
+// installing it) queued jobs wait and say what for.
 func (a *App) schedule() {
 	a.mu.Lock()
-	defer a.mu.Unlock()
+	changed := a.scheduleLocked()
+	a.mu.Unlock()
 
+	for _, snapshot := range changed {
+		a.publish("download-status", snapshot)
+	}
+}
+
+// scheduleLocked does schedule's work under a.mu and returns the queued
+// jobs whose WaitingFor changed, to publish once the lock is released.
+func (a *App) scheduleLocked() []model.DownloadJob {
 	if a.shuttingDown.Load() {
-		return
+		return nil
+	}
+
+	waitingFor := strings.Join(missingTools(a.tools), ", ")
+	var changed []model.DownloadJob
+	for _, id := range a.queue {
+		if j, ok := a.jobs[id]; ok && j.Status == model.StatusPending && j.WaitingFor != waitingFor {
+			j.WaitingFor = waitingFor
+			changed = append(changed, j.snapshot())
+		}
+	}
+	if waitingFor != "" {
+		return changed
 	}
 
 	for a.running < a.settings.MaxConcurrentDownloads && len(a.queue) > 0 {
@@ -235,6 +267,7 @@ func (a *App) schedule() {
 		a.workers.Add(1)
 		go a.runDownload(ctx, j)
 	}
+	return changed
 }
 
 func (a *App) runDownload(ctx context.Context, j *job) {

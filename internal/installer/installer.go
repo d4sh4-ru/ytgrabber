@@ -25,6 +25,8 @@ import (
 	"time"
 
 	"github.com/ulikunitz/xz"
+
+	"ytgrabber/internal/platform"
 )
 
 type Stage string
@@ -144,6 +146,12 @@ func (in Installer) installArtifacts(ctx context.Context, tool string, list []ar
 	}
 
 	for _, file := range staged {
+		if tool == "yt-dlp" {
+			// Kept for Rollback, in case the new version broke a site.
+			if err := keepCopy(file.dest, platform.PreviousCopy(file.dest)); err != nil {
+				return fmt.Errorf("не удалось сохранить предыдущую версию %s: %w", filepath.Base(file.dest), err)
+			}
+		}
 		if err := replaceFile(file.temp, file.dest); err != nil {
 			return fmt.Errorf("не удалось установить %s: %w", filepath.Base(file.dest), err)
 		}
@@ -385,6 +393,67 @@ func extractTarXz(file *os.File, wanted map[string]string, stage func(string, io
 			return err
 		}
 	}
+}
+
+// Rollback puts back the version of tool the last install replaced, and
+// keeps the one it replaces in its place, so a second rollback undoes the
+// first. Only yt-dlp keeps a previous version.
+func (in Installer) Rollback(tool string) error {
+	goos, _ := in.platform()
+	name := tool
+	if goos == "windows" {
+		name += ".exe"
+	}
+	dest := filepath.Join(in.Dir, name)
+	prev := platform.PreviousCopy(dest)
+	if _, err := os.Stat(prev); err != nil {
+		return fmt.Errorf("предыдущей версии %s нет", tool)
+	}
+
+	// dest → next, prev → dest, next → prev; dest stays in place
+	// throughout, so a download starting meanwhile finds a yt-dlp.
+	next := dest + ".next"
+	if err := keepCopy(dest, next); err != nil {
+		return err
+	}
+	defer os.Remove(next)
+	if err := replaceFile(prev, dest); err != nil {
+		return err
+	}
+	return os.Rename(next, prev)
+}
+
+// keepCopy makes copy a copy of path, replacing an older one: a hard
+// link where the file system allows, so the swap is instant and takes no
+// space. A missing path (nothing installed yet) is not an error.
+func keepCopy(path string, copy string) error {
+	if err := os.Remove(copy); err != nil && !errors.Is(err, os.ErrNotExist) {
+		return err
+	}
+	err := os.Link(path, copy)
+	if err == nil || errors.Is(err, os.ErrNotExist) {
+		return nil
+	}
+
+	src, err := os.Open(path)
+	if err != nil {
+		return err
+	}
+	defer src.Close()
+	info, err := src.Stat()
+	if err != nil {
+		return err
+	}
+	dst, err := os.OpenFile(copy, os.O_WRONLY|os.O_CREATE|os.O_EXCL, info.Mode().Perm())
+	if err != nil {
+		return err
+	}
+	if _, err := io.Copy(dst, src); err != nil {
+		dst.Close()
+		os.Remove(copy)
+		return err
+	}
+	return dst.Close()
 }
 
 // replaceFile moves temp over dest. On Windows a running executable can't

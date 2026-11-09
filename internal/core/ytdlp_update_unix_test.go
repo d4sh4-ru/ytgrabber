@@ -189,3 +189,75 @@ func TestYtDlpUpdateLeavesUnmanagedCopy(t *testing.T) {
 		t.Errorf("custom yt-dlp updated: %v, %v", updated, err)
 	}
 }
+
+// A rolled back version is not installed again by the automatic update,
+// only when the user asks for an update.
+func TestYtDlpRollback(t *testing.T) {
+	gh := newFakeGitHub(t, "2026.02.02", fakeBuild("2026.02.02", "New build", "", ""))
+	app, _ := newAppWithManagedYtDlp(t, fakeBuild("2026.01.01", "Old build", "", ""), gh)
+	ctx := context.Background()
+
+	if _, updated, err := app.UpdateYtDlpIfOutdated(ctx); err != nil || !updated {
+		t.Fatalf("update: %v, %v", updated, err)
+	}
+	if status := app.ytDlpStatus(); status.Version != "2026.02.02" || status.PreviousVersion != "2026.01.01" {
+		t.Fatalf("after update: %+v", status)
+	}
+
+	report, err := app.RollbackYtDlp()
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, status := range report.Tools {
+		if status.Name == "yt-dlp" && (status.Version != "2026.01.01" || status.PreviousVersion != "2026.02.02") {
+			t.Fatalf("after rollback: %+v", status)
+		}
+	}
+
+	if version, updated, err := app.UpdateYtDlpIfOutdated(ctx); err != nil || updated || version != "2026.01.01" {
+		t.Errorf("auto-update reinstalled the rolled back version: %q, %v, %v", version, updated, err)
+	}
+
+	output, err := app.UpdateYtDlp()
+	if err != nil || !strings.Contains(output, "2026.01.01 → 2026.02.02") {
+		t.Errorf("manual update = %q, %v", output, err)
+	}
+	if version := app.ytDlpStatus().Version; version != "2026.02.02" {
+		t.Errorf("after manual update: %s", version)
+	}
+	if output, err := app.UpdateYtDlp(); err != nil || !strings.Contains(output, "последняя версия") {
+		t.Errorf("second manual update = %q, %v", output, err)
+	}
+}
+
+// On a server that installs the tools itself, a download added before
+// they are there waits, says what for, and starts once they are in place.
+func TestDownloadWaitsForTools(t *testing.T) {
+	gh := newFakeGitHub(t, "2026.01.01", "")
+	app, events := newAppWithManagedYtDlp(t, fakeBuild("2026.01.01", "Fake clip", "", ""), gh)
+	// A custom path that doesn't exist: missing, whatever is on PATH.
+	app.settings.YtDlpPath = filepath.Join(t.TempDir(), "yt-dlp")
+	app.GetDependencies()
+
+	link := "https://example.com/watch?v=abc"
+	if _, err := app.DownloadVideo(LocalUser, link, "best", false); err == nil {
+		t.Fatal("the desktop must refuse a download without yt-dlp")
+	}
+
+	app.waitForTools = true
+	id, err := app.DownloadVideo(LocalUser, link, "best", false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	jobs, _ := app.GetJobs(LocalUser)
+	if len(jobs) != 1 || jobs[0].Status != "pending" || jobs[0].WaitingFor != "yt-dlp" {
+		t.Fatalf("jobs = %+v", jobs)
+	}
+
+	app.settings.YtDlpPath = "" // back to the managed copy, as if just installed
+	app.GetDependencies()       // what InstallTools does when it is done
+	waitFor(t, "the download", func() bool { return events.count("library-changed") > 0 })
+	if titles := libraryTitles(t, app); titles[link] != "Fake clip" {
+		t.Errorf("library = %v (job %s)", titles, id)
+	}
+}

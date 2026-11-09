@@ -337,3 +337,48 @@ func TestChannels(t *testing.T) {
 		t.Errorf("nightly = %+v, %v", list, err)
 	}
 }
+
+// Installing yt-dlp keeps the version it replaces; Rollback swaps the two.
+func TestYtDlpKeepsPreviousVersionForRollback(t *testing.T) {
+	builds := map[string][]byte{"v1": []byte("#!/bin/sh\necho v1\n"), "v2": []byte("#!/bin/sh\necho v2\n")}
+	dir := t.TempDir()
+	// Linux file names on every OS: the fake release installs "yt-dlp".
+	in := Installer{Dir: dir, GOOS: "linux", GOARCH: "amd64"}
+	dest := filepath.Join(dir, "yt-dlp")
+	read := func(path string) string {
+		data, _ := os.ReadFile(path)
+		return string(data)
+	}
+
+	for _, version := range []string{"v1", "v2"} {
+		release := newFakeRelease(t, map[string][]byte{
+			"/yt-dlp_linux": builds[version],
+			"/SHA2-256SUMS": []byte(sha(builds[version]) + "  yt-dlp_linux\n"),
+		})
+		err := in.installArtifacts(context.Background(), "yt-dlp", []artifact{{
+			url: release.url("/yt-dlp_linux"), checksumURL: release.url("/SHA2-256SUMS"), checksumName: "yt-dlp_linux",
+			archive: archiveNone, files: map[string]string{"yt-dlp_linux": "yt-dlp"},
+		}}, func(Progress) {})
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
+	if read(dest) != string(builds["v2"]) || read(dest+".prev") != string(builds["v1"]) {
+		t.Fatalf("after update: %q, prev %q", read(dest), read(dest+".prev"))
+	}
+
+	if err := in.Rollback("yt-dlp"); err != nil {
+		t.Fatal(err)
+	}
+	if read(dest) != string(builds["v1"]) || read(dest+".prev") != string(builds["v2"]) {
+		t.Errorf("after rollback: %q, prev %q", read(dest), read(dest+".prev"))
+	}
+	if info, _ := os.Stat(dest); goruntime.GOOS != "windows" && info.Mode().Perm()&0o111 == 0 {
+		t.Error("rolled back yt-dlp is not executable")
+	}
+	assertOnly(t, dir, "yt-dlp", "yt-dlp.prev")
+
+	if err := (Installer{Dir: t.TempDir(), GOOS: "linux"}).Rollback("yt-dlp"); err == nil {
+		t.Error("rollback without a previous version")
+	}
+}

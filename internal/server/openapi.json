@@ -187,6 +187,9 @@
           },
           "useAccount": {
             "type": "boolean"
+          },
+          "waitingFor": {
+            "type": "string"
           }
         },
         "required": [
@@ -326,6 +329,9 @@
             "type": "string"
           },
           "path": {
+            "type": "string"
+          },
+          "previousVersion": {
             "type": "string"
           },
           "purpose": {
@@ -1697,6 +1703,60 @@
         "summary": "Прервать установку"
       }
     },
+    "/tools/yt-dlp/rollback": {
+      "post": {
+        "operationId": "postToolsYtDlpRollback",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/tools.Report"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Ошибка; текст для пользователя"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Нужен вход"
+          }
+        },
+        "summary": "Вернуть версию yt-dlp, которую заменило последнее обновление"
+      }
+    },
     "/tools/yt-dlp/update": {
       "post": {
         "operationId": "postToolsYtDlpUpdate",
@@ -1748,7 +1808,7 @@
             "description": "Нужен вход"
           }
         },
-        "summary": "Обновить yt-dlp; возвращает его вывод"
+        "summary": "Обновить yt-dlp; возвращает, что получилось"
       }
     }
   },

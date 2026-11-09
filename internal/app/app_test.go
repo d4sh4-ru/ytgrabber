@@ -17,7 +17,7 @@ func TestBindings(t *testing.T) {
 		"GetSettings", "GetStorageInfo", "GetUpdateInfo", "ImportCookiesFile",
 		"InstallTools", "InstallUpdate", "OpenDownloadsDir", "OpenReleasePage",
 		"RefreshAccount", "RemoveAccount", "RemoveJob", "ResetAllData", "ResetToolPath",
-		"RetryJob", "RevealVideo", "SavePlaybackPosition", "ScanBrowsers",
+		"RetryJob", "RevealVideo", "RollbackYtDlp", "SavePlaybackPosition", "ScanBrowsers",
 		"SetMaxConcurrentDownloads", "SetUpdateSettings", "UpdateYtDlp",
 	}
 
