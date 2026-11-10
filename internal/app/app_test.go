@@ -13,12 +13,12 @@ func TestBindings(t *testing.T) {
 	want := []string{
 		"CancelToolInstall", "CheckAccount", "CheckForUpdates", "ChooseDownloadsDir",
 		"ChooseToolPath", "ConnectBrowserProfile", "ConnectServer", "DeleteVideo", "DownloadVideo",
-		"GetAccounts", "GetAppInfo", "GetConnection", "GetDependencies", "GetJobs", "GetLibrary",
+		"GetAccounts", "GetAppInfo", "GetConnection", "GetDependencies", "GetJobs", "GetLibrary", "GetLocalAccounts",
 		"GetSettings", "GetStorageInfo", "GetUpdateInfo", "ImportCookiesFile",
 		"InstallTools", "InstallUpdate", "OpenDownloadsDir", "OpenReleasePage",
 		"ReconnectServer", "RefreshAccount", "RemoveAccount", "RemoveJob", "ResetAllData", "ResetToolPath",
 		"RetryJob", "RevealVideo", "RollbackYtDlp", "SaveMediaFile", "SavePlaybackPosition", "ScanBrowsers",
-		"SetMaxConcurrentDownloads", "SetUpdateSettings", "UpdateYtDlp", "UseLocal",
+		"SendAccountToServer", "SetMaxConcurrentDownloads", "SetUpdateSettings", "UpdateYtDlp", "UseLocal",
 	}
 
 	typ := reflect.TypeOf(&App{})

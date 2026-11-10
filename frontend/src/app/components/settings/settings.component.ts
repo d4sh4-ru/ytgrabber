@@ -27,6 +27,7 @@ import {
 import { AccountConnectDialogComponent } from '../account-connect-dialog/account-connect-dialog.component';
 import { Transport } from '../../api/transport';
 import { SessionService } from '../../services/session.service';
+import { LocalAccountsComponent } from '../local-accounts/local-accounts.component';
 import { ServerConnectionComponent } from '../server-connection/server-connection.component';
 import { PeopleComponent } from '../people/people.component';
 
@@ -44,6 +45,7 @@ type ResetStep = 'idle' | 'choose' | 'confirm';
         AccountConnectDialogComponent,
         PeopleComponent,
         ServerConnectionComponent,
+        LocalAccountsComponent,
     ],
     templateUrl: './settings.component.html',
     styleUrl: './settings.component.scss',

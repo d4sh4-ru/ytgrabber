@@ -1,6 +1,7 @@
 package app
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"net/url"
@@ -91,6 +92,35 @@ func (a *App) SaveMediaFile(mediaURL string, fileName string) (bool, error) {
 		return false, err
 	}
 	return true, nil
+}
+
+// GetLocalAccounts lists the sites connected on this computer, which the
+// window can't see while it works with a server, to send them there.
+func (a *App) GetLocalAccounts() ([]*model.Account, error) {
+	return a.core.GetAccounts(user)
+}
+
+// SendAccountToServer connects the server's account of a site with the
+// cookies of the same site on this computer: the server has no browsers
+// to take them from. The cookies go straight to the server; the window
+// gets back the server's account.
+func (a *App) SendAccountToServer(id string) (*model.Account, error) {
+	if a.remote.Server() == "" {
+		return nil, errors.New("приложение не подключено к серверу")
+	}
+	local, cookies, err := a.core.AccountCookies(user, id)
+	if err != nil {
+		return nil, err
+	}
+	reply, err := a.remote.SendCookies(a.ctx, local.Domain, cookies)
+	if err != nil {
+		return nil, err
+	}
+	var account model.Account
+	if err := json.Unmarshal(reply, &account); err != nil {
+		return nil, fmt.Errorf("непонятный ответ сервера: %w", err)
+	}
+	return &account, nil
 }
 
 // noLocalDownloads: switching to a server hides the local queue, so it

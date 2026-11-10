@@ -40,9 +40,16 @@ describe('RemoteTransport', () => {
         await transport.call('CheckForUpdates');
         await transport.call('SaveMediaFile', ['/media/a', 'a.mp4']);
         await transport.call('UseLocal');
+        await transport.call('SendAccountToServer', ['a']);
+        await transport.call('GetAccounts');
 
-        expect(httpCalls).toEqual(['GetLibrary', 'StartDownload']);
-        expect(wailsCalls).toEqual(['CheckForUpdates', 'SaveMediaFile', 'UseLocal']);
+        expect(httpCalls).toEqual(['GetLibrary', 'StartDownload', 'GetAccounts']);
+        expect(wailsCalls).toEqual([
+            'CheckForUpdates',
+            'SaveMediaFile',
+            'UseLocal',
+            'SendAccountToServer',
+        ]);
         expect(transport.isDesktop).toBe(false);
         expect(transport.isDesktopApp).toBe(true);
     });

@@ -5,7 +5,10 @@ import type { CodeCheck, SessionInfo, SignInRequest } from './session';
 import type { Transport } from './transport';
 import { WailsTransport } from './wails-transport';
 
-/** What stays with the desktop app itself: its updates and its link to the server. */
+/**
+ * What stays with the desktop app itself: its updates, its link to the
+ * server and the sites connected on this computer.
+ */
 const LOCAL_METHODS: ReadonlySet<string> = new Set([
     'GetUpdateInfo',
     'CheckForUpdates',
@@ -16,6 +19,8 @@ const LOCAL_METHODS: ReadonlySet<string> = new Set([
     'UseLocal',
     'ReconnectServer',
     'SaveMediaFile',
+    'GetLocalAccounts',
+    'SendAccountToServer',
 ]);
 
 const LOCAL_EVENTS: ReadonlySet<string> = new Set([
