@@ -28,6 +28,8 @@ import { Transport } from './api/transport';
 import { SessionService } from './services/session.service';
 import { InstallOffer, InstallService } from './services/install.service';
 import { SHARE_PATH, sharedLink } from './shared/shared-link';
+import { ConnectionService } from './services/connection.service';
+import type { RemoteStatus } from './api/connection';
 
 type AppTab = 'add' | 'library' | 'settings';
 
@@ -62,6 +64,7 @@ export class App implements OnInit, OnDestroy {
     private readonly transport = inject(Transport);
     private readonly sessionService = inject(SessionService);
     private readonly installService = inject(InstallService);
+    private readonly connectionService = inject(ConnectionService);
     /** Absent in the desktop app and in tests: nothing registers a worker there. */
     private readonly swUpdate = inject(SwUpdate, { optional: true });
     private readonly destroy$ = new Subject<void>();
@@ -76,6 +79,11 @@ export class App implements OnInit, OnDestroy {
     protected activeTab: AppTab = 'add';
     /** A link shared to the app from another one (Android share sheet). */
     protected sharedUrl: string | null = null;
+
+    // --- Server connection (desktop app connected to a server) ---
+    protected readonly server = this.connectionService.server;
+    protected serverStatus: RemoteStatus = { connected: false };
+    protected isSwitchingMode = false;
 
     // --- Web app ---
     protected installOffer: InstallOffer | null = null;
@@ -113,6 +121,14 @@ export class App implements OnInit, OnDestroy {
         );
     }
 
+    /** A problem with the server, once there's something to say. */
+    protected get serverProblem(): string {
+        if (!this.server) {
+            return '';
+        }
+        return this.serverStatus.error || this.serverStatus.warning || '';
+    }
+
     protected get isUpdateBannerVisible(): boolean {
         return !!this.update?.available && !this.isUpdateDismissed && this.activeTab !== 'settings';
     }
@@ -129,6 +145,11 @@ export class App implements OnInit, OnDestroy {
         // Subscribe before the initial load so no event emitted meanwhile is
         // lost; the load result is then merged with whatever arrived.
         this.subscribeToEvents();
+
+        // Connected to a server, the app updates itself even before signing in.
+        if (this.transport.isDesktopApp && !this.transport.isDesktop) {
+            this.loadUpdate();
+        }
 
         const session = await this.loadSession();
         if (!session?.authenticated) {
@@ -173,12 +194,37 @@ export class App implements OnInit, OnDestroy {
         await this.reload();
         // A server is updated by replacing its image, not from the UI.
         if (this.transport.isDesktop) {
-            void this.updateService.load().catch((): void => undefined);
+            this.loadUpdate();
         }
+    }
+
+    private loadUpdate(): void {
+        void this.updateService.load().catch((): void => undefined);
     }
 
     private async reload(): Promise<void> {
         await Promise.all([this.loadJobs(), this.refreshLibrary(), this.refreshDependencies()]);
+    }
+
+    // --- Server connection ---
+    protected async onReconnectServer(): Promise<void> {
+        await this.switchMode((): Promise<void> => this.connectionService.reconnect());
+    }
+
+    protected async onUseLocal(): Promise<void> {
+        await this.switchMode((): Promise<void> => this.connectionService.useLocal());
+    }
+
+    private async switchMode(action: () => Promise<void>): Promise<void> {
+        this.isSwitchingMode = true;
+        this.changeDetectorRef.markForCheck();
+        try {
+            await action();
+        } catch (error: unknown) {
+            this.notificationService.error(error);
+            this.isSwitchingMode = false;
+            this.changeDetectorRef.markForCheck();
+        }
     }
 
     // --- Navigation ---
@@ -246,8 +292,19 @@ export class App implements OnInit, OnDestroy {
         this.transport.reconnected$.pipe(takeUntil(this.destroy$)).subscribe((): void => {
             if (this.isStarted) {
                 void this.reload();
+            } else if (this.server) {
+                // The server was out of reach at startup: start over now
+                // that it answers.
+                location.reload();
             }
         });
+
+        this.connectionService.status$
+            .pipe(takeUntil(this.destroy$))
+            .subscribe((status: RemoteStatus): void => {
+                this.serverStatus = status;
+                this.changeDetectorRef.markForCheck();
+            });
 
         merge(this.downloadService.progress$, this.downloadService.status$)
             .pipe(takeUntil(this.destroy$))

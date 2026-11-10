@@ -46,9 +46,10 @@ func main() {
 			// Assets serves the built frontend. Handler is Wails' fallback
 			// for any request it can't satisfy from Assets — WebViews block
 			// <video src="file://…">, so library files are served through
-			// the same asset server under /media/ (see core.MediaHandler).
+			// the same asset server under /media/ (see core.MediaHandler);
+			// connected to a server, it forwards /api/ and /media/ there.
 			Assets:  assets,
-			Handler: app.MediaHandler(backend),
+			Handler: app.Handler(backend),
 		},
 		BackgroundColour: &options.RGBA{R: 18, G: 18, B: 18, A: 1},
 		OnStartup:        onStartup,

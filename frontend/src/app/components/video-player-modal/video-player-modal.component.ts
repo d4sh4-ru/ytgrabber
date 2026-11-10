@@ -12,6 +12,7 @@ import {
     ViewChild,
 } from '@angular/core';
 import { model } from '../../api/models';
+import { ConnectionService } from '../../services/connection.service';
 import { Transport } from '../../api/transport';
 import { ConfirmDialogComponent } from '../confirm-dialog/confirm-dialog.component';
 import { IconComponent } from '../icon/icon.component';
@@ -58,6 +59,7 @@ export class VideoPlayerModalComponent implements OnDestroy {
     private readonly playbackService = inject(PlaybackService);
     private readonly mediaSessionService = inject(MediaSessionService);
     private readonly changeDetectorRef = inject(ChangeDetectorRef);
+    private readonly connectionService = inject(ConnectionService);
 
     @Input()
     public item: model.VideoRecord | null = null;
@@ -70,6 +72,8 @@ export class VideoPlayerModalComponent implements OnDestroy {
 
     /** The desktop opens files from their folder; a browser saves them to the device. */
     protected readonly isDesktop = inject(Transport).isDesktop;
+    /** The desktop connected to a server saves files to the computer itself. */
+    protected readonly isDesktopApp = inject(Transport).isDesktopApp;
 
     protected playbackError = false;
     /** Where playback resumed, for the "start over" hint; null when from the start. */
@@ -255,6 +259,11 @@ export class VideoPlayerModalComponent implements OnDestroy {
     // --- Downloading ---
     protected onDownload(event: Event): void {
         if (!this.item) {
+            return;
+        }
+        if (this.isDesktopApp) {
+            event.preventDefault();
+            void this.connectionService.saveToComputer(this.item);
             return;
         }
         const warning = meteredDownloadWarning(this.item);

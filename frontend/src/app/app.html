@@ -1,4 +1,33 @@
 <div class="app">
+    @if (serverProblem) {
+        <div
+            class="banner"
+            [class.banner--error]="serverStatus.error"
+            [class.banner--warning]="!serverStatus.error"
+        >
+            <span>{{ serverProblem }}</span>
+            @if (serverStatus.error) {
+                <div class="banner__actions">
+                    <button
+                        type="button"
+                        class="btn"
+                        [disabled]="isSwitchingMode"
+                        (click)="onReconnectServer()"
+                    >
+                        Повторить
+                    </button>
+                    <button
+                        type="button"
+                        class="btn"
+                        [disabled]="isSwitchingMode"
+                        (click)="onUseLocal()"
+                    >
+                        Работать локально
+                    </button>
+                </div>
+            }
+        </div>
+    }
     @if (isLoginRequired) {
         <app-login [isSetup]="isSetupRequired" (loggedIn)="onLoggedIn()" />
     } @else {

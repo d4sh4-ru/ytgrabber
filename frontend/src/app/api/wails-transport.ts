@@ -17,6 +17,7 @@ interface WailsWindow {
  */
 export class WailsTransport implements Transport {
     public readonly isDesktop = true;
+    public readonly isDesktopApp = true;
     public readonly reconnected$: Observable<void> = NEVER;
 
     public call<T>(method: string, args: readonly unknown[] = []): Promise<T> {

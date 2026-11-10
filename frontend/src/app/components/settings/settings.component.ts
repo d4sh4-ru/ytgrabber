@@ -27,6 +27,7 @@ import {
 import { AccountConnectDialogComponent } from '../account-connect-dialog/account-connect-dialog.component';
 import { Transport } from '../../api/transport';
 import { SessionService } from '../../services/session.service';
+import { ServerConnectionComponent } from '../server-connection/server-connection.component';
 import { PeopleComponent } from '../people/people.component';
 
 const CONFIGURABLE_TOOLS: ReadonlySet<string> = new Set<ConfigurableTool>(['yt-dlp', 'ffmpeg']);
@@ -38,7 +39,12 @@ type ResetStep = 'idle' | 'choose' | 'confirm';
 @Component({
     selector: 'app-settings',
     standalone: true,
-    imports: [ConfirmDialogComponent, AccountConnectDialogComponent, PeopleComponent],
+    imports: [
+        ConfirmDialogComponent,
+        AccountConnectDialogComponent,
+        PeopleComponent,
+        ServerConnectionComponent,
+    ],
     templateUrl: './settings.component.html',
     styleUrl: './settings.component.scss',
     changeDetection: ChangeDetectionStrategy.OnPush,
@@ -56,6 +62,8 @@ export class SettingsComponent implements OnInit, OnDestroy {
 
     /** Folder pickers, updates and "delete all data" exist only on the desktop. */
     protected readonly isDesktop = inject(Transport).isDesktop;
+    /** App updates and the server link, connected to a server too. */
+    protected readonly isDesktopApp = inject(Transport).isDesktopApp;
     /** On a server only admins install tools and change its settings. */
     protected isAdmin = true;
 
