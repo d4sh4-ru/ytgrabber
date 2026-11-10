@@ -110,12 +110,11 @@ func (a *App) RetryJob(user UserID, id string, useAccount bool) error {
 	if err := a.ensureReady(); err != nil {
 		return err
 	}
-	if err := a.checkToolsReady(); err != nil && !a.waitForTools {
-		return err
-	}
 
 	a.mu.Lock()
 	j, ok := a.jobs[id]
+	// Ownership first: someone else's job is "not found" whatever else
+	// is wrong.
 	if !ok || j.UserID != string(user) {
 		a.mu.Unlock()
 		return ErrJobNotFound
@@ -123,6 +122,10 @@ func (a *App) RetryJob(user UserID, id string, useAccount bool) error {
 	if j.Status != model.StatusError {
 		a.mu.Unlock()
 		return errors.New("повторить можно только задачу, завершившуюся ошибкой")
+	}
+	if missing := missingTools(a.tools); len(missing) > 0 && !a.waitForTools {
+		a.mu.Unlock()
+		return toolMissingError(missing[0])
 	}
 	j.Status = model.StatusPending
 	j.Error = ""
@@ -211,9 +214,13 @@ func (a *App) checkToolsReady() error {
 	a.mu.RUnlock()
 
 	if len(missing) > 0 {
-		return fmt.Errorf("%s не найден. Установите его или укажите путь в настройках.", missing[0])
+		return toolMissingError(missing[0])
 	}
 	return nil
+}
+
+func toolMissingError(tool string) error {
+	return fmt.Errorf("%s не найден. Установите его или укажите путь в настройках.", tool)
 }
 
 // missingTools lists the tools a download can't start without.
