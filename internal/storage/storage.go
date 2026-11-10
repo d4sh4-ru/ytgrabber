@@ -33,6 +33,41 @@ var migrations = []func(tx *sql.Tx, env MigrationEnv) error{
 	migrateAccountProfileDir,
 	migratePlaybackPosition,
 	migrateJobErrorDetails,
+	migrateUsers,
+}
+
+// migrateUsers gives jobs, library entries (with their playback
+// positions) and site accounts an owner, for the server's several users.
+// Everything that exists belongs to the desktop's local user. An account
+// is now unique per user and domain, which SQLite can only change by
+// rebuilding the table.
+func migrateUsers(tx *sql.Tx, _ MigrationEnv) error {
+	_, err := tx.Exec(`
+ALTER TABLE jobs ADD COLUMN user_id TEXT NOT NULL DEFAULT 'local';
+ALTER TABLE videos ADD COLUMN user_id TEXT NOT NULL DEFAULT 'local';
+CREATE INDEX videos_by_user ON videos(user_id, downloaded_at);
+
+CREATE TABLE accounts_v2 (
+	id TEXT PRIMARY KEY,
+	user_id TEXT NOT NULL,
+	domain TEXT NOT NULL,
+	source TEXT NOT NULL,
+	browser TEXT NOT NULL DEFAULT '',
+	profile TEXT NOT NULL DEFAULT '',
+	profile_dir TEXT NOT NULL DEFAULT '',
+	cookie_count INTEGER NOT NULL DEFAULT 0,
+	logged_in INTEGER NOT NULL DEFAULT 0,
+	status TEXT NOT NULL,
+	created_at TEXT NOT NULL,
+	refreshed_at TEXT NOT NULL,
+	last_used_at TEXT NOT NULL DEFAULT '',
+	UNIQUE (user_id, domain)
+);
+INSERT INTO accounts_v2 (id, user_id, domain, source, browser, profile, profile_dir, cookie_count, logged_in, status, created_at, refreshed_at, last_used_at)
+	SELECT id, 'local', domain, source, browser, profile, profile_dir, cookie_count, logged_in, status, created_at, refreshed_at, last_used_at FROM accounts;
+DROP TABLE accounts;
+ALTER TABLE accounts_v2 RENAME TO accounts;`)
+	return err
 }
 
 // Open opens the SQLite file with a single connection (so writes
@@ -232,6 +267,10 @@ func migrateJobErrorDetails(tx *sql.Tx, _ MigrationEnv) error {
 	return err
 }
 
+// errNoOwner keeps a record nobody owns out of the database: it would be
+// invisible to everyone.
+var errNoOwner = errors.New("storage: record without an owner")
+
 func (d *DB) Close() error {
 	return d.conn.Close()
 }
@@ -240,14 +279,17 @@ func (d *DB) Close() error {
 // it is deliberately left out of the ON CONFLICT SET clause so it survives
 // subsequent status updates.
 func (d *DB) SaveJob(job *model.DownloadJob) error {
+	if job.UserID == "" {
+		return errNoOwner
+	}
 	createdAt := job.CreatedAt
 	if createdAt == "" {
 		createdAt = time.Now().UTC().Format(time.RFC3339Nano)
 	}
 
 	_, err := d.conn.Exec(
-		`INSERT INTO jobs (id, url, title, status, quality, file_path, error, error_details, error_kind, use_account, site, account_used, created_at)
-		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+		`INSERT INTO jobs (id, user_id, url, title, status, quality, file_path, error, error_details, error_kind, use_account, site, account_used, created_at)
+		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 		 ON CONFLICT(id) DO UPDATE SET
 			url = excluded.url,
 			title = excluded.title,
@@ -260,7 +302,7 @@ func (d *DB) SaveJob(job *model.DownloadJob) error {
 			use_account = excluded.use_account,
 			site = excluded.site,
 			account_used = excluded.account_used`,
-		job.ID, job.URL, job.Title, job.Status, job.Quality, job.FilePath, job.Error, job.ErrorDetails, job.ErrorKind, job.UseAccount, job.Site, job.AccountUsed, createdAt,
+		job.ID, job.UserID, job.URL, job.Title, job.Status, job.Quality, job.FilePath, job.Error, job.ErrorDetails, job.ErrorKind, job.UseAccount, job.Site, job.AccountUsed, createdAt,
 	)
 	return err
 }
@@ -281,8 +323,9 @@ func (d *DB) MarkInterruptedJobs(message string) error {
 	return err
 }
 
+// LoadJobs returns the jobs of every user: the queue is shared.
 func (d *DB) LoadJobs() ([]*model.DownloadJob, error) {
-	rows, err := d.conn.Query(`SELECT id, url, title, status, quality, file_path, error, error_details, error_kind, use_account, site, account_used, created_at FROM jobs ORDER BY created_at ASC`)
+	rows, err := d.conn.Query(`SELECT id, user_id, url, title, status, quality, file_path, error, error_details, error_kind, use_account, site, account_used, created_at FROM jobs ORDER BY created_at ASC`)
 	if err != nil {
 		return nil, err
 	}
@@ -291,7 +334,7 @@ func (d *DB) LoadJobs() ([]*model.DownloadJob, error) {
 	jobs := make([]*model.DownloadJob, 0)
 	for rows.Next() {
 		job := &model.DownloadJob{Tracks: []model.DownloadTrack{}}
-		if err := rows.Scan(&job.ID, &job.URL, &job.Title, &job.Status, &job.Quality, &job.FilePath, &job.Error, &job.ErrorDetails, &job.ErrorKind, &job.UseAccount, &job.Site, &job.AccountUsed, &job.CreatedAt); err != nil {
+		if err := rows.Scan(&job.ID, &job.UserID, &job.URL, &job.Title, &job.Status, &job.Quality, &job.FilePath, &job.Error, &job.ErrorDetails, &job.ErrorKind, &job.UseAccount, &job.Site, &job.AccountUsed, &job.CreatedAt); err != nil {
 			return nil, err
 		}
 		jobs = append(jobs, job)
@@ -302,30 +345,44 @@ func (d *DB) LoadJobs() ([]*model.DownloadJob, error) {
 // SaveVideo inserts a library entry. Downloading the same file again (same
 // video and format) refreshes the existing entry instead of duplicating it.
 func (d *DB) SaveVideo(video *model.VideoRecord) error {
+	if video.UserID == "" {
+		return errNoOwner
+	}
 	_, err := d.conn.Exec(
-		`INSERT INTO videos (id, title, source_url, media_kind, file_path, thumbnail_path, duration_seconds, downloaded_at)
-		 VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+		`INSERT INTO videos (id, user_id, title, source_url, media_kind, file_path, thumbnail_path, duration_seconds, downloaded_at)
+		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
 		 ON CONFLICT(file_path) DO UPDATE SET
 			title = excluded.title,
 			source_url = excluded.source_url,
 			thumbnail_path = excluded.thumbnail_path,
 			duration_seconds = excluded.duration_seconds,
-			downloaded_at = excluded.downloaded_at`,
-		video.ID, video.Title, video.SourceURL, video.MediaKind, video.FilePath, video.ThumbnailPath, video.DurationSeconds, video.DownloadedAt,
+			downloaded_at = excluded.downloaded_at
+		 WHERE videos.user_id = excluded.user_id`,
+		video.ID, video.UserID, video.Title, video.SourceURL, video.MediaKind, video.FilePath, video.ThumbnailPath, video.DurationSeconds, video.DownloadedAt,
 	)
 	return err
 }
 
-const videoColumns = `id, title, source_url, media_kind, file_path, thumbnail_path, duration_seconds, downloaded_at, position_seconds`
+const videoColumns = `id, user_id, title, source_url, media_kind, file_path, thumbnail_path, duration_seconds, downloaded_at, position_seconds`
 
 func scanVideo(scanner interface{ Scan(...any) error }) (*model.VideoRecord, error) {
 	video := &model.VideoRecord{}
-	err := scanner.Scan(&video.ID, &video.Title, &video.SourceURL, &video.MediaKind, &video.FilePath, &video.ThumbnailPath, &video.DurationSeconds, &video.DownloadedAt, &video.PositionSeconds)
+	err := scanner.Scan(&video.ID, &video.UserID, &video.Title, &video.SourceURL, &video.MediaKind, &video.FilePath, &video.ThumbnailPath, &video.DurationSeconds, &video.DownloadedAt, &video.PositionSeconds)
 	return video, err
 }
 
-func (d *DB) LoadVideos() ([]*model.VideoRecord, error) {
-	rows, err := d.conn.Query(`SELECT ` + videoColumns + ` FROM videos ORDER BY downloaded_at DESC`)
+// LoadVideos returns user's library, newest first.
+func (d *DB) LoadVideos(user string) ([]*model.VideoRecord, error) {
+	return d.queryVideos(`SELECT `+videoColumns+` FROM videos WHERE user_id = ? ORDER BY downloaded_at DESC`, user)
+}
+
+// AllVideos returns the libraries of every user, for deleting all data.
+func (d *DB) AllVideos() ([]*model.VideoRecord, error) {
+	return d.queryVideos(`SELECT ` + videoColumns + ` FROM videos`)
+}
+
+func (d *DB) queryVideos(query string, args ...any) ([]*model.VideoRecord, error) {
+	rows, err := d.conn.Query(query, args...)
 	if err != nil {
 		return nil, err
 	}
@@ -344,8 +401,9 @@ func (d *DB) LoadVideos() ([]*model.VideoRecord, error) {
 
 var ErrVideoNotFound = errors.New("запись не найдена в библиотеке")
 
-func (d *DB) GetVideo(id string) (*model.VideoRecord, error) {
-	video, err := scanVideo(d.conn.QueryRow(`SELECT `+videoColumns+` FROM videos WHERE id = ?`, id))
+// GetVideo returns user's entry id; another user's is ErrVideoNotFound.
+func (d *DB) GetVideo(user string, id string) (*model.VideoRecord, error) {
+	video, err := scanVideo(d.conn.QueryRow(`SELECT `+videoColumns+` FROM videos WHERE id = ? AND user_id = ?`, id, user))
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, ErrVideoNotFound
 	}
@@ -361,13 +419,13 @@ func (d *DB) RelocateVideo(id string, filePath string, thumbnailPath string, tit
 }
 
 // SavePosition records where playback of a library entry stopped.
-func (d *DB) SavePosition(id string, seconds float64) error {
-	_, err := d.conn.Exec(`UPDATE videos SET position_seconds = ? WHERE id = ?`, seconds, id)
+func (d *DB) SavePosition(user string, id string, seconds float64) error {
+	_, err := d.conn.Exec(`UPDATE videos SET position_seconds = ? WHERE id = ? AND user_id = ?`, seconds, id, user)
 	return err
 }
 
-func (d *DB) DeleteVideo(id string) error {
-	_, err := d.conn.Exec(`DELETE FROM videos WHERE id = ?`, id)
+func (d *DB) DeleteVideo(user string, id string) error {
+	_, err := d.conn.Exec(`DELETE FROM videos WHERE id = ? AND user_id = ?`, id, user)
 	return err
 }
 
@@ -413,20 +471,23 @@ func (d *DB) SetSetting(key string, value string) error {
 
 var ErrAccountNotFound = errors.New("аккаунт не найден")
 
-const accountColumns = `id, domain, source, browser, profile, profile_dir, cookie_count, logged_in, status, created_at, refreshed_at, last_used_at`
+const accountColumns = `id, user_id, domain, source, browser, profile, profile_dir, cookie_count, logged_in, status, created_at, refreshed_at, last_used_at`
 
 func scanAccount(scanner interface{ Scan(...any) error }) (*model.Account, error) {
 	account := &model.Account{}
-	err := scanner.Scan(&account.ID, &account.Domain, &account.Source, &account.Browser, &account.Profile, &account.ProfileDir, &account.CookieCount,
+	err := scanner.Scan(&account.ID, &account.UserID, &account.Domain, &account.Source, &account.Browser, &account.Profile, &account.ProfileDir, &account.CookieCount,
 		&account.LoggedIn, &account.Status, &account.CreatedAt, &account.RefreshedAt, &account.LastUsedAt)
 	return account, err
 }
 
 // SaveAccount upserts an account; created_at survives updates.
 func (d *DB) SaveAccount(account *model.Account) error {
+	if account.UserID == "" {
+		return errNoOwner
+	}
 	_, err := d.conn.Exec(
 		`INSERT INTO accounts (`+accountColumns+`)
-		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 		 ON CONFLICT(id) DO UPDATE SET
 			domain = excluded.domain,
 			source = excluded.source,
@@ -438,14 +499,14 @@ func (d *DB) SaveAccount(account *model.Account) error {
 			status = excluded.status,
 			refreshed_at = excluded.refreshed_at,
 			last_used_at = excluded.last_used_at`,
-		account.ID, account.Domain, account.Source, account.Browser, account.Profile, account.ProfileDir, account.CookieCount,
+		account.ID, account.UserID, account.Domain, account.Source, account.Browser, account.Profile, account.ProfileDir, account.CookieCount,
 		account.LoggedIn, account.Status, account.CreatedAt, account.RefreshedAt, account.LastUsedAt,
 	)
 	return err
 }
 
-func (d *DB) LoadAccounts() ([]*model.Account, error) {
-	rows, err := d.conn.Query(`SELECT ` + accountColumns + ` FROM accounts ORDER BY domain ASC`)
+func (d *DB) LoadAccounts(user string) ([]*model.Account, error) {
+	rows, err := d.conn.Query(`SELECT `+accountColumns+` FROM accounts WHERE user_id = ? ORDER BY domain ASC`, user)
 	if err != nil {
 		return nil, err
 	}
@@ -462,23 +523,25 @@ func (d *DB) LoadAccounts() ([]*model.Account, error) {
 	return accounts, rows.Err()
 }
 
-func (d *DB) GetAccount(id string) (*model.Account, error) {
-	account, err := scanAccount(d.conn.QueryRow(`SELECT `+accountColumns+` FROM accounts WHERE id = ?`, id))
+// GetAccount returns user's account id; another user's is
+// ErrAccountNotFound.
+func (d *DB) GetAccount(user string, id string) (*model.Account, error) {
+	account, err := scanAccount(d.conn.QueryRow(`SELECT `+accountColumns+` FROM accounts WHERE id = ? AND user_id = ?`, id, user))
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, ErrAccountNotFound
 	}
 	return account, err
 }
 
-func (d *DB) GetAccountByDomain(domain string) (*model.Account, error) {
-	account, err := scanAccount(d.conn.QueryRow(`SELECT `+accountColumns+` FROM accounts WHERE domain = ?`, domain))
+func (d *DB) GetAccountByDomain(user string, domain string) (*model.Account, error) {
+	account, err := scanAccount(d.conn.QueryRow(`SELECT `+accountColumns+` FROM accounts WHERE user_id = ? AND domain = ?`, user, domain))
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, ErrAccountNotFound
 	}
 	return account, err
 }
 
-func (d *DB) DeleteAccount(id string) error {
-	_, err := d.conn.Exec(`DELETE FROM accounts WHERE id = ?`, id)
+func (d *DB) DeleteAccount(user string, id string) error {
+	_, err := d.conn.Exec(`DELETE FROM accounts WHERE id = ? AND user_id = ?`, id, user)
 	return err
 }

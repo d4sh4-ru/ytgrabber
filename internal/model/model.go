@@ -43,7 +43,9 @@ const (
 // DownloadJob is a download that hasn't made it into the library yet:
 // queued, running or failed.
 type DownloadJob struct {
-	ID      string `json:"id"`
+	ID string `json:"id"`
+	// UserID is whose job it is (core.UserID); never sent to clients.
+	UserID  string `json:"-"`
 	URL     string `json:"url"`
 	Title   string `json:"title"`
 	Quality string `json:"quality"`
@@ -91,7 +93,9 @@ const (
 // stored here and sent to the frontend; the cookies themselves live in an
 // encrypted snapshot (package accounts) and never leave the backend.
 type Account struct {
-	ID     string        `json:"id"`
+	ID string `json:"id"`
+	// UserID is whose account it is (core.UserID); never sent to clients.
+	UserID string        `json:"-"`
 	Domain string        `json:"domain"`
 	Source AccountSource `json:"source"`
 	// Browser is the browser id (package browsers), BrowserName its
@@ -124,7 +128,10 @@ const (
 // files by path — WebViews block file:// access — but through MediaURL /
 // ThumbnailURL, which the app's media handler serves by record id.
 type VideoRecord struct {
-	ID              string    `json:"id"`
+	ID string `json:"id"`
+	// UserID is whose library the entry is in (core.UserID); never sent
+	// to clients.
+	UserID          string    `json:"-"`
 	Title           string    `json:"title"`
 	SourceURL       string    `json:"sourceUrl"`
 	MediaKind       MediaKind `json:"mediaKind"`

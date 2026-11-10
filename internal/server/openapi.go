@@ -194,6 +194,9 @@ func Spec(routes []route) ([]byte, error) {
 		if !rt.public {
 			responses["401"] = schema{"description": "Нужен вход", "content": errorContent}
 		}
+		if rt.handle != nil && strings.Contains(rt.path, "{id}") {
+			responses["404"] = schema{"description": "Нет такой записи (или она другого пользователя)", "content": errorContent}
+		}
 		op["responses"] = responses
 
 		if paths[rt.path] == nil {

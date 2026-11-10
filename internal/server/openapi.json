@@ -565,6 +565,24 @@
               }
             },
             "description": "Нужен вход"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Нет такой записи (или она другого пользователя)"
           }
         },
         "summary": "Отключить сайт и удалить cookies"
@@ -629,6 +647,24 @@
               }
             },
             "description": "Нужен вход"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Нет такой записи (или она другого пользователя)"
           }
         },
         "summary": "Проверить, действует ли вход"
@@ -636,7 +672,7 @@
     },
     "/events": {
       "get": {
-        "description": "WebSocket. Каждое сообщение — JSON {\"name\": ..., \"data\": ...}: download-status и download-progress (model.DownloadJob), job-removed (id задачи), library-changed, accounts-changed, tool-install-progress. После переподключения состояние нужно перечитать: пропущенные события не повторяются.",
+        "description": "WebSocket. Каждое сообщение — JSON {\"name\": ..., \"data\": ...}: download-status и download-progress (model.DownloadJob), job-removed (id задачи), library-changed, accounts-changed, tool-install-progress. События о загрузках, библиотеке и аккаунтах приходят только их владельцу. После переподключения состояние нужно перечитать: пропущенные события не повторяются.",
         "operationId": "getEvents",
         "responses": {
           "204": {
@@ -960,6 +996,24 @@
               }
             },
             "description": "Нужен вход"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Нет такой записи (или она другого пользователя)"
           }
         },
         "summary": "Отменить или убрать задачу"
@@ -1035,6 +1089,24 @@
               }
             },
             "description": "Нужен вход"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Нет такой записи (или она другого пользователя)"
           }
         },
         "summary": "Повторить задачу с ошибкой"
@@ -1157,6 +1229,24 @@
               }
             },
             "description": "Нужен вход"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Нет такой записи (или она другого пользователя)"
           }
         },
         "summary": "Убрать из библиотеки"
@@ -1239,6 +1329,24 @@
               }
             },
             "description": "Нужен вход"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Нет такой записи (или она другого пользователя)"
           }
         },
         "summary": "Запомнить место просмотра; возвращает сохранённое (0 у начала и конца)"

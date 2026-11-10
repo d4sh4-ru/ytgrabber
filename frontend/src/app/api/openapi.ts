@@ -65,7 +65,7 @@ export interface paths {
         };
         /**
          * События (WebSocket)
-         * @description WebSocket. Каждое сообщение — JSON {"name": ..., "data": ...}: download-status и download-progress (model.DownloadJob), job-removed (id задачи), library-changed, accounts-changed, tool-install-progress. После переподключения состояние нужно перечитать: пропущенные события не повторяются.
+         * @description WebSocket. Каждое сообщение — JSON {"name": ..., "data": ...}: download-status и download-progress (model.DownloadJob), job-removed (id задачи), library-changed, accounts-changed, tool-install-progress. События о загрузках, библиотеке и аккаунтах приходят только их владельцу. После переподключения состояние нужно перечитать: пропущенные события не повторяются.
          */
         get: operations['getEvents'];
         put?: never;
@@ -610,6 +610,17 @@ export interface operations {
                     };
                 };
             };
+            /** @description Нет такой записи (или она другого пользователя) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': {
+                        error: string;
+                    };
+                };
+            };
         };
     };
     postAccountsIdCheck: {
@@ -645,6 +656,17 @@ export interface operations {
             };
             /** @description Нужен вход */
             401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': {
+                        error: string;
+                    };
+                };
+            };
+            /** @description Нет такой записи (или она другого пользователя) */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -894,6 +916,17 @@ export interface operations {
                     };
                 };
             };
+            /** @description Нет такой записи (или она другого пользователя) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': {
+                        error: string;
+                    };
+                };
+            };
         };
     };
     postJobsIdRetry: {
@@ -933,6 +966,17 @@ export interface operations {
             };
             /** @description Нужен вход */
             401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': {
+                        error: string;
+                    };
+                };
+            };
+            /** @description Нет такой записи (или она другого пользователя) */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -1029,6 +1073,17 @@ export interface operations {
                     };
                 };
             };
+            /** @description Нет такой записи (или она другого пользователя) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': {
+                        error: string;
+                    };
+                };
+            };
         };
     };
     putLibraryIdPosition: {
@@ -1070,6 +1125,17 @@ export interface operations {
             };
             /** @description Нужен вход */
             401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': {
+                        error: string;
+                    };
+                };
+            };
+            /** @description Нет такой записи (или она другого пользователя) */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };

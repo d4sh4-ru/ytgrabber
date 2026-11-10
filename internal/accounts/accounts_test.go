@@ -1,6 +1,8 @@
 package accounts
 
 import (
+	"crypto/aes"
+	"crypto/cipher"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -182,7 +184,7 @@ func TestStoreRoundTrip(t *testing.T) {
 	store := NewStore(dir)
 	cookies := []Cookie{{Domain: ".vk.com", Path: "/", Name: "remixsid", Value: "secret-value", Secure: true, HTTPOnly: true}}
 
-	if err := store.Save("a1", "vk.com", cookies); err != nil {
+	if err := store.Save("a1", "u1", "vk.com", cookies); err != nil {
 		t.Fatal(err)
 	}
 
@@ -195,7 +197,7 @@ func TestStoreRoundTrip(t *testing.T) {
 	}
 
 	// A fresh store (next app start) reads the key from disk.
-	loaded, err := NewStore(dir).Load("a1", "vk.com")
+	loaded, err := NewStore(dir).Load("a1", "u1", "vk.com")
 	if err != nil || !slices.Equal(loaded, cookies) {
 		t.Fatalf("loaded = %+v, %v", loaded, err)
 	}
@@ -211,7 +213,7 @@ func TestStoreRoundTrip(t *testing.T) {
 	if err := store.Delete("a1"); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := store.Load("a1", "vk.com"); !os.IsNotExist(err) {
+	if _, err := store.Load("a1", "u1", "vk.com"); !os.IsNotExist(err) {
 		t.Errorf("deleted snapshot load error = %v", err)
 	}
 	if err := store.Delete("a1"); err != nil {
@@ -224,25 +226,99 @@ func TestStoreRoundTrip(t *testing.T) {
 func TestStoreBindsSite(t *testing.T) {
 	dir := t.TempDir()
 	store := NewStore(dir)
-	store.Save("insta", "instagram.com", []Cookie{{Domain: ".instagram.com", Path: "/", Name: "sessionid", Value: "s"}})
-	store.Save("vk", "vk.com", []Cookie{{Domain: ".vk.com", Path: "/", Name: "remixsid", Value: "v"}})
+	store.Save("insta", "u1", "instagram.com", []Cookie{{Domain: ".instagram.com", Path: "/", Name: "sessionid", Value: "s"}})
+	store.Save("vk", "u1", "vk.com", []Cookie{{Domain: ".vk.com", Path: "/", Name: "remixsid", Value: "v"}})
 
 	data, _ := os.ReadFile(filepath.Join(dir, "insta.enc"))
 	os.WriteFile(filepath.Join(dir, "vk.enc"), data, 0o600)
-	if _, err := store.Load("vk", "vk.com"); err != errCorruptSnapshot {
+	if _, err := store.Load("vk", "u1", "vk.com"); err != errCorruptSnapshot {
 		t.Errorf("swapped snapshot error = %v", err)
 	}
 
 	os.WriteFile(filepath.Join(dir, "insta.enc"), []byte("YTGC1garbage"), 0o600)
-	if _, err := store.Load("insta", "instagram.com"); err != errCorruptSnapshot {
+	if _, err := store.Load("insta", "u1", "instagram.com"); err != errCorruptSnapshot {
 		t.Errorf("corrupt snapshot error = %v", err)
+	}
+}
+
+// A snapshot is bound to its user too: one user's file copied over
+// another user's account of the same site doesn't decrypt.
+func TestStoreBindsUser(t *testing.T) {
+	dir := t.TempDir()
+	store := NewStore(dir)
+	store.Save("alice-vk", "alice", "vk.com", []Cookie{{Domain: ".vk.com", Path: "/", Name: "remixsid", Value: "a"}})
+
+	data, _ := os.ReadFile(filepath.Join(dir, "alice-vk.enc"))
+	os.WriteFile(filepath.Join(dir, "bob-vk.enc"), data, 0o600)
+	if _, err := store.Load("bob-vk", "bob", "vk.com"); err != errCorruptSnapshot {
+		t.Errorf("alice's snapshot as bob's: %v", err)
+	}
+	if _, err := store.Load("alice-vk", "alice", "vk.com"); err != nil {
+		t.Errorf("alice's own snapshot: %v", err)
+	}
+}
+
+// Snapshots written before there were users (v1, bound to the site only)
+// still open for the desktop's local user, and only for it.
+func TestStoreReadsLegacySnapshots(t *testing.T) {
+	dir := t.TempDir()
+	store := NewStore(dir)
+	key, err := store.loadKey(true)
+	if err != nil {
+		t.Fatal(err)
+	}
+	block, _ := aes.NewCipher(key)
+	gcm, _ := cipher.NewGCM(block)
+	nonce := make([]byte, gcm.NonceSize())
+	cookies := []Cookie{{Domain: ".vk.com", Path: "/", Name: "remixsid", Value: "old"}}
+	legacy := gcm.Seal(append([]byte("YTGC1"), nonce...), nonce, FormatCookies(cookies), []byte("vk.com"))
+	os.WriteFile(filepath.Join(dir, "a.enc"), legacy, 0o600)
+
+	if loaded, err := store.Load("a", LegacyUser, "vk.com"); err != nil || !slices.Equal(loaded, cookies) {
+		t.Errorf("legacy snapshot = %+v, %v", loaded, err)
+	}
+	if _, err := store.Load("a", "bob", "vk.com"); err != errCorruptSnapshot {
+		t.Errorf("legacy snapshot opened for another user: %v", err)
+	}
+}
+
+// A server's key comes from YTG_SECRET_KEY_FILE instead of the key file.
+func TestStoreUsesGivenKey(t *testing.T) {
+	if _, err := DeriveKey([]byte("short")); err == nil {
+		t.Error("short secret accepted")
+	}
+	key, err := DeriveKey([]byte("bXkgc2VjcmV0IGtleSB0aGF0IGlzIGxvbmcgZW5vdWdo\n"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	dir := t.TempDir()
+	store := NewStore(dir)
+	if err := store.UseKey(key); err != nil {
+		t.Fatal(err)
+	}
+	cookies := []Cookie{{Domain: ".vk.com", Path: "/", Name: "remixsid", Value: "v"}}
+	if err := store.Save("a", "u1", "vk.com", cookies); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Stat(filepath.Join(dir, "key")); !os.IsNotExist(err) {
+		t.Errorf("key file written next to the snapshots: %v", err)
+	}
+
+	other := NewStore(dir)
+	if _, err := other.Load("a", "u1", "vk.com"); err == nil {
+		t.Error("snapshot opened without the secret")
+	}
+	again := NewStore(dir)
+	again.UseKey(key)
+	if loaded, err := again.Load("a", "u1", "vk.com"); err != nil || !slices.Equal(loaded, cookies) {
+		t.Errorf("with the secret = %+v, %v", loaded, err)
 	}
 }
 
 func TestStoreRejectsDamagedKey(t *testing.T) {
 	dir := t.TempDir()
 	os.WriteFile(filepath.Join(dir, "key"), []byte("short"), 0o600)
-	if err := NewStore(dir).Save("a", "vk.com", nil); err == nil {
+	if err := NewStore(dir).Save("a", "u1", "vk.com", nil); err == nil {
 		t.Error("saved with a damaged key")
 	}
 }

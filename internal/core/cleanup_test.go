@@ -57,8 +57,8 @@ func newResetFixture(t *testing.T) *resetFixture {
 	for _, path := range []string{f.media, f.thumbnail, f.partial} {
 		os.WriteFile(path, []byte("12345"), 0o644)
 	}
-	f.app.db.SaveVideo(&model.VideoRecord{ID: "v", Title: "Clip", MediaKind: model.MediaVideo, FilePath: f.media, ThumbnailPath: f.thumbnail, DownloadedAt: "1"})
-	f.app.jobs["j"] = &job{DownloadJob: model.DownloadJob{
+	f.app.db.SaveVideo(&model.VideoRecord{UserID: "local", ID: "v", Title: "Clip", MediaKind: model.MediaVideo, FilePath: f.media, ThumbnailPath: f.thumbnail, DownloadedAt: "1"})
+	f.app.jobs["j"] = &job{DownloadJob: model.DownloadJob{UserID: "local",
 		ID: "j", Status: model.StatusError,
 		Tracks: []model.DownloadTrack{{Filename: filepath.Join(downloads, "Other [b].f1.mp4")}},
 	}}

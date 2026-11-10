@@ -8,6 +8,8 @@ import (
 	"time"
 
 	"github.com/gorilla/websocket"
+
+	"ytgrabber/internal/core"
 )
 
 // Event is one message on the WebSocket: the name the desktop passes to
@@ -27,19 +29,31 @@ const (
 )
 
 // Hub fans core events out to the connected WebSockets. It is the
-// server's core.EventSink.
+// server's core.UserEventSink: every client belongs to a user, and events
+// about a user's jobs, library and accounts reach only that user's
+// clients.
 type Hub struct {
 	mu      sync.Mutex
-	clients map[chan []byte]struct{}
+	clients map[chan []byte]core.UserID
 }
 
 func NewHub() *Hub {
-	return &Hub{clients: make(map[chan []byte]struct{})}
+	return &Hub{clients: make(map[chan []byte]core.UserID)}
 }
 
 // Publish sends an event to every client. It never blocks the core: a
 // client whose buffer is full is disconnected instead.
 func (h *Hub) Publish(name string, data ...interface{}) {
+	h.send(nil, name, data)
+}
+
+// PublishTo sends an event to user's clients only.
+func (h *Hub) PublishTo(user core.UserID, name string, data ...interface{}) {
+	h.send(&user, name, data)
+}
+
+// send delivers to user's clients, or to everyone with user nil.
+func (h *Hub) send(user *core.UserID, name string, data []interface{}) {
 	event := Event{Name: name}
 	if len(data) > 0 {
 		event.Data = data[0]
@@ -52,7 +66,10 @@ func (h *Hub) Publish(name string, data ...interface{}) {
 
 	h.mu.Lock()
 	defer h.mu.Unlock()
-	for client := range h.clients {
+	for client, owner := range h.clients {
+		if user != nil && owner != *user {
+			continue
+		}
 		select {
 		case client <- message:
 		default:
@@ -62,10 +79,10 @@ func (h *Hub) Publish(name string, data ...interface{}) {
 	}
 }
 
-func (h *Hub) subscribe() chan []byte {
+func (h *Hub) subscribe(user core.UserID) chan []byte {
 	client := make(chan []byte, clientBuffer)
 	h.mu.Lock()
-	h.clients[client] = struct{}{}
+	h.clients[client] = user
 	h.mu.Unlock()
 	return client
 }
@@ -83,14 +100,15 @@ func (h *Hub) unsubscribe(client chan []byte) {
 // this server, so another site can't open a socket with the user's cookie.
 var upgrader = websocket.Upgrader{}
 
-// serveWS streams events to one client. Clients only listen; anything
-// they send is read and discarded so pings and close frames are handled.
-func (h *Hub) serveWS(w http.ResponseWriter, r *http.Request) {
+// serveWS streams user's events to one client. Clients only listen;
+// anything they send is read and discarded so pings and close frames are
+// handled.
+func (h *Hub) serveWS(w http.ResponseWriter, r *http.Request, user core.UserID) {
 	conn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
 		return // Upgrade has answered already
 	}
-	client := h.subscribe()
+	client := h.subscribe(user)
 
 	done := make(chan struct{})
 	go func() {

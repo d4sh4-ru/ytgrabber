@@ -67,7 +67,7 @@ func TestConnectFirefoxProfile(t *testing.T) {
 		!account.LoggedIn || account.CookieCount != 1 || account.Status != model.AccountOK {
 		t.Errorf("account = %+v", account)
 	}
-	cookies, err := app.accounts.Load(account.ID, "instagram.com")
+	cookies, err := app.accounts.Load(account.ID, account.UserID, "instagram.com")
 	if err != nil || len(cookies) != 1 || cookies[0].Value != "s1" {
 		t.Errorf("snapshot = %+v, %v", cookies, err)
 	}
@@ -77,7 +77,7 @@ func TestConnectFirefoxProfile(t *testing.T) {
 	if _, err := app.RefreshAccount(LocalUser, account.ID); err != nil {
 		t.Fatal(err)
 	}
-	cookies, _ = app.accounts.Load(account.ID, "instagram.com")
+	cookies, _ = app.accounts.Load(account.ID, account.UserID, "instagram.com")
 	if len(cookies) != 1 || cookies[0].Value != "s2" {
 		t.Errorf("refreshed snapshot = %+v", cookies)
 	}
@@ -102,7 +102,7 @@ func TestRefreshFileAccountNeedsNewFile(t *testing.T) {
 	app, _ := newTestApp(t)
 	file := filepath.Join(t.TempDir(), "cookies.txt")
 	os.WriteFile(file, []byte("# Netscape HTTP Cookie File\n.vk.com\tTRUE\t/\tTRUE\t2000000000\tremixsid\tv\n"), 0o644)
-	account, err := app.importCookiesFromPath("vk.com", file)
+	account, err := app.importCookiesFromPath(LocalUser, "vk.com", file)
 	if err != nil {
 		t.Fatal(err)
 	}

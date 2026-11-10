@@ -32,7 +32,7 @@ func (a *App) GetAccounts(user UserID) ([]*model.Account, error) {
 	if err := a.ensureReady(); err != nil {
 		return []*model.Account{}, err
 	}
-	list, err := a.db.LoadAccounts()
+	list, err := a.db.LoadAccounts(string(user))
 	if err != nil {
 		return []*model.Account{}, fmt.Errorf("не удалось загрузить аккаунты: %w", err)
 	}
@@ -54,7 +54,7 @@ func (a *App) ImportCookiesFile(user UserID, site string, path string) (*model.A
 	if err != nil {
 		return nil, err
 	}
-	return a.importCookiesFromPath(domain, path)
+	return a.importCookiesFromPath(user, domain, path)
 }
 
 // ImportCookies — то же, что ImportCookiesFile, но cookies.txt приходит
@@ -67,20 +67,20 @@ func (a *App) ImportCookies(user UserID, site string, r io.Reader) (*model.Accou
 	if err != nil {
 		return nil, err
 	}
-	return a.importCookies(domain, r)
+	return a.importCookies(user, domain, r)
 }
 
 // importCookiesFromPath is ImportCookiesFile with the site already checked.
-func (a *App) importCookiesFromPath(domain string, path string) (*model.Account, error) {
+func (a *App) importCookiesFromPath(user UserID, domain string, path string) (*model.Account, error) {
 	file, err := os.Open(path)
 	if err != nil {
 		return nil, fmt.Errorf("не удалось открыть файл: %w", err)
 	}
 	defer file.Close()
-	return a.importCookies(domain, file)
+	return a.importCookies(user, domain, file)
 }
 
-func (a *App) importCookies(domain string, r io.Reader) (*model.Account, error) {
+func (a *App) importCookies(user UserID, domain string, r io.Reader) (*model.Account, error) {
 	parsed, err := accounts.ParseCookies(r)
 	if err != nil {
 		return nil, err
@@ -90,7 +90,7 @@ func (a *App) importCookies(domain string, r io.Reader) (*model.Account, error) 
 		return nil, fmt.Errorf("в файле нет действующих cookies для %s. Экспортируйте cookies, открыв %s в браузере, где выполнен вход", domain, domain)
 	}
 
-	return a.saveAccountCookies(domain, cookies, accountOrigin{source: model.AccountFromFile})
+	return a.saveAccountCookies(user, domain, cookies, accountOrigin{source: model.AccountFromFile})
 }
 
 // accountOrigin is where an account's cookies came from.
@@ -103,11 +103,11 @@ type accountOrigin struct {
 
 // saveAccountCookies creates or refreshes the account of domain with
 // cookies already filtered to it.
-func (a *App) saveAccountCookies(domain string, cookies []accounts.Cookie, origin accountOrigin) (*model.Account, error) {
-	account, err := a.db.GetAccountByDomain(domain)
+func (a *App) saveAccountCookies(user UserID, domain string, cookies []accounts.Cookie, origin accountOrigin) (*model.Account, error) {
+	account, err := a.db.GetAccountByDomain(string(user), domain)
 	now := timestamp()
 	if errors.Is(err, storage.ErrAccountNotFound) {
-		account = &model.Account{ID: uuid.NewString(), Domain: domain, CreatedAt: now}
+		account = &model.Account{ID: uuid.NewString(), UserID: string(user), Domain: domain, CreatedAt: now}
 	} else if err != nil {
 		return nil, fmt.Errorf("не удалось прочитать аккаунт: %w", err)
 	}
@@ -121,7 +121,7 @@ func (a *App) saveAccountCookies(domain string, cookies []accounts.Cookie, origi
 
 	unlock := a.accounts.Lock(account.ID)
 	defer unlock()
-	if err := a.accounts.Save(account.ID, domain, cookies); err != nil {
+	if err := a.accounts.Save(account.ID, account.UserID, domain, cookies); err != nil {
 		return nil, fmt.Errorf("не удалось сохранить cookies: %w", err)
 	}
 	if err := a.db.SaveAccount(account); err != nil {
@@ -130,7 +130,7 @@ func (a *App) saveAccountCookies(domain string, cookies []accounts.Cookie, origi
 
 	log.Printf("ytgrabber: account %s connected (%s %s): %d cookies, logged in: %v",
 		domain, origin.source, origin.browser, account.CookieCount, account.LoggedIn)
-	a.publish("accounts-changed")
+	a.publishTo(user, "accounts-changed")
 	return account, nil
 }
 
@@ -140,16 +140,20 @@ func (a *App) RemoveAccount(user UserID, id string) error {
 	if err := a.ensureReady(); err != nil {
 		return err
 	}
+	// Only the owner may: anyone else gets "not found".
+	if _, err := a.db.GetAccount(string(user), id); err != nil {
+		return err
+	}
 	unlock := a.accounts.Lock(id)
 	defer unlock()
 
 	if err := a.accounts.Delete(id); err != nil {
 		return fmt.Errorf("не удалось удалить cookies: %w", err)
 	}
-	if err := a.db.DeleteAccount(id); err != nil {
+	if err := a.db.DeleteAccount(string(user), id); err != nil {
 		return fmt.Errorf("не удалось удалить аккаунт: %w", err)
 	}
-	a.publish("accounts-changed")
+	a.publishTo(user, "accounts-changed")
 	return nil
 }
 
@@ -160,14 +164,14 @@ func (a *App) CheckAccount(user UserID, id string) (*model.Account, error) {
 	if err := a.ensureReady(); err != nil {
 		return nil, err
 	}
-	account, err := a.db.GetAccount(id)
+	account, err := a.db.GetAccount(string(user), id)
 	if err != nil {
 		return nil, err
 	}
 
 	checkURL := accounts.CheckURL(account.Domain)
 	unlock := a.accounts.Lock(id)
-	cookies, err := a.accounts.Load(id, account.Domain)
+	cookies, err := a.accounts.Load(id, account.UserID, account.Domain)
 	if err == nil {
 		applyCookieStats(account, accounts.FilterCookies(cookies, account.Domain, time.Now()))
 		// The cookies alone can't overrule the site: an account it refused
@@ -187,16 +191,16 @@ func (a *App) CheckAccount(user UserID, id string) (*model.Account, error) {
 
 	if checkURL != "" && account.Status == model.AccountOK {
 		if err := a.checkAccountOnline(account, checkURL); err != nil {
-			a.publish("accounts-changed")
+			a.publishTo(user, "accounts-changed")
 			return nil, err
 		}
-		if account, err = a.db.GetAccount(id); err != nil {
+		if account, err = a.db.GetAccount(string(user), id); err != nil {
 			return nil, err
 		}
 	}
 
 	decorateAccount(account)
-	a.publish("accounts-changed")
+	a.publishTo(user, "accounts-changed")
 	return account, nil
 }
 
@@ -207,7 +211,7 @@ func (a *App) checkAccountOnline(account *model.Account, checkURL string) error 
 	if err := a.checkToolsReady(); err != nil {
 		return err
 	}
-	session := a.startAccountSession(account.Domain, "check-"+uuid.NewString())
+	session := a.startAccountSession(UserID(account.UserID), account.Domain, "check-"+uuid.NewString())
 	if session == nil {
 		return errors.New("не удалось подготовить cookies для проверки")
 	}
@@ -250,14 +254,14 @@ type accountSession struct {
 	path    string
 }
 
-// startAccountSession prepares the cookies of site's account, if there is
+// startAccountSession prepares the cookies of user's account on site, if there is
 // a usable one; nil means "run without an account". Problems are logged,
 // never fatal: a download that might not need the login still runs.
-func (a *App) startAccountSession(site string, runName string) *accountSession {
+func (a *App) startAccountSession(user UserID, site string, runName string) *accountSession {
 	if site == "" {
 		return nil
 	}
-	account, err := a.db.GetAccountByDomain(site)
+	account, err := a.db.GetAccountByDomain(string(user), site)
 	if err != nil {
 		if !errors.Is(err, storage.ErrAccountNotFound) {
 			log.Printf("ytgrabber: failed to read account %s: %v", site, err)
@@ -269,7 +273,7 @@ func (a *App) startAccountSession(site string, runName string) *accountSession {
 	}
 
 	unlock := a.accounts.Lock(account.ID)
-	cookies, err := a.accounts.Load(account.ID, site)
+	cookies, err := a.accounts.Load(account.ID, account.UserID, site)
 	unlock()
 	if err != nil {
 		log.Printf("ytgrabber: account %s unusable: %v", site, err)
@@ -277,7 +281,7 @@ func (a *App) startAccountSession(site string, runName string) *accountSession {
 		if err := a.db.SaveAccount(account); err != nil {
 			log.Printf("ytgrabber: failed to save account %s: %v", site, err)
 		}
-		a.publish("accounts-changed")
+		a.publishTo(user, "accounts-changed")
 		return nil
 	}
 
@@ -303,7 +307,7 @@ func (a *App) finishAccountSession(s *accountSession, writeBack bool, loginRequi
 	unlock := a.accounts.Lock(s.account.ID)
 	defer unlock()
 
-	account, err := a.db.GetAccount(s.account.ID)
+	account, err := a.db.GetAccount(s.account.UserID, s.account.ID)
 	if err != nil {
 		return // disconnected meanwhile
 	}
@@ -324,7 +328,7 @@ func (a *App) finishAccountSession(s *accountSession, writeBack bool, loginRequi
 	if err := a.db.SaveAccount(account); err != nil {
 		log.Printf("ytgrabber: failed to save account %s: %v", account.Domain, err)
 	}
-	a.publish("accounts-changed")
+	a.publishTo(UserID(account.UserID), "accounts-changed")
 }
 
 // writeBackCookies must be called with the account locked.
@@ -347,12 +351,12 @@ func (a *App) writeBackCookies(account *model.Account, s *accountSession) error 
 		return nil
 	}
 
-	current, err := a.accounts.Load(account.ID, account.Domain)
+	current, err := a.accounts.Load(account.ID, account.UserID, account.Domain)
 	if err != nil {
 		return err
 	}
 	merged := accounts.FilterCookies(accounts.MergeCookies(s.base, current, updated), account.Domain, now)
-	if err := a.accounts.Save(account.ID, account.Domain, merged); err != nil {
+	if err := a.accounts.Save(account.ID, account.UserID, account.Domain, merged); err != nil {
 		return err
 	}
 	applyCookieStats(account, merged)

@@ -21,8 +21,11 @@ import (
 	"ytgrabber/internal/core"
 )
 
-// user is whose data the server works with until there are accounts.
-const user = core.LocalUser
+// localUser is whose data every request works with until users and
+// devices exist (issue #14).
+func localUser(*http.Request) core.UserID {
+	return core.LocalUser
+}
 
 // maxJSONBody bounds request bodies the API decodes; cookies.txt uploads
 // have their own limit (maxCookiesUpload).
@@ -43,6 +46,8 @@ type Server struct {
 	auth   *auth
 	Events *Hub
 	webDir string
+	// whoIs says whose data a request works with.
+	whoIs func(*http.Request) core.UserID
 }
 
 func New(app *core.App, cfg Config) (*Server, error) {
@@ -54,6 +59,7 @@ func New(app *core.App, cfg Config) (*Server, error) {
 		auth:   newAuth(cfg.Token),
 		Events: NewHub(),
 		webDir: cfg.WebDir,
+		whoIs:  localUser,
 	}, nil
 }
 
@@ -76,13 +82,18 @@ func (s *Server) Handler() http.Handler {
 		mux.Handle(rt.method+" "+apiPrefix+rt.path, h)
 	}
 	mux.Handle("GET /api/v1/openapi.json", http.HandlerFunc(serveSpec))
-	mux.Handle("GET "+mediaPrefix, protect(core.MediaHandler(s.app)))
+	mux.Handle("GET "+mediaPrefix, protect(core.MediaHandler(s.app, s.userOf)))
 
 	mux.Handle("/api/", http.NotFoundHandler())
 	if s.webDir != "" {
 		mux.Handle("/", s.frontend())
 	}
 	return securityHeaders(mux)
+}
+
+// userOf is the user a request acts for.
+func (s *Server) userOf(r *http.Request) core.UserID {
+	return s.whoIs(r)
 }
 
 // mediaPrefix serves library files (core.MediaHandler); the URLs come in
@@ -103,7 +114,7 @@ func (s *Server) importCookies(r *http.Request) (any, error) {
 		return nil, badRequest("не передан файл cookies.txt")
 	}
 	defer file.Close()
-	return s.app.ImportCookies(user, r.FormValue("site"), file)
+	return s.app.ImportCookies(s.userOf(r), r.FormValue("site"), file)
 }
 
 // frontend serves the built Angular app. Unknown paths get index.html,
@@ -151,6 +162,8 @@ func apiHandler(h func(*http.Request) (any, error)) http.Handler {
 			var known httpError
 			if errors.As(err, &known) {
 				status = known.status
+			} else if core.IsNotFound(err) {
+				status = http.StatusNotFound
 			}
 			writeJSON(w, status, errorResponse{Error: err.Error()})
 			return

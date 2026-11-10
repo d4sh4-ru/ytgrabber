@@ -304,7 +304,7 @@ func TestEventsWebSocket(t *testing.T) {
 
 func TestSlowClientIsDropped(t *testing.T) {
 	hub := NewHub()
-	client := hub.subscribe()
+	client := hub.subscribe(core.LocalUser)
 	for range clientBuffer + 1 {
 		hub.Publish("download-progress", 1)
 	}
@@ -330,5 +330,105 @@ func TestFrontend(t *testing.T) {
 	}
 	if resp := f.do("GET", "/../data/token", "", nil); resp.StatusCode != http.StatusOK {
 		t.Errorf("path traversal must fall back to index.html, got %d", resp.StatusCode)
+	}
+}
+
+// asUser makes every request act for the user named in X-Test-User, as
+// the session will once there are users (issue #14).
+func (f *fixture) asUser() {
+	f.srv.whoIs = func(r *http.Request) core.UserID {
+		if user := r.Header.Get("X-Test-User"); user != "" {
+			return core.UserID(user)
+		}
+		return core.LocalUser
+	}
+}
+
+func (f *fixture) doAs(user core.UserID, method, path string, body io.Reader) *http.Response {
+	f.t.Helper()
+	req, _ := http.NewRequest(method, f.http.URL+path, body)
+	req.Header.Set("Authorization", "Bearer "+testToken)
+	req.Header.Set("X-Test-User", string(user))
+	if body != nil {
+		req.Header.Set("Content-Type", "application/json")
+	}
+	resp, err := f.http.Client().Do(req)
+	if err != nil {
+		f.t.Fatal(err)
+	}
+	f.t.Cleanup(func() { resp.Body.Close() })
+	return resp
+}
+
+// Another user's job, video or account is 404, as if it didn't exist.
+func TestOtherUsersRecordsAreNotFound(t *testing.T) {
+	f := newFixture(t)
+	f.asUser()
+
+	// The fake yt-dlp fails at once, so the job stays as an error.
+	id := decode[string](t, f.doAs("alice", "POST", "/api/v1/jobs", strings.NewReader(`{"url":"https://example.com/v","quality":"best"}`)))
+	var jobs []map[string]any
+	deadline := time.Now().Add(10 * time.Second)
+	for time.Now().Before(deadline) {
+		jobs = decode[[]map[string]any](t, f.doAs("alice", "GET", "/api/v1/jobs", nil))
+		if len(jobs) == 1 && jobs[0]["status"] == "error" {
+			break
+		}
+		time.Sleep(20 * time.Millisecond)
+	}
+	if len(jobs) != 1 || jobs[0]["id"] != id || jobs[0]["status"] != "error" {
+		t.Fatalf("alice's jobs: %v", jobs)
+	}
+
+	if jobs := decode[[]map[string]any](t, f.doAs("bob", "GET", "/api/v1/jobs", nil)); len(jobs) != 0 {
+		t.Errorf("bob sees alice's jobs: %v", jobs)
+	}
+	for _, req := range []struct{ method, path, body string }{
+		{"POST", "/api/v1/jobs/" + id + "/retry", `{}`},
+		{"DELETE", "/api/v1/library/" + id, ""},
+		{"PUT", "/api/v1/library/" + id + "/position", `{"seconds":10}`},
+		{"POST", "/api/v1/accounts/" + id + "/check", ""},
+		{"DELETE", "/api/v1/accounts/" + id, ""},
+		{"GET", "/media/" + id + "/file.mp4", ""},
+	} {
+		var body io.Reader
+		if req.body != "" {
+			body = strings.NewReader(req.body)
+		}
+		if resp := f.doAs("bob", req.method, req.path, body); resp.StatusCode != http.StatusNotFound {
+			t.Errorf("bob %s %s: %d, want 404", req.method, req.path, resp.StatusCode)
+		}
+	}
+	f.doAs("bob", "DELETE", "/api/v1/jobs/"+id, nil)
+	if jobs := decode[[]map[string]any](t, f.doAs("alice", "GET", "/api/v1/jobs", nil)); len(jobs) != 1 {
+		t.Errorf("bob removed alice's job: %v", jobs)
+	}
+}
+
+// A user's events reach only that user's sockets; the rest reach all.
+func TestEventsGoToTheirUser(t *testing.T) {
+	hub := NewHub()
+	aliceClient, bobClient := hub.subscribe("alice"), hub.subscribe("bob")
+	hub.PublishTo("alice", "library-changed")
+	hub.Publish("tool-install-progress", 1)
+
+	received := func(client chan []byte) []string {
+		var names []string
+		for {
+			select {
+			case message := <-client:
+				var event Event
+				json.Unmarshal(message, &event)
+				names = append(names, event.Name)
+			default:
+				return names
+			}
+		}
+	}
+	if got := received(aliceClient); strings.Join(got, ",") != "library-changed,tool-install-progress" {
+		t.Errorf("alice got %v", got)
+	}
+	if got := received(bobClient); strings.Join(got, ",") != "tool-install-progress" {
+		t.Errorf("bob got %v", got)
 	}
 }

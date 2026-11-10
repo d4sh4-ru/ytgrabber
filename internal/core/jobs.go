@@ -77,6 +77,7 @@ func (a *App) DownloadVideo(user UserID, rawURL string, quality string, useAccou
 
 	j := &job{DownloadJob: model.DownloadJob{
 		ID:         uuid.NewString(),
+		UserID:     string(user),
 		URL:        sourceURL,
 		Quality:    quality,
 		Format:     ytdlp.OutputFormat(quality),
@@ -97,7 +98,7 @@ func (a *App) DownloadVideo(user UserID, rawURL string, quality string, useAccou
 	snapshot := j.snapshot()
 	a.mu.Unlock()
 
-	a.publish("download-status", snapshot)
+	a.publishTo(user, "download-status", snapshot)
 	a.schedule()
 	return j.ID, nil
 }
@@ -115,9 +116,9 @@ func (a *App) RetryJob(user UserID, id string, useAccount bool) error {
 
 	a.mu.Lock()
 	j, ok := a.jobs[id]
-	if !ok {
+	if !ok || j.UserID != string(user) {
 		a.mu.Unlock()
-		return errors.New("задача не найдена")
+		return ErrJobNotFound
 	}
 	if j.Status != model.StatusError {
 		a.mu.Unlock()
@@ -149,6 +150,12 @@ func (a *App) RemoveJob(user UserID, id string) error {
 
 	a.mu.Lock()
 	j, exists := a.jobs[id]
+	if !exists || j.UserID != string(user) {
+		// a.jobs mirrors the jobs table, so there's nothing to delete; and
+		// someone else's job is, to this user, as good as already gone.
+		a.mu.Unlock()
+		return nil
+	}
 	cancel, running := a.cancels[id]
 	var snapshot model.DownloadJob
 	var outputFilename string
@@ -172,7 +179,7 @@ func (a *App) RemoveJob(user UserID, id string) error {
 		ytdlp.RemovePartialFiles(snapshot.Tracks, outputFilename, a.isFileReferenced)
 	}
 
-	a.publish("job-removed", id)
+	a.publishTo(user, "job-removed", id)
 	return nil
 }
 
@@ -186,7 +193,9 @@ func (a *App) GetJobs(user UserID) ([]model.DownloadJob, error) {
 	a.mu.RLock()
 	jobs := make([]model.DownloadJob, 0, len(a.jobs))
 	for _, j := range a.jobs {
-		jobs = append(jobs, j.snapshot())
+		if j.UserID == string(user) {
+			jobs = append(jobs, j.snapshot())
+		}
 	}
 	a.mu.RUnlock()
 
@@ -229,7 +238,7 @@ func (a *App) schedule() {
 	a.mu.Unlock()
 
 	for _, snapshot := range changed {
-		a.publish("download-status", snapshot)
+		a.publishTo(UserID(snapshot.UserID), "download-status", snapshot)
 	}
 }
 
@@ -285,7 +294,7 @@ func (a *App) runDownload(ctx context.Context, j *job) {
 
 	a.mu.RLock()
 	toolSet := a.tools
-	downloadsDir := a.settings.DownloadsDir
+	downloadsDir := a.downloadsDirLocked(UserID(j.UserID))
 	a.mu.RUnlock()
 
 	if err := os.MkdirAll(downloadsDir, 0o755); err != nil {
@@ -302,7 +311,7 @@ func (a *App) runDownload(ctx context.Context, j *job) {
 
 	var session *accountSession
 	if useAccount {
-		session = a.startAccountSession(site, j.ID)
+		session = a.startAccountSession(UserID(j.UserID), site, j.ID)
 	}
 	a.mu.Lock()
 	j.AccountUsed = session != nil
@@ -483,7 +492,7 @@ func (a *App) finishJob(ctx context.Context, j *job, toolSet tools.Set) {
 	if j.Title == "" {
 		j.Title = ytdlp.TitleFromFilename(j.FilePath)
 	}
-	filePath, title, sourceURL, quality, id := j.FilePath, j.Title, j.URL, j.Quality, j.ID
+	filePath, title, sourceURL, quality, id, user := j.FilePath, j.Title, j.URL, j.Quality, j.ID, UserID(j.UserID)
 	a.mu.Unlock()
 
 	if filePath == "" {
@@ -512,6 +521,7 @@ func (a *App) finishJob(ctx context.Context, j *job, toolSet tools.Set) {
 
 	video := &model.VideoRecord{
 		ID:              id,
+		UserID:          string(user),
 		Title:           title,
 		SourceURL:       sourceURL,
 		MediaKind:       kind,
@@ -544,8 +554,8 @@ func (a *App) finishJob(ctx context.Context, j *job, toolSet tools.Set) {
 
 	// Emitted only after the video row is committed and the job row is gone,
 	// so a listener that re-queries GetLibrary is guaranteed to see it.
-	a.publish("download-status", snapshot)
-	a.publish("library-changed")
+	a.publishTo(user, "download-status", snapshot)
+	a.publishTo(user, "library-changed")
 }
 
 func (a *App) setStatus(j *job, status model.DownloadStatus) {
@@ -586,7 +596,7 @@ func (a *App) saveAndPublish(j *job, event string) {
 	if err != nil {
 		log.Printf("ytgrabber: failed to persist job %s: %v", j.ID, err)
 	}
-	a.publish(event, snapshot)
+	a.publishTo(UserID(snapshot.UserID), event, snapshot)
 }
 
 func (a *App) publishIfActive(j *job, event string) {
@@ -596,7 +606,7 @@ func (a *App) publishIfActive(j *job, event string) {
 	a.mu.RUnlock()
 
 	if ok {
-		a.publish(event, snapshot)
+		a.publishTo(UserID(snapshot.UserID), event, snapshot)
 	}
 }
 

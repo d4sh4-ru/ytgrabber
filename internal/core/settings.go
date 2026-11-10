@@ -1,9 +1,12 @@
 package core
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"os"
+	"path/filepath"
 	"strconv"
 
 	"ytgrabber/internal/platform"
@@ -83,9 +86,42 @@ func clampConcurrency(n int) int {
 	return min(max(n, 1), maxConcurrentDownloadsLimit)
 }
 
-// GetSettings возвращает текущие настройки.
+// GetSettings возвращает текущие настройки; папка загрузок — та, куда
+// скачивает этот пользователь.
 func (a *App) GetSettings(user UserID) Settings {
-	return a.currentSettings()
+	a.mu.RLock()
+	defer a.mu.RUnlock()
+	settings := a.settings
+	settings.DownloadsDir = a.downloadsDirLocked(user)
+	return settings
+}
+
+// downloadsDirLocked is where user's downloads go: the downloads folder
+// itself for the local user, a folder of their own in it for anyone else.
+// Must be called with a.mu held.
+func (a *App) downloadsDirLocked(user UserID) string {
+	if user == LocalUser {
+		return a.settings.DownloadsDir
+	}
+	return filepath.Join(a.settings.DownloadsDir, userDirName(user))
+}
+
+// userDirName is a folder name for user that can't step out of the
+// downloads folder: the id itself when it is plain, a hash of it if not.
+func userDirName(user UserID) string {
+	name := string(user)
+	plain := name != "" && len(name) <= 64
+	for _, r := range name {
+		if !(r >= 'a' && r <= 'z' || r >= 'A' && r <= 'Z' || r >= '0' && r <= '9' || r == '-' || r == '_') {
+			plain = false
+			break
+		}
+	}
+	if plain {
+		return name
+	}
+	sum := sha256.Sum256([]byte(name))
+	return "user-" + hex.EncodeToString(sum[:8])
 }
 
 func (a *App) currentSettings() Settings {

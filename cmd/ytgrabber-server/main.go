@@ -10,6 +10,9 @@
 //	           YTG_TOKEN       access token; YTG_TOKEN_FILE reads it from
 //	                           a file (Docker secrets). Without either, a
 //	                           token is generated once and kept in the data dir.
+//	           YTG_SECRET_KEY_FILE  a secret (openssl rand -base64 32) the
+//	                           cookies of connected accounts are encrypted
+//	                           with; without it the key is a file in the data dir.
 //	-tools          YTG_TOOLS          managed: install and update yt-dlp, ffmpeg
 //	                                   and deno in the data dir (default);
 //	                                   system: use the ones on PATH, install nothing
@@ -38,6 +41,7 @@ import (
 	"syscall"
 	"time"
 
+	"ytgrabber/internal/accounts"
 	"ytgrabber/internal/core"
 	"ytgrabber/internal/installer"
 	"ytgrabber/internal/platform"
@@ -93,12 +97,16 @@ func run() error {
 	if err != nil {
 		return err
 	}
+	cookiesKey, err := loadSecretKey()
+	if err != nil {
+		return err
+	}
 
 	app := core.New(platform.Paths{
 		DataDir:             data,
 		DefaultDownloadsDir: media,
 		LegacyDownloadsDir:  media,
-	}, coreOptions(managed, channel)...)
+	}, coreOptions(managed, channel, cookiesKey)...)
 
 	srv, err := server.New(app, server.Config{Token: token, WebDir: *webDir})
 	if err != nil {
@@ -161,8 +169,11 @@ func run() error {
 	return nil
 }
 
-func coreOptions(managedTools bool, channel installer.Channel) []core.Option {
+func coreOptions(managedTools bool, channel installer.Channel, cookiesKey []byte) []core.Option {
 	opts := []core.Option{core.WithoutSelfUpdate(), core.WithYtDlpChannel(channel)}
+	if cookiesKey != nil {
+		opts = append(opts, core.WithCookiesKey(cookiesKey))
+	}
 	if managedTools {
 		// Downloads added while the tools are still being installed wait.
 		opts = append(opts, core.WithToolsInstalledAutomatically())
@@ -196,6 +207,24 @@ func env(name string, fallback string) string {
 		return value
 	}
 	return fallback
+}
+
+// loadSecretKey reads YTG_SECRET_KEY_FILE into the key for the accounts'
+// cookies; nil when it isn't set.
+func loadSecretKey() ([]byte, error) {
+	path := os.Getenv("YTG_SECRET_KEY_FILE")
+	if path == "" {
+		return nil, nil
+	}
+	secret, err := os.ReadFile(path)
+	if err != nil {
+		return nil, fmt.Errorf("YTG_SECRET_KEY_FILE: %w", err)
+	}
+	key, err := accounts.DeriveKey(secret)
+	if err != nil {
+		return nil, fmt.Errorf("YTG_SECRET_KEY_FILE: %w", err)
+	}
+	return key, nil
 }
 
 func tokenPath(dataDir string) string {

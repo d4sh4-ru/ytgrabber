@@ -13,6 +13,7 @@ import (
 	"crypto/aes"
 	"crypto/cipher"
 	"crypto/rand"
+	"crypto/sha256"
 	"errors"
 	"fmt"
 	"io/fs"
@@ -24,8 +25,13 @@ import (
 const (
 	keyFileName = "key"
 	keySize     = 32
-	// snapshotMagic starts every snapshot file and versions its format.
-	snapshotMagic = "YTGC1"
+	// snapshotMagic starts every snapshot file and versions its format:
+	// v2 binds the snapshot to its user and site, v1 (written before there
+	// were users) to the site only.
+	snapshotMagic   = "YTGC2"
+	snapshotMagicV1 = "YTGC1"
+	// LegacyUser owns the v1 snapshots: the desktop's only user.
+	LegacyUser = "local"
 )
 
 var errCorruptSnapshot = errors.New("снимок cookies повреждён или зашифрован другим ключом")
@@ -64,10 +70,40 @@ func (s *Store) Lock(id string) func() {
 	return mu.Unlock
 }
 
+// UseKey makes the store encrypt with key instead of the key file next
+// to the snapshots: a server keeps its key outside the data volume
+// (YTG_SECRET_KEY_FILE), so a copy of the volume doesn't carry it.
+func (s *Store) UseKey(key []byte) error {
+	if len(key) != keySize {
+		return fmt.Errorf("ключ должен быть %d байт", keySize)
+	}
+	s.keyMu.Lock()
+	defer s.keyMu.Unlock()
+	s.key = key
+	return nil
+}
+
+// DeriveKey turns the contents of a secret file (e.g. the output of
+// "openssl rand -base64 32") into a key for UseKey.
+func DeriveKey(secret []byte) ([]byte, error) {
+	secret = bytes.TrimSpace(secret)
+	if len(secret) < keySize {
+		return nil, fmt.Errorf("секрет короче %d байт: создайте его, например, командой openssl rand -base64 32", keySize)
+	}
+	sum := sha256.Sum256(append([]byte("ytgrabber cookies key\x00"), secret...))
+	return sum[:], nil
+}
+
+// additionalData binds a snapshot to its user and site, so a snapshot
+// copied over another account's file, the same user's or not, fails to
+// decrypt instead of being used.
+func additionalData(user string, site string) []byte {
+	return []byte(user + "\x00" + site)
+}
+
 // Save encrypts cookies into the account's snapshot, replacing it
-// atomically. The site is bound to the ciphertext, so a snapshot copied
-// over another account's file fails to decrypt instead of being used.
-func (s *Store) Save(id string, site string, cookies []Cookie) error {
+// atomically.
+func (s *Store) Save(id string, user string, site string, cookies []Cookie) error {
 	key, err := s.loadKey(true)
 	if err != nil {
 		return err
@@ -86,12 +122,12 @@ func (s *Store) Save(id string, site string, cookies []Cookie) error {
 	}
 
 	data := append([]byte(snapshotMagic), nonce...)
-	data = gcm.Seal(data, nonce, FormatCookies(cookies), []byte(site))
+	data = gcm.Seal(data, nonce, FormatCookies(cookies), additionalData(user, site))
 	return WritePrivateFile(s.snapshotPath(id), data)
 }
 
 // Load decrypts the account's snapshot.
-func (s *Store) Load(id string, site string) ([]Cookie, error) {
+func (s *Store) Load(id string, user string, site string) ([]Cookie, error) {
 	data, err := os.ReadFile(s.snapshotPath(id))
 	if err != nil {
 		return nil, err
@@ -109,11 +145,19 @@ func (s *Store) Load(id string, site string) ([]Cookie, error) {
 		return nil, err
 	}
 
-	if !bytes.HasPrefix(data, []byte(snapshotMagic)) || len(data) < len(snapshotMagic)+gcm.NonceSize() {
+	aad := additionalData(user, site)
+	switch {
+	case bytes.HasPrefix(data, []byte(snapshotMagic)):
+	case bytes.HasPrefix(data, []byte(snapshotMagicV1)) && user == LegacyUser:
+		aad = []byte(site) // rewritten as v2 on the next Save
+	default:
 		return nil, errCorruptSnapshot
 	}
 	data = data[len(snapshotMagic):]
-	plain, err := gcm.Open(nil, data[:gcm.NonceSize()], data[gcm.NonceSize():], []byte(site))
+	if len(data) < gcm.NonceSize() {
+		return nil, errCorruptSnapshot
+	}
+	plain, err := gcm.Open(nil, data[:gcm.NonceSize()], data[gcm.NonceSize():], aad)
 	if err != nil {
 		return nil, errCorruptSnapshot
 	}

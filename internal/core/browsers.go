@@ -51,7 +51,7 @@ func (a *App) ConnectBrowserProfile(user UserID, site string, browserID string, 
 	if err != nil {
 		return nil, err
 	}
-	return a.connectProfile(domain, profile)
+	return a.connectProfile(user, domain, profile)
 }
 
 // RefreshAccount заново берёт cookies из того же профиля браузера, из
@@ -61,7 +61,7 @@ func (a *App) RefreshAccount(user UserID, id string) (*model.Account, error) {
 	if err := a.ensureReady(); err != nil {
 		return nil, err
 	}
-	account, err := a.db.GetAccount(id)
+	account, err := a.db.GetAccount(string(user), id)
 	if err != nil {
 		return nil, err
 	}
@@ -72,10 +72,10 @@ func (a *App) RefreshAccount(user UserID, id string) (*model.Account, error) {
 	if err != nil {
 		return nil, fmt.Errorf("профиль %s больше не найден: подключите сайт заново", account.Profile)
 	}
-	return a.connectProfile(account.Domain, profile)
+	return a.connectProfile(user, account.Domain, profile)
 }
 
-func (a *App) connectProfile(domain string, profile browsers.Profile) (*model.Account, error) {
+func (a *App) connectProfile(user UserID, domain string, profile browsers.Profile) (*model.Account, error) {
 	if ok, note := browsers.Connectable(profile, a.browserEnv.GOOS); !ok {
 		return nil, errors.New(note)
 	}
@@ -92,7 +92,7 @@ func (a *App) connectProfile(domain string, profile browsers.Profile) (*model.Ac
 	if len(cookies) == 0 {
 		return nil, fmt.Errorf("в профиле %s · %s нет действующих cookies для %s", profile.Browser.Name, profile.Name, domain)
 	}
-	account, err := a.saveAccountCookies(domain, cookies, accountOrigin{
+	account, err := a.saveAccountCookies(user, domain, cookies, accountOrigin{
 		source:     model.AccountFromBrowser,
 		browser:    profile.Browser.ID,
 		profile:    profile.Name,
