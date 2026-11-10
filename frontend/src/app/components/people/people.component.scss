@@ -21,6 +21,19 @@
         align-items: center;
         justify-content: space-between;
         gap: 8px;
+
+        // Phones: the role picker and its button take a row of their own.
+        @include v.narrow {
+            .people__buttons {
+                flex: 1 1 100%;
+                flex-wrap: nowrap;
+                margin-left: 0;
+            }
+
+            .people__select {
+                flex: 1 1 auto;
+            }
+        }
     }
 
     &__heading {
@@ -84,7 +97,7 @@
 
     &__token {
         display: flex;
-        flex-wrap: wrap;
+        flex-wrap: nowrap;
         gap: 6px;
         padding-top: 8px;
         border-top: 1px solid v.$border-subtle;
@@ -103,6 +116,35 @@
 
     &__input {
         flex: 1 1 180px;
+    }
+
+    // An input with an icon button at its end: the token name, a link.
+    &__field {
+        display: flex;
+        gap: 6px;
+
+        .people__input {
+            flex: 1 1 auto;
+        }
+    }
+
+    &__icon-btn {
+        flex-shrink: 0;
+        padding: 6px 8px;
+
+        @include v.touch {
+            min-width: v.$touch-target;
+        }
+    }
+
+    &__close {
+        margin-left: auto;
+    }
+
+    &__dialog-footer {
+        @include v.narrow {
+            display: none;
+        }
     }
 
     &__input,

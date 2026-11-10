@@ -33,7 +33,15 @@
             [value]="tokenName"
             (input)="onTokenNameInput($event)"
         />
-        <button type="submit" class="btn" [disabled]="!tokenName.trim()">Создать токен</button>
+        <button
+            type="submit"
+            class="btn people__icon-btn"
+            title="Создать токен"
+            aria-label="Создать токен"
+            [disabled]="!tokenName.trim()"
+        >
+            <app-icon name="plus" [size]="18" />
+        </button>
     </form>
     @if (apiToken) {
         <div class="people__secret">
@@ -41,27 +49,30 @@
                 >Скопируйте токен сейчас: он больше не будет показан. Заголовок
                 <code>Authorization: Bearer &lt;токен&gt;</code>.</span
             >
-            <input
-                class="people__input people__mono"
-                readonly
-                [value]="apiToken"
-                (focus)="onSelectAll($event)"
-            />
-            <div class="people__buttons">
+            <div class="people__field">
+                <input
+                    class="people__input people__mono"
+                    readonly
+                    [value]="apiToken"
+                    (focus)="onSelectAll($event)"
+                />
                 @if (canCopy) {
-                    <button type="button" class="btn" (click)="onCopy(apiToken)">
-                        Скопировать
+                    <button
+                        type="button"
+                        class="btn people__icon-btn"
+                        title="Скопировать токен"
+                        aria-label="Скопировать токен"
+                        (click)="onCopy(apiToken)"
+                    >
+                        <app-icon name="copy" [size]="18" />
                     </button>
                 }
+            </div>
+            <div class="people__buttons people__buttons--end">
                 <button type="button" class="btn" (click)="onTokenShown()">Готово</button>
             </div>
         </div>
     }
-    <div>
-        <button type="button" class="btn" [disabled]="isSigningOut" (click)="onSignOut()">
-            {{ isSigningOut ? 'Выход…' : 'Выйти на этом устройстве' }}
-        </button>
-    </div>
 </section>
 
 @if (isAdmin) {
@@ -127,18 +138,43 @@
             aria-modal="true"
             (click)="$event.stopPropagation()"
         >
-            <h2 class="people__heading">{{ shown.title }}</h2>
+            <div class="people__heading-row">
+                <h2 class="people__heading">{{ shown.title }}</h2>
+                <button
+                    type="button"
+                    class="btn people__icon-btn people__close"
+                    title="Закрыть"
+                    aria-label="Закрыть"
+                    (click)="onCodeClosed()"
+                >
+                    <app-icon name="close" [size]="16" />
+                </button>
+            </div>
             <p class="people__muted">{{ shown.hint }}</p>
             <img class="people__qr" [src]="shown.qrUrl" alt="QR-код ссылки" />
             <div class="people__code">{{ shown.code }}</div>
-            <input
-                class="people__input"
-                readonly
-                [value]="shown.url"
-                (focus)="onSelectAll($event)"
-            />
+            <div class="people__field">
+                <input
+                    class="people__input"
+                    readonly
+                    [value]="shown.url"
+                    (focus)="onSelectAll($event)"
+                />
+                @if (canCopy) {
+                    <button
+                        type="button"
+                        class="btn people__icon-btn"
+                        title="Скопировать ссылку"
+                        aria-label="Скопировать ссылку"
+                        (click)="onCopy(shown.url)"
+                    >
+                        <app-icon name="copy" [size]="18" />
+                    </button>
+                }
+            </div>
             <p class="people__muted">Действует до {{ expiresLabel(shown.expiresAt) }}.</p>
-            <div class="people__buttons people__buttons--end">
+            <!-- Phones: the cross and the copy icon do the same, so no footer. -->
+            <div class="people__buttons people__buttons--end people__dialog-footer">
                 @if (canCopy) {
                     <button type="button" class="btn" (click)="onCopy(shown.url)">
                         Скопировать ссылку

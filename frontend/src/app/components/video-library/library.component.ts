@@ -7,6 +7,7 @@ import {
     Output,
 } from '@angular/core';
 import { model } from '../../api/models';
+import { Transport } from '../../api/transport';
 import { DownloadService } from '../../services/download.service';
 import { NotificationService } from '../../services/notification.service';
 import { AudioPlayerService } from '../../services/audio-player.service';
@@ -32,6 +33,8 @@ export class LibraryComponent {
     private readonly downloadService = inject(DownloadService);
     private readonly notificationService = inject(NotificationService);
     private readonly audioPlayerService = inject(AudioPlayerService);
+    /** The desktop may keep the file on disk; a server always deletes it. */
+    protected readonly isDesktop = inject(Transport).isDesktop;
 
     // --- Items ---
     @Input()
@@ -109,7 +112,9 @@ export class LibraryComponent {
 
         this.audioPlayerService.stopIfPlaying(item.id);
         try {
-            await this.downloadService.deleteVideo(item.id, result.option);
+            // A server keeps no files the library doesn't list: they'd only
+            // fill its disk, out of everyone's reach.
+            await this.downloadService.deleteVideo(item.id, result.option || !this.isDesktop);
         } catch (error: unknown) {
             this.notificationService.error(error);
         }

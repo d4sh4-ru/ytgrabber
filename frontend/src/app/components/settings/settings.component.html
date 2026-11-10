@@ -242,6 +242,27 @@
     }
 </section>
 
+@if (!isDesktop) {
+    <section class="settings__section">
+        <div class="settings__row">
+            <div class="settings__label">
+                <span>Выйти на этом устройстве</span>
+                <span class="settings__muted"
+                    >Чтобы вернуться, понадобится код входа с другого устройства.</span
+                >
+            </div>
+            <button
+                type="button"
+                class="btn btn--danger-outline"
+                [disabled]="isSigningOut"
+                (click)="onSignOut()"
+            >
+                {{ isSigningOut ? 'Выход…' : 'Выйти' }}
+            </button>
+        </div>
+    </section>
+}
+
 @if (appInfo) {
     <section class="settings__section">
         <h2 class="settings__heading">О программе</h2>

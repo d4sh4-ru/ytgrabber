@@ -57,7 +57,7 @@ describe('HttpTransport', () => {
         await transport.call('DeleteVideo', ['a/b', true]);
         await transport.call('SavePlaybackPosition', ['v1', 42]);
         expect(requests.slice(1).map(({ url, method }) => `${method} ${url}`)).toEqual([
-            'DELETE /api/v1/library/a%2Fb?deleteFiles=true',
+            'DELETE /api/v1/library/a%2Fb',
             'PUT /api/v1/library/v1/position',
         ]);
     });
@@ -128,5 +128,54 @@ describe('HttpTransport', () => {
             method: 'DELETE',
             body: undefined,
         });
+    });
+
+    it('reopens the event socket after a long time in the background', () => {
+        const sockets: FakeSocket[] = [];
+        class FakeSocket {
+            public onopen: (() => void) | null = null;
+            public onmessage: ((message: MessageEvent<string>) => void) | null = null;
+            public onclose: (() => void) | null = null;
+            public closed = false;
+
+            public constructor(public readonly url: string) {
+                sockets.push(this);
+            }
+
+            public close(): void {
+                this.closed = true;
+            }
+        }
+        vi.stubGlobal('WebSocket', FakeSocket);
+        let visibility: DocumentVisibilityState = 'visible';
+        vi.spyOn(document, 'visibilityState', 'get').mockImplementation(() => visibility);
+        vi.useFakeTimers();
+        try {
+            const transport = new HttpTransport();
+            let reconnects = 0;
+            transport.reconnected$.subscribe(() => reconnects++);
+            transport.events$('job-removed').subscribe();
+            sockets[0].onopen?.();
+            expect(reconnects).toBe(1);
+
+            const away = (ms: number): void => {
+                visibility = 'hidden';
+                document.dispatchEvent(new Event('visibilitychange'));
+                vi.advanceTimersByTime(ms);
+                visibility = 'visible';
+                document.dispatchEvent(new Event('visibilitychange'));
+            };
+
+            away(5000); // a glance at another app: the socket stays
+            expect(sockets.length).toBe(1);
+
+            away(60000);
+            expect(sockets[0].closed).toBe(true);
+            expect(sockets.length).toBe(2);
+            sockets[1].onopen?.();
+            expect(reconnects).toBe(2); // the state is reloaded
+        } finally {
+            vi.useRealTimers();
+        }
     });
 });

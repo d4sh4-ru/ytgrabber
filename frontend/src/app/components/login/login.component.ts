@@ -9,6 +9,9 @@ import {
     Output,
 } from '@angular/core';
 import type { CodeCheck } from '../../api/session';
+import { Transport } from '../../api/transport';
+import { signInCodeFromScan } from '../../shared/sign-in-code';
+import { canScanQr, QrScannerComponent } from '../qr-scanner/qr-scanner.component';
 import { SessionService } from '../../services/session.service';
 import { guessDeviceName } from '../../shared/device-name';
 import { errorMessage } from '../../shared/error-message';
@@ -24,6 +27,7 @@ type LoginStep = 'code' | 'details';
 @Component({
     selector: 'app-login',
     standalone: true,
+    imports: [QrScannerComponent],
     templateUrl: './login.component.html',
     styleUrl: './login.component.scss',
     changeDetection: ChangeDetectionStrategy.OnPush,
@@ -40,6 +44,15 @@ export class LoginComponent implements OnInit {
     // --- DI ---
     private readonly sessionService = inject(SessionService);
     private readonly changeDetectorRef = inject(ChangeDetectorRef);
+
+    // --- Scanning ---
+    /**
+     * A phone reads the QR code from another device's screen itself: the
+     * system camera would open the link in the browser, not in the
+     * installed app. The desktop app has no camera to point.
+     */
+    protected readonly canScan = canScanQr() && !inject(Transport).isDesktopApp;
+    protected isScanning = false;
 
     // --- Form ---
     protected step: LoginStep = 'code';
@@ -91,6 +104,33 @@ export class LoginComponent implements OnInit {
 
     protected onDeviceNameInput(event: Event): void {
         this.deviceName = (event.target as HTMLInputElement).value;
+    }
+
+    // --- Scanning ---
+    protected onScan(): void {
+        this.error = '';
+        this.isScanning = true;
+    }
+
+    protected onScanClosed(): void {
+        this.isScanning = false;
+    }
+
+    protected onScanned(text: string): void {
+        this.isScanning = false;
+        const scanned = signInCodeFromScan(text, location.origin);
+        switch (scanned.kind) {
+            case 'code':
+                this.code = scanned.code;
+                void this.onCheckCode();
+                break;
+            case 'other-server':
+                this.error = `Этот QR-код для другого сервера: ${scanned.server}. Отсканируйте код, созданный на этом сервере.`;
+                break;
+            default:
+                this.error = 'В этом QR-коде нет кода входа.';
+        }
+        this.changeDetectorRef.markForCheck();
     }
 
     // --- Steps ---

@@ -266,10 +266,11 @@ func (s *Server) routes() []route {
 			handle:   func(r *http.Request) (any, error) { return s.app.GetLibrary(s.userOf(r)) },
 		},
 		{
-			method: "DELETE", path: "/library/{id}", summary: "Убрать из библиотеки",
-			query: []queryParam{{name: "deleteFiles", description: "true — удалить и файлы с диска"}},
+			// Files are always deleted with the record: a file nobody's
+			// library lists would only fill the server's disk.
+			method: "DELETE", path: "/library/{id}", summary: "Удалить из библиотеки вместе с файлами",
 			handle: func(r *http.Request) (any, error) {
-				return nil, s.app.DeleteVideo(s.userOf(r), r.PathValue("id"), r.URL.Query().Get("deleteFiles") == "true")
+				return nil, s.app.DeleteVideo(s.userOf(r), r.PathValue("id"), true)
 			},
 		},
 		{

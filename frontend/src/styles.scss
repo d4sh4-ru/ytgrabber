@@ -25,6 +25,21 @@ button {
     font-family: inherit;
 }
 
+// Installed on an iPhone the page draws under the status bar, which is
+// see-through: an opaque strip there keeps scrolled content from showing
+// under the clock.
+body::before {
+    content: '';
+    position: fixed;
+    top: 0;
+    right: 0;
+    left: 0;
+    z-index: 16;
+    height: env(safe-area-inset-top);
+    background: v.$bg-primary;
+    pointer-events: none;
+}
+
 // ---- Shared controls ----
 
 .btn {
@@ -82,6 +97,12 @@ button {
     }
 
     &--danger:hover:not(:disabled) {
+        border-color: v.$error;
+        color: v.$error;
+    }
+
+    // Red without a hover, for what touch screens should see as dangerous.
+    &--danger-outline {
         border-color: v.$error;
         color: v.$error;
     }

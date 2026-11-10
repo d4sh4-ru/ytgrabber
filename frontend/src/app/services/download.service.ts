@@ -1,5 +1,5 @@
 import { inject, Injectable } from '@angular/core';
-import { Observable } from 'rxjs';
+import { merge, Observable, Subject } from 'rxjs';
 import { model } from '../api/models';
 import { Transport } from '../api/transport';
 
@@ -8,14 +8,28 @@ export type DownloadQuality = 'best' | '1080p' | '720p' | 'audio';
 @Injectable({ providedIn: 'root' })
 export class DownloadService {
     private readonly transport = inject(Transport);
+    /** Jobs removed from here: the event may never come over a dead socket. */
+    private readonly removedHere$ = new Subject<string>();
+    private readonly libraryChangedHere$ = new Subject<void>();
 
     public readonly progress$: Observable<model.DownloadJob> =
         this.transport.events$<model.DownloadJob>('download-progress');
     public readonly status$: Observable<model.DownloadJob> =
         this.transport.events$<model.DownloadJob>('download-status');
-    public readonly jobRemoved$: Observable<string> = this.transport.events$<string>('job-removed');
-    public readonly libraryChanged$: Observable<void> =
-        this.transport.events$<void>('library-changed');
+    /**
+     * A job is gone: the backend says so, or it was removed from here.
+     * A phone's socket dies in the background without noticing, so the
+     * event alone left removed jobs on screen.
+     */
+    public readonly jobRemoved$: Observable<string> = merge(
+        this.transport.events$<string>('job-removed'),
+        this.removedHere$,
+    );
+    /** The library changed: the backend says so, or something was deleted from here. */
+    public readonly libraryChanged$: Observable<void> = merge(
+        this.transport.events$<void>('library-changed'),
+        this.libraryChangedHere$,
+    );
 
     /** useAccount=false downloads without the site's connected account. */
     public download(url: string, quality: DownloadQuality, useAccount: boolean): Promise<string> {
@@ -26,8 +40,9 @@ export class DownloadService {
         return this.transport.call<model.DownloadJob[]>('GetJobs');
     }
 
-    public removeJob(id: string): Promise<void> {
-        return this.transport.call<void>('RemoveJob', [id]);
+    public async removeJob(id: string): Promise<void> {
+        await this.transport.call<void>('RemoveJob', [id]);
+        this.removedHere$.next(id);
     }
 
     public retryJob(id: string, useAccount: boolean): Promise<void> {
@@ -38,8 +53,9 @@ export class DownloadService {
         return this.transport.call<model.VideoRecord[]>('GetLibrary');
     }
 
-    public deleteVideo(id: string, deleteFiles: boolean): Promise<void> {
-        return this.transport.call<void>('DeleteVideo', [id, deleteFiles]);
+    public async deleteVideo(id: string, deleteFiles: boolean): Promise<void> {
+        await this.transport.call<void>('DeleteVideo', [id, deleteFiles]);
+        this.libraryChangedHere$.next();
     }
 
     public revealVideo(id: string): Promise<void> {

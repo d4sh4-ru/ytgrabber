@@ -1,5 +1,6 @@
 import { inject, Injectable } from '@angular/core';
 import type { Device, IssuedCode, NewDevice, UserInfo, UserRole } from '../api/session';
+import { desktopConnection } from '../api/connection';
 import { Transport } from '../api/transport';
 
 /** The user's devices and, for an admin, the server's users. Server only. */
@@ -46,7 +47,10 @@ export class PeopleService {
     // --- Links ---
     /** The address that opens the login screen with code filled in. */
     public signInUrl(code: string): string {
-        return `${location.origin}/?code=${encodeURIComponent(code)}`;
+        // The desktop app connected to a server has an origin of its own
+        // (wails://): the link has to lead to the server.
+        const base = desktopConnection()?.server || location.origin;
+        return `${base}/?code=${encodeURIComponent(code)}`;
     }
 
     /** An SVG QR code of text, drawn by the server. */

@@ -90,6 +90,13 @@
         font-size: 12px;
         text-overflow: ellipsis;
         white-space: nowrap;
+
+        // Phones have no tooltip to show the rest: the whole path, wrapped.
+        @include v.narrow {
+            overflow: visible;
+            white-space: normal;
+            overflow-wrap: anywhere;
+        }
     }
 
     &__muted {

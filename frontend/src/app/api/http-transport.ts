@@ -70,10 +70,8 @@ const CALLS: Readonly<Record<string, Call>> = {
     RemoveJob: (api, args) => api.DELETE('/jobs/{id}', { params: idOf(args) }),
 
     GetLibrary: (api) => api.GET('/library'),
-    DeleteVideo: (api, args) =>
-        api.DELETE('/library/{id}', {
-            params: { ...idOf(args), query: { deleteFiles: String(args[1] === true) } },
-        }),
+    // The server always deletes the files too.
+    DeleteVideo: (api, args) => api.DELETE('/library/{id}', { params: idOf(args) }),
     SavePlaybackPosition: (api, args) =>
         api.PUT('/library/{id}/position', {
             params: idOf(args),
@@ -113,6 +111,12 @@ const CALLS: Readonly<Record<string, Call>> = {
 
 const RECONNECT_MIN_MS = 1000;
 const RECONNECT_MAX_MS = 30000;
+/**
+ * A phone suspends a page in the background; its socket may look open
+ * afterwards while the server long dropped it. Back from a pause this
+ * long, the socket is reopened, which also reloads the state.
+ */
+const STALE_AFTER_HIDDEN_MS = 20000;
 
 /**
  * The browser transport: backend methods become calls to the REST API of
@@ -141,9 +145,11 @@ export class HttpTransport implements Transport {
     private readonly eventsSubject$ = new Subject<ServerEvent>();
     private socket: WebSocket | null = null;
     private reconnectDelay = RECONNECT_MIN_MS;
+    private hiddenSince: number | null = null;
 
     public constructor() {
         this.reconnected$ = this.reconnectedSubject$.asObservable();
+        document.addEventListener('visibilitychange', (): void => this.onVisibilityChange());
     }
 
     public async call<T>(method: string, args: readonly unknown[] = []): Promise<T> {
@@ -183,6 +189,26 @@ export class HttpTransport implements Transport {
     }
 
     // --- Events ---
+    private onVisibilityChange(): void {
+        if (document.visibilityState === 'hidden') {
+            this.hiddenSince = Date.now();
+            return;
+        }
+        const hiddenFor = this.hiddenSince === null ? 0 : Date.now() - this.hiddenSince;
+        this.hiddenSince = null;
+        const stale = this.socket;
+        if (stale && hiddenFor >= STALE_AFTER_HIDDEN_MS) {
+            // A dead socket may take long to report its close: drop it
+            // and open a new one now; its onopen reloads the state.
+            stale.onclose = null;
+            stale.onmessage = null;
+            stale.close();
+            this.socket = null;
+            this.reconnectDelay = RECONNECT_MIN_MS;
+            this.connect();
+        }
+    }
+
     private connect(): void {
         if (this.socket) {
             return;
