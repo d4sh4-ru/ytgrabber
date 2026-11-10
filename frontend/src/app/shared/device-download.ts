@@ -1,5 +1,6 @@
 import { model } from '../api/models';
 import { formatBytes } from './format-bytes';
+import { bypassServiceWorker } from './media-url';
 
 /** The part of the Network Information API this needs; Chrome on Android has it. */
 interface NetworkInformation {
@@ -9,7 +10,7 @@ interface NetworkInformation {
 
 /** The URL that sends item's file as an attachment under its own name. */
 export function deviceDownloadUrl(item: model.VideoRecord): string {
-    return `${item.mediaUrl}?download=1`;
+    return bypassServiceWorker(`${item.mediaUrl}?download=1`);
 }
 
 /**

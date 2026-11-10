@@ -113,10 +113,50 @@
                 </div>
             }
 
+            @if (isWebAppUpdateReady) {
+                <div class="banner banner--info">
+                    <span>Приложение обновилось. Новая версия откроется после перезагрузки.</span>
+                    <div class="banner__actions">
+                        <button type="button" class="btn btn--primary" (click)="onReloadWebApp()">
+                            Перезагрузить
+                        </button>
+                    </div>
+                </div>
+            }
+
+            @switch (installOffer) {
+                @case ('prompt') {
+                    <div class="banner banner--info">
+                        <span>Установите YT Grabber: он откроется с экрана, как приложение.</span>
+                        <div class="banner__actions">
+                            <button type="button" class="btn btn--primary" (click)="onInstall()">
+                                Установить
+                            </button>
+                            <button type="button" class="btn" (click)="onDismissInstall()">
+                                Не нужно
+                            </button>
+                        </div>
+                    </div>
+                }
+                @case ('ios') {
+                    <div class="banner banner--info">
+                        <span
+                            >Чтобы открывать YT Grabber как приложение, нажмите «Поделиться» и
+                            выберите «На экран „Домой“».</span
+                        >
+                        <div class="banner__actions">
+                            <button type="button" class="btn" (click)="onDismissInstall()">
+                                Понятно
+                            </button>
+                        </div>
+                    </div>
+                }
+            }
+
             <section class="app__section">
                 @switch (activeTab) {
                     @case ('add') {
-                        <app-download-form [jobs]="jobs" />
+                        <app-download-form [jobs]="jobs" [sharedUrl]="sharedUrl" />
                     }
                     @case ('library') {
                         <app-library [items]="library" (videoSelected)="onVideoSelected($event)" />

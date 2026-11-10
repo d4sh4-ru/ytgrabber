@@ -4,7 +4,10 @@
 #                            Linux uses it for the window and menu entry
 #   build/windows/icon.ico   16–256 px for the exe and the installer
 #   frontend/public/favicon.ico
-# Needs Chromium (or Chrome) and ImageMagick: CHROME=/path/to/chrome ./build/icons.sh
+#   frontend/public/icons/   the web app's icons (manifest.webmanifest),
+#                            maskable ones from appicon-maskable.svg
+# Needs Chromium (or Chrome), ImageMagick and rsvg-convert (librsvg):
+# CHROME=/path/to/chrome ./build/icons.sh
 set -eu
 cd "$(dirname "$0")"
 chrome="${CHROME:-chromium}"
@@ -33,4 +36,14 @@ for size in 64 128 256; do
 done
 convert "$tmp/16.png" "$tmp/24.png" "$tmp/32.png" "$tmp/48.png" "$tmp/64.png" "$tmp/128.png" "$tmp/256.png" windows/icon.ico
 convert "$tmp/16.png" "$tmp/32.png" "$tmp/48.png" ../frontend/public/favicon.ico
+
+# The web app's: exact sizes, so straight from the SVG.
+web=../frontend/public/icons
+mkdir -p "$web"
+for size in 192 512; do
+	rsvg-convert -w "$size" -h "$size" appicon.svg -o "$web/icon-$size.png"
+	rsvg-convert -w "$size" -h "$size" appicon-maskable.svg -o "$web/maskable-$size.png"
+done
+# iOS cuts the corners itself and shows transparency as black.
+rsvg-convert -w 180 -h 180 appicon-maskable.svg -o "$web/apple-touch-icon.png"
 echo "icons updated"

@@ -8,12 +8,7 @@
 >
     <div class="media-card__cover">
         @if (item.thumbnailUrl) {
-            <img
-                class="media-card__image"
-                [src]="item.thumbnailUrl"
-                [alt]="item.title"
-                loading="lazy"
-            />
+            <img class="media-card__image" [src]="thumbnailSrc" [alt]="item.title" loading="lazy" />
         } @else if (isAudio) {
             <span class="media-card__icon"><app-icon name="music" [size]="32" /></span>
         }

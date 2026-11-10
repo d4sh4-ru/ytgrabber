@@ -11,6 +11,7 @@ import {
 import { Subject, takeUntil } from 'rxjs';
 import { AudioPlayerService, AudioTrack } from '../../services/audio-player.service';
 import { NotificationService } from '../../services/notification.service';
+import { MediaSessionService } from '../../services/media-session.service';
 import { PlaybackService } from '../../services/playback.service';
 import { formatDuration } from '../../shared/format-duration';
 import { IconComponent } from '../icon/icon.component';
@@ -30,6 +31,7 @@ export class AudioPlayerBarComponent implements OnInit, OnDestroy {
     private readonly audioPlayerService = inject(AudioPlayerService);
     private readonly notificationService = inject(NotificationService);
     private readonly playbackService = inject(PlaybackService);
+    private readonly mediaSessionService = inject(MediaSessionService);
     private readonly changeDetectorRef = inject(ChangeDetectorRef);
     private readonly destroy$ = new Subject<void>();
 
@@ -64,6 +66,9 @@ export class AudioPlayerBarComponent implements OnInit, OnDestroy {
             .subscribe((track: AudioTrack | null): void => {
                 // Switching tracks or closing: remember where the old one stopped.
                 this.saveStop();
+                if (!track) {
+                    this.mediaSessionService.detach(this.audioElementRef?.nativeElement);
+                }
                 this.currentTrack = track;
                 this.isPlaying = false;
                 this.currentTime = 0;
@@ -74,6 +79,7 @@ export class AudioPlayerBarComponent implements OnInit, OnDestroy {
 
     public ngOnDestroy(): void {
         this.saveStop();
+        this.mediaSessionService.detach(this.audioElementRef?.nativeElement);
         this.destroy$.next();
         this.destroy$.complete();
     }
@@ -111,6 +117,10 @@ export class AudioPlayerBarComponent implements OnInit, OnDestroy {
             audioElement.volume = this.volume;
             this.duration = audioElement.duration;
             if (this.currentTrack) {
+                this.mediaSessionService.attach(audioElement, {
+                    title: this.currentTrack.title,
+                    artworkSrc: this.currentTrack.coverSrc,
+                });
                 const position = this.playbackService.startPosition(
                     this.currentTrack.id,
                     this.currentTrack.positionSeconds,
@@ -125,13 +135,27 @@ export class AudioPlayerBarComponent implements OnInit, OnDestroy {
 
     protected onPlay(): void {
         this.isPlaying = true;
+        this.updateMediaSession();
         this.changeDetectorRef.markForCheck();
     }
 
     protected onPause(): void {
         this.isPlaying = false;
         this.saveStop();
+        this.updateMediaSession();
         this.changeDetectorRef.markForCheck();
+    }
+
+    protected onSeeked(): void {
+        this.updateMediaSession();
+    }
+
+    /** Keeps the lock screen's play button and position in step. */
+    private updateMediaSession(): void {
+        const audioElement = this.audioElementRef?.nativeElement;
+        if (audioElement) {
+            this.mediaSessionService.update(audioElement);
+        }
     }
 
     protected onError(): void {

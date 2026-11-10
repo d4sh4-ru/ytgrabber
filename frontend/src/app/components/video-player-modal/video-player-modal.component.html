@@ -48,14 +48,16 @@
                 <video
                     #videoElement
                     class="video-modal__player"
-                    [src]="item.mediaUrl"
+                    [src]="mediaSrc"
                     controls
                     autoplay
                     playsinline
                     (loadedmetadata)="onLoadedMetadata()"
                     (timeupdate)="onTimeUpdate()"
+                    (play)="onPlayStateChanged()"
                     (pause)="onPaused()"
                     (ended)="onPaused()"
+                    (seeked)="onPlayStateChanged()"
                     (error)="onPlaybackError()"
                     (pointerup)="onVideoPointerUp($event)"
                 ></video>

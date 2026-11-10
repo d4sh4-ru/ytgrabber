@@ -14,6 +14,7 @@ import {
     startDeviceDownload,
 } from '../../shared/device-download';
 import { formatDuration } from '../../shared/format-duration';
+import { bypassServiceWorker } from '../../shared/media-url';
 import { ConfirmDialogComponent } from '../confirm-dialog/confirm-dialog.component';
 import { IconComponent } from '../icon/icon.component';
 
@@ -65,6 +66,10 @@ export class MediaCardComponent {
     /** The server sends the file as an attachment under its own name. */
     protected get downloadUrl(): string {
         return deviceDownloadUrl(this.item);
+    }
+
+    protected get thumbnailSrc(): string {
+        return bypassServiceWorker(this.item.thumbnailUrl);
     }
 
     protected get isAudio(): boolean {

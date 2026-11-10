@@ -43,9 +43,11 @@ func newFixture(t *testing.T) *fixture {
 	}, core.WithoutSelfUpdate())
 
 	webDir := filepath.Join(dir, "web")
-	os.MkdirAll(filepath.Join(webDir, "assets"), 0o755)
+	os.MkdirAll(webDir, 0o755)
 	os.WriteFile(filepath.Join(webDir, "index.html"), []byte("<app-root></app-root>"), 0o644)
-	os.WriteFile(filepath.Join(webDir, "assets", "main-abc.js"), []byte("console.log(1)"), 0o644)
+	os.WriteFile(filepath.Join(webDir, "main-ABCD1234.js"), []byte("console.log(1)"), 0o644)
+	os.WriteFile(filepath.Join(webDir, "ngsw-worker.js"), []byte("// worker"), 0o644)
+	os.WriteFile(filepath.Join(webDir, "manifest.webmanifest"), []byte("{}"), 0o644)
 
 	srv, err := New(app, Config{SetupCode: setupCode, WebDir: webDir})
 	if err != nil {
@@ -488,16 +490,26 @@ func TestSlowClientIsDropped(t *testing.T) {
 func TestFrontend(t *testing.T) {
 	f := newFixture(t)
 
-	for _, path := range []string{"/", "/library", "/settings/tools"} {
+	for _, path := range []string{"/", "/library", "/settings/tools", "/share?text=https%3A%2F%2Fyoutu.be%2Fx"} {
 		resp := f.do("GET", path, "", nil)
 		body, _ := io.ReadAll(resp.Body)
 		if resp.StatusCode != http.StatusOK || string(body) != "<app-root></app-root>" || resp.Header.Get("Cache-Control") != "no-cache" {
 			t.Errorf("%s: %d %q %q", path, resp.StatusCode, body, resp.Header.Get("Cache-Control"))
 		}
 	}
-	resp := f.do("GET", "/assets/main-abc.js", "", nil)
+	resp := f.do("GET", "/main-ABCD1234.js", "", nil)
 	if resp.StatusCode != http.StatusOK || !strings.Contains(resp.Header.Get("Cache-Control"), "immutable") {
 		t.Errorf("bundle: %d %q", resp.StatusCode, resp.Header.Get("Cache-Control"))
+	}
+	// Same names in every build: a year in the cache would pin the old app.
+	for _, path := range []string{"/ngsw-worker.js", "/manifest.webmanifest"} {
+		resp := f.do("GET", path, "", nil)
+		if resp.StatusCode != http.StatusOK || resp.Header.Get("Cache-Control") != "no-cache" {
+			t.Errorf("%s: %d %q", path, resp.StatusCode, resp.Header.Get("Cache-Control"))
+		}
+	}
+	if got := f.do("GET", "/manifest.webmanifest", "", nil).Header.Get("Content-Type"); got != "application/manifest+json" {
+		t.Errorf("manifest Content-Type %q", got)
 	}
 	if resp := f.do("GET", "/../data/token", "", nil); resp.StatusCode != http.StatusOK {
 		t.Errorf("path traversal must fall back to index.html, got %d", resp.StatusCode)

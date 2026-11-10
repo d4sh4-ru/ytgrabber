@@ -56,7 +56,7 @@ describe('MediaCardComponent', () => {
         const browser = render({ mediaUrl: '/media/v/file.mp4' });
         expect(browser.querySelector('[aria-label="Показать в папке"]')).toBeNull();
         expect(browser.querySelector('a[download]')?.getAttribute('href')).toBe(
-            '/media/v/file.mp4?download=1',
+            '/media/v/file.mp4?download=1&ngsw-bypass=1',
         );
         expect(
             render({ mediaUrl: '/media/v/file.mp4', fileMissing: true }).querySelector('a'),

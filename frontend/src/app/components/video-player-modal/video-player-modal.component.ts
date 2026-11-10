@@ -15,6 +15,7 @@ import { model } from '../../api/models';
 import { Transport } from '../../api/transport';
 import { ConfirmDialogComponent } from '../confirm-dialog/confirm-dialog.component';
 import { IconComponent } from '../icon/icon.component';
+import { MediaSessionService } from '../../services/media-session.service';
 import { PlaybackService } from '../../services/playback.service';
 import {
     deviceDownloadUrl,
@@ -22,6 +23,7 @@ import {
     startDeviceDownload,
 } from '../../shared/device-download';
 import { formatDuration } from '../../shared/format-duration';
+import { bypassServiceWorker } from '../../shared/media-url';
 
 /** How far a double tap seeks. */
 const SEEK_STEP_SECONDS = 10;
@@ -54,6 +56,7 @@ export type SeekSide = 'back' | 'forward';
 })
 export class VideoPlayerModalComponent implements OnDestroy {
     private readonly playbackService = inject(PlaybackService);
+    private readonly mediaSessionService = inject(MediaSessionService);
     private readonly changeDetectorRef = inject(ChangeDetectorRef);
 
     @Input()
@@ -85,6 +88,10 @@ export class VideoPlayerModalComponent implements OnDestroy {
         return formatDuration(this.resumedFrom ?? 0);
     }
 
+    protected get mediaSrc(): string {
+        return this.item ? bypassServiceWorker(this.item.mediaUrl) : '';
+    }
+
     protected get downloadUrl(): string {
         return this.item ? deviceDownloadUrl(this.item) : '';
     }
@@ -112,6 +119,7 @@ export class VideoPlayerModalComponent implements OnDestroy {
             void this.playbackService.stop(this.item.id, video.currentTime);
             video.pause();
         }
+        this.mediaSessionService.detach(video);
         this.playbackError = false;
         this.resumedFrom = null;
         this.downloadWarning = null;
@@ -125,6 +133,10 @@ export class VideoPlayerModalComponent implements OnDestroy {
         if (!video || !this.item) {
             return;
         }
+        this.mediaSessionService.attach(video, {
+            title: this.item.title,
+            artworkSrc: this.item.thumbnailUrl ? bypassServiceWorker(this.item.thumbnailUrl) : null,
+        });
         const position = this.playbackService.startPosition(
             this.item.id,
             this.item.positionSeconds,
@@ -148,6 +160,15 @@ export class VideoPlayerModalComponent implements OnDestroy {
         const video = this.videoElementRef?.nativeElement;
         if (video && this.item) {
             void this.playbackService.stop(this.item.id, video.currentTime);
+        }
+        this.onPlayStateChanged();
+    }
+
+    /** Keeps the lock screen's play button and position in step. */
+    protected onPlayStateChanged(): void {
+        const video = this.videoElementRef?.nativeElement;
+        if (video) {
+            this.mediaSessionService.update(video);
         }
     }
 

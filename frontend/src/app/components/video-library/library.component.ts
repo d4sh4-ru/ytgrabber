@@ -11,6 +11,7 @@ import { DownloadService } from '../../services/download.service';
 import { NotificationService } from '../../services/notification.service';
 import { AudioPlayerService } from '../../services/audio-player.service';
 import { MediaCardComponent } from '../media-card/media-card.component';
+import { bypassServiceWorker } from '../../shared/media-url';
 import {
     ConfirmDialogComponent,
     ConfirmDialogResult,
@@ -73,8 +74,8 @@ export class LibraryComponent {
             this.audioPlayerService.play({
                 id: item.id,
                 title: item.title,
-                src: item.mediaUrl,
-                coverSrc: item.thumbnailUrl || null,
+                src: bypassServiceWorker(item.mediaUrl),
+                coverSrc: item.thumbnailUrl ? bypassServiceWorker(item.thumbnailUrl) : null,
                 positionSeconds: item.positionSeconds,
             });
         } else {

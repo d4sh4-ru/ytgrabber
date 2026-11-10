@@ -127,8 +127,13 @@ export class HttpTransport implements Transport {
     private readonly api: Api = createClient<paths>({
         baseUrl: location.origin + API_PREFIX,
         credentials: 'same-origin',
-        // Looked up per call, so tests can stub the global.
-        fetch: (request: Request): Promise<Response> => fetch(request),
+        // Looked up per call, so tests can stub the global. The marker
+        // header sends the call past the service worker, which caches
+        // only the app itself.
+        fetch: (request: Request): Promise<Response> => {
+            request.headers.set('ngsw-bypass', '1');
+            return fetch(request);
+        },
     });
 
     private readonly reconnectedSubject$ = new Subject<void>();

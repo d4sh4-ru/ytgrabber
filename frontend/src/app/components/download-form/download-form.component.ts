@@ -81,6 +81,14 @@ export class DownloadFormComponent implements OnInit, OnDestroy {
     // field as soon as it loses focus reads as an error the user didn't make.
     protected isSubmitAttempted = false;
 
+    /** A link shared to the app from another one: in the field, ready to add. */
+    @Input()
+    public set sharedUrl(value: string | null) {
+        if (value) {
+            this.urlControl.setValue(value);
+        }
+    }
+
     protected get isInvalid(): boolean {
         return this.urlControl.invalid && this.isSubmitAttempted;
     }

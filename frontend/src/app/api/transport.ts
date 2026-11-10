@@ -5,7 +5,7 @@ import { HttpTransport } from './http-transport';
 import { WailsTransport } from './wails-transport';
 
 /** Wails injects its bindings as window.go before the app's scripts run. */
-function isWails(): boolean {
+export function isWails(): boolean {
     return typeof (window as { go?: unknown }).go === 'object';
 }
 

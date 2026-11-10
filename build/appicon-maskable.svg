@@ -1,0 +1,15 @@
+<!-- Maskable app icon (PWA, iOS home screen): the background reaches the
+     edges, since the system cuts the shape out of it; the glyph stays in
+     the middle 80% that every mask keeps. Regenerate with build/icons.sh. -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#26262a"/>
+      <stop offset="1" stop-color="#141416"/>
+    </linearGradient>
+  </defs>
+  <rect width="1024" height="1024" fill="url(#bg)"/>
+  <rect x="250" y="300" width="524" height="370" rx="70" fill="none" stroke="#e8e8e8" stroke-width="56"/>
+  <path d="M462 410 L462 560 L590 485 Z" fill="#3b82f6" stroke="#3b82f6" stroke-width="36" stroke-linejoin="round"/>
+  <path d="M400 770h224" stroke="#3b82f6" stroke-width="56" stroke-linecap="round"/>
+</svg>

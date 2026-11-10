@@ -15,7 +15,7 @@ describe('device downloads', () => {
     afterEach(() => connect(undefined));
 
     it('asks the server for an attachment', () => {
-        expect(deviceDownloadUrl(item)).toBe('/media/v/file.mp4?download=1');
+        expect(deviceDownloadUrl(item)).toBe('/media/v/file.mp4?download=1&ngsw-bypass=1');
     });
 
     it('warns about the size on mobile data or with data saver on', () => {

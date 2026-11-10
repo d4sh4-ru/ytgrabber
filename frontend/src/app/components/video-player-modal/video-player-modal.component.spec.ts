@@ -77,7 +77,7 @@ describe('VideoPlayerModalComponent', () => {
 
         transport.isDesktop = false;
         expect(render().element.querySelector('a[download]')?.getAttribute('href')).toBe(
-            '/media/v/file.mp4?download=1',
+            '/media/v/file.mp4?download=1&ngsw-bypass=1',
         );
     });
 });
