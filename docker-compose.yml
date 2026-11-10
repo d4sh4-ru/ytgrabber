@@ -1,7 +1,7 @@
 # ytgrabber-server with Docker Compose.
 #
 #   docker compose up -d
-#   docker compose logs ytgrabber | grep "access token"
+#   docker compose logs ytgrabber | grep "setup code"
 #
 # The server is meant to be reached through your VPN or a TLS reverse
 # proxy, not straight from the internet. The port is published on

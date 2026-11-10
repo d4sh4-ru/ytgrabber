@@ -181,7 +181,11 @@ func Spec(routes []route) ([]byte, error) {
 		}
 
 		responses := schema{}
-		if rt.response != nil {
+		if rt.svg {
+			responses["200"] = schema{"description": "OK", "content": schema{
+				"image/svg+xml": schema{"schema": schema{"type": "string"}},
+			}}
+		} else if rt.response != nil {
 			responses["200"] = schema{"description": "OK", "content": schema{
 				"application/json": schema{"schema": b.schemaOf(reflect.TypeOf(rt.response))},
 			}}
@@ -193,6 +197,12 @@ func Spec(routes []route) ([]byte, error) {
 		}
 		if !rt.public {
 			responses["401"] = schema{"description": "Нужен вход", "content": errorContent}
+		}
+		if rt.admin {
+			responses["403"] = schema{"description": "Только для администратора", "content": errorContent}
+		}
+		if rt.handle != nil && strings.Contains(rt.path, "{id}") {
+			responses["404"] = schema{"description": "Нет такой записи (или она другого пользователя)", "content": errorContent}
 		}
 		op["responses"] = responses
 
@@ -229,8 +239,9 @@ func Spec(routes []route) ([]byte, error) {
 		"info": schema{
 			"title":   "ytgrabber-server",
 			"version": "1",
-			"description": "API self-hosted сервера ytgrabber. Авторизация: заголовок " +
-				"«Authorization: Bearer <токен>» или cookie сессии после POST /session.",
+			"description": "API self-hosted сервера ytgrabber. Авторизация: токен устройства " +
+				"в заголовке «Authorization: Bearer <токен>» (POST /devices выдаёт его скриптам) " +
+				"или cookie сессии после POST /session.",
 		},
 		"servers":  []any{schema{"url": apiPrefix}},
 		"security": []any{schema{"bearer": []string{}}, schema{"session": []string{}}},

@@ -123,7 +123,7 @@ func TestInstallUpdateWaitsForDownloads(t *testing.T) {
 	target := withFakeRelease(t, app)
 	app.CheckForUpdates()
 
-	app.jobs["busy"] = &job{DownloadJob: model.DownloadJob{ID: "busy", Status: model.StatusDownloading}}
+	app.jobs["busy"] = &job{DownloadJob: model.DownloadJob{UserID: "local", ID: "busy", Status: model.StatusDownloading}}
 	if err := app.InstallUpdate(); err == nil || !strings.Contains(err.Error(), "загрузок") {
 		t.Errorf("error = %v", err)
 	}

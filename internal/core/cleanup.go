@@ -147,7 +147,7 @@ func (a *App) libraryFiles() []string {
 	if a.db == nil {
 		return nil
 	}
-	videos, err := a.db.LoadVideos()
+	videos, err := a.db.AllVideos()
 	if err != nil {
 		log.Printf("ytgrabber: failed to load library: %v", err)
 		return nil

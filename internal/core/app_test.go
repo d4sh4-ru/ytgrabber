@@ -80,7 +80,7 @@ func waitFor(t *testing.T, what string, cond func() bool) {
 // goroutine owns them.
 func TestInterruptedJobsAreRemovable(t *testing.T) {
 	app, events := newTestApp(t)
-	app.db.SaveJob(&model.DownloadJob{ID: "stale", URL: "https://x", Status: model.StatusDownloading})
+	app.db.SaveJob(&model.DownloadJob{UserID: "local", ID: "stale", URL: "https://x", Status: model.StatusDownloading})
 	app.Stop()
 
 	app2 := New(app.paths)
@@ -134,7 +134,7 @@ func TestDownloadVideoValidates(t *testing.T) {
 // reporting progress right after the user removed the job.
 func TestLateUpdateDoesNotResurrectJob(t *testing.T) {
 	app, _ := newTestApp(t)
-	j := &job{DownloadJob: model.DownloadJob{ID: "j", URL: "https://x", Status: model.StatusError, Tracks: []model.DownloadTrack{}}}
+	j := &job{DownloadJob: model.DownloadJob{UserID: "local", ID: "j", URL: "https://x", Status: model.StatusError, Tracks: []model.DownloadTrack{}}}
 	app.jobs[j.ID] = j
 	app.db.SaveJob(&j.DownloadJob)
 
@@ -154,8 +154,8 @@ func TestRetryOnlyFailedJobs(t *testing.T) {
 	app.tools.Ffmpeg.Found = true
 	app.settings.MaxConcurrentDownloads = 0 // keep the job queued
 
-	app.jobs["ok"] = &job{DownloadJob: model.DownloadJob{ID: "ok", Status: model.StatusDownloading}}
-	app.jobs["bad"] = &job{DownloadJob: model.DownloadJob{ID: "bad", Status: model.StatusError, Error: "boom", Tracks: []model.DownloadTrack{{Filename: "x"}}}}
+	app.jobs["ok"] = &job{DownloadJob: model.DownloadJob{UserID: "local", ID: "ok", Status: model.StatusDownloading}}
+	app.jobs["bad"] = &job{DownloadJob: model.DownloadJob{UserID: "local", ID: "bad", Status: model.StatusError, Error: "boom", Tracks: []model.DownloadTrack{{Filename: "x"}}}}
 
 	if err := app.RetryJob(LocalUser, "ok", true); err == nil {
 		t.Error("retrying an active job must fail")
@@ -174,9 +174,9 @@ func TestMediaHandler(t *testing.T) {
 	dir := t.TempDir()
 	media := filepath.Join(dir, "clip.mp4")
 	os.WriteFile(media, []byte("0123456789"), 0o644)
-	app.db.SaveVideo(&model.VideoRecord{ID: "v1", Title: "Clip", MediaKind: model.MediaVideo, FilePath: media, DownloadedAt: "1"})
+	app.db.SaveVideo(&model.VideoRecord{UserID: "local", ID: "v1", Title: "Clip", MediaKind: model.MediaVideo, FilePath: media, DownloadedAt: "1"})
 
-	handler := mediaHandler{app: app}
+	handler := MediaHandler(app, func(*http.Request) UserID { return LocalUser })
 
 	req := httptest.NewRequest(http.MethodGet, "/media/v1/file.mp4", nil)
 	req.Header.Set("Range", "bytes=2-4")
@@ -204,9 +204,9 @@ func TestMediaHandlerDownload(t *testing.T) {
 	app, _ := newTestApp(t)
 	media := filepath.Join(t.TempDir(), "Клип [id].mp3")
 	os.WriteFile(media, []byte("abc"), 0o644)
-	app.db.SaveVideo(&model.VideoRecord{ID: "a1", Title: "Клип", MediaKind: model.MediaAudio, FilePath: media, DownloadedAt: "1"})
+	app.db.SaveVideo(&model.VideoRecord{UserID: "local", ID: "a1", Title: "Клип", MediaKind: model.MediaAudio, FilePath: media, DownloadedAt: "1"})
 
-	handler := mediaHandler{app: app}
+	handler := MediaHandler(app, func(*http.Request) UserID { return LocalUser })
 	rec := httptest.NewRecorder()
 	handler.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/media/a1/file.mp3", nil))
 	if got := rec.Header().Get("Content-Disposition"); got != "" {
@@ -251,8 +251,8 @@ func TestDeleteVideoKeepsSharedThumbnail(t *testing.T) {
 	for _, path := range []string{video, audio, thumbnail} {
 		os.WriteFile(path, []byte("x"), 0o644)
 	}
-	app.db.SaveVideo(&model.VideoRecord{ID: "v", Title: "Clip", MediaKind: model.MediaVideo, FilePath: video, ThumbnailPath: thumbnail, DownloadedAt: "1"})
-	app.db.SaveVideo(&model.VideoRecord{ID: "a", Title: "Clip", MediaKind: model.MediaAudio, FilePath: audio, ThumbnailPath: thumbnail, DownloadedAt: "2"})
+	app.db.SaveVideo(&model.VideoRecord{UserID: "local", ID: "v", Title: "Clip", MediaKind: model.MediaVideo, FilePath: video, ThumbnailPath: thumbnail, DownloadedAt: "1"})
+	app.db.SaveVideo(&model.VideoRecord{UserID: "local", ID: "a", Title: "Clip", MediaKind: model.MediaAudio, FilePath: audio, ThumbnailPath: thumbnail, DownloadedAt: "2"})
 
 	if err := app.DeleteVideo(LocalUser, "v", true); err != nil {
 		t.Fatal(err)
@@ -277,7 +277,7 @@ func TestDeleteVideoKeepsSharedThumbnail(t *testing.T) {
 
 func TestGetLibraryMarksMissingFiles(t *testing.T) {
 	app, _ := newTestApp(t)
-	app.db.SaveVideo(&model.VideoRecord{ID: "gone", Title: "Gone", MediaKind: model.MediaVideo, FilePath: "/nonexistent/x.MP4", DownloadedAt: "1"})
+	app.db.SaveVideo(&model.VideoRecord{UserID: "local", ID: "gone", Title: "Gone", MediaKind: model.MediaVideo, FilePath: "/nonexistent/x.MP4", DownloadedAt: "1"})
 
 	videos, err := app.GetLibrary(LocalUser)
 	if err != nil || len(videos) != 1 {
@@ -298,7 +298,7 @@ func TestLibraryRepairsMangledEntries(t *testing.T) {
 	os.WriteFile(real, []byte("v"), 0o644)
 	os.WriteFile(thumb, []byte("t"), 0o644)
 
-	err := app.db.SaveVideo(&model.VideoRecord{
+	err := app.db.SaveVideo(&model.VideoRecord{UserID: "local",
 		ID: "v1", Title: "?????? ???", MediaKind: model.MediaVideo,
 		FilePath:      filepath.Join(dir, "?????? ??? [abc].mp4"),
 		ThumbnailPath: filepath.Join(dir, "?????? ??? [abc].jpg"),
@@ -313,7 +313,7 @@ func TestLibraryRepairsMangledEntries(t *testing.T) {
 		t.Errorf("repaired = %+v", v)
 	}
 	// The repair is stored, not redone on every read.
-	stored, _ := app.db.GetVideo("v1")
+	stored, _ := app.db.GetVideo("local", "v1")
 	if stored.FilePath != real || stored.Title != "Привет мир" {
 		t.Errorf("stored = %+v", stored)
 	}
@@ -343,7 +343,7 @@ func TestSavePlaybackPosition(t *testing.T) {
 	app, _ := newTestApp(t)
 	file := filepath.Join(t.TempDir(), "clip [abc].mp4")
 	os.WriteFile(file, []byte("v"), 0o644)
-	app.db.SaveVideo(&model.VideoRecord{ID: "v1", Title: "clip", MediaKind: model.MediaVideo, FilePath: file,
+	app.db.SaveVideo(&model.VideoRecord{UserID: "local", ID: "v1", Title: "clip", MediaKind: model.MediaVideo, FilePath: file,
 		DurationSeconds: 600, DownloadedAt: "2026-01-01T00:00:00Z"})
 
 	saved, err := app.SavePlaybackPosition(LocalUser, "v1", 125.5)
@@ -359,15 +359,15 @@ func TestSavePlaybackPosition(t *testing.T) {
 	if saved, _ := app.SavePlaybackPosition(LocalUser, "v1", 598); saved != 0 {
 		t.Errorf("near the end saved %v", saved)
 	}
-	if video, _ := app.db.GetVideo("v1"); video.PositionSeconds != 0 {
+	if video, _ := app.db.GetVideo("local", "v1"); video.PositionSeconds != 0 {
 		t.Errorf("stored = %v", video.PositionSeconds)
 	}
 
 	// Downloading the same file again keeps the position.
 	app.SavePlaybackPosition(LocalUser, "v1", 300)
-	app.db.SaveVideo(&model.VideoRecord{ID: "v2", Title: "clip", MediaKind: model.MediaVideo, FilePath: file,
+	app.db.SaveVideo(&model.VideoRecord{UserID: "local", ID: "v2", Title: "clip", MediaKind: model.MediaVideo, FilePath: file,
 		DurationSeconds: 600, DownloadedAt: "2026-01-02T00:00:00Z"})
-	if video, _ := app.db.GetVideo("v1"); video.PositionSeconds != 300 {
+	if video, _ := app.db.GetVideo("local", "v1"); video.PositionSeconds != 300 {
 		t.Errorf("after re-download = %v", video.PositionSeconds)
 	}
 

@@ -22,6 +22,14 @@
         line-height: 1.5;
     }
 
+    &__label {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+        color: v.$text-secondary;
+        font-size: 13px;
+    }
+
     &__input {
         padding: 10px 12px;
         border: 1px solid v.$border-subtle;

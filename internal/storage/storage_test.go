@@ -60,7 +60,8 @@ func TestMigrateLegacyDatabase(t *testing.T) {
 		t.Errorf("user_version = %d, want %d", version, len(migrations))
 	}
 
-	videos, err := db.LoadVideos()
+	// What existed before users belongs to the desktop's local user.
+	videos, err := db.LoadVideos("local")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -120,7 +121,7 @@ func TestMarkInterruptedJobs(t *testing.T) {
 		"pending": model.StatusPending, "downloading": model.StatusDownloading,
 		"processing": model.StatusProcessing, "failed": model.StatusError,
 	} {
-		if err := db.SaveJob(&model.DownloadJob{ID: id, URL: "https://x", Status: status, Error: "old", ErrorDetails: "old details"}); err != nil {
+		if err := db.SaveJob(&model.DownloadJob{UserID: "local", ID: id, URL: "https://x", Status: status, Error: "old", ErrorDetails: "old details"}); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -154,8 +155,8 @@ func TestMarkInterruptedJobs(t *testing.T) {
 func TestSaveVideoUpsertsByPath(t *testing.T) {
 	db := openTestDB(t, "")
 
-	first := &model.VideoRecord{ID: "a", Title: "Old", MediaKind: model.MediaVideo, FilePath: "/d/x.mp4", DownloadedAt: "1"}
-	second := &model.VideoRecord{ID: "b", Title: "New", MediaKind: model.MediaVideo, FilePath: "/d/x.mp4", DownloadedAt: "2"}
+	first := &model.VideoRecord{ID: "a", UserID: "u1", Title: "Old", MediaKind: model.MediaVideo, FilePath: "/d/x.mp4", DownloadedAt: "1"}
+	second := &model.VideoRecord{ID: "b", UserID: "u1", Title: "New", MediaKind: model.MediaVideo, FilePath: "/d/x.mp4", DownloadedAt: "2"}
 	if err := db.SaveVideo(first); err != nil {
 		t.Fatal(err)
 	}
@@ -163,7 +164,7 @@ func TestSaveVideoUpsertsByPath(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	videos, _ := db.LoadVideos()
+	videos, _ := db.LoadVideos("u1")
 	if len(videos) != 1 || videos[0].ID != "a" || videos[0].Title != "New" {
 		t.Errorf("videos = %+v", videos)
 	}
@@ -186,7 +187,7 @@ func TestSettingsKeyValue(t *testing.T) {
 func TestJobAccountFieldsAndAccounts(t *testing.T) {
 	db := openTestDB(t, "")
 
-	job := &model.DownloadJob{ID: "j1", URL: "https://x.com/a", Quality: "audio", Status: model.StatusError, ErrorKind: model.ErrorLoginRequired,
+	job := &model.DownloadJob{UserID: "local", ID: "j1", URL: "https://x.com/a", Quality: "audio", Status: model.StatusError, ErrorKind: model.ErrorLoginRequired,
 		UseAccount: false, Site: "x.com", AccountUsed: true}
 	if err := db.SaveJob(job); err != nil {
 		t.Fatal(err)
@@ -199,7 +200,7 @@ func TestJobAccountFieldsAndAccounts(t *testing.T) {
 		t.Errorf("job = %+v", got)
 	}
 
-	account := &model.Account{ID: "a1", Domain: "x.com", Source: model.AccountFromFile, CookieCount: 3, LoggedIn: true,
+	account := &model.Account{ID: "a1", UserID: "u1", Domain: "x.com", Source: model.AccountFromFile, CookieCount: 3, LoggedIn: true,
 		Status: model.AccountOK, CreatedAt: "c", RefreshedAt: "r"}
 	if err := db.SaveAccount(account); err != nil {
 		t.Fatal(err)
@@ -209,18 +210,65 @@ func TestJobAccountFieldsAndAccounts(t *testing.T) {
 	if err := db.SaveAccount(account); err != nil {
 		t.Fatal(err)
 	}
-	got, err := db.GetAccountByDomain("x.com")
+	got, err := db.GetAccountByDomain("u1", "x.com")
 	if err != nil || got.Status != model.AccountExpired || got.CreatedAt != "c" || !got.LoggedIn || got.CookieCount != 3 {
 		t.Errorf("account = %+v, %v", got, err)
 	}
-	if err := db.SaveAccount(&model.Account{ID: "a2", Domain: "x.com", Source: model.AccountFromFile, Status: model.AccountOK, CreatedAt: "c", RefreshedAt: "r"}); err == nil {
+	if err := db.SaveAccount(&model.Account{ID: "a2", UserID: "u1", Domain: "x.com", Source: model.AccountFromFile, Status: model.AccountOK, CreatedAt: "c", RefreshedAt: "r"}); err == nil {
 		t.Error("two accounts for one domain")
 	}
 
-	if err := db.DeleteAccount("a1"); err != nil {
+	if err := db.DeleteAccount("u1", "a1"); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := db.GetAccount("a1"); err != ErrAccountNotFound {
+	if _, err := db.GetAccount("u1", "a1"); err != ErrAccountNotFound {
 		t.Errorf("deleted account error = %v", err)
+	}
+}
+
+// Each user sees only their own library and accounts; another user's id
+// is "not found", and two users may connect the same site.
+func TestUsersAreSeparate(t *testing.T) {
+	db := openTestDB(t, "")
+
+	for _, user := range []string{"alice", "bob"} {
+		video := &model.VideoRecord{ID: user + "-v", UserID: user, Title: user, MediaKind: model.MediaVideo,
+			FilePath: "/media/" + user + "/x.mp4", DownloadedAt: "1"}
+		if err := db.SaveVideo(video); err != nil {
+			t.Fatal(err)
+		}
+		account := &model.Account{ID: user + "-a", UserID: user, Domain: "x.com", Source: model.AccountFromFile,
+			Status: model.AccountOK, CreatedAt: "c", RefreshedAt: "r"}
+		if err := db.SaveAccount(account); err != nil {
+			t.Fatalf("%s: %v", user, err)
+		}
+	}
+
+	videos, _ := db.LoadVideos("alice")
+	if len(videos) != 1 || videos[0].ID != "alice-v" || videos[0].UserID != "alice" {
+		t.Errorf("alice's library = %+v", videos)
+	}
+	if _, err := db.GetVideo("alice", "bob-v"); err != ErrVideoNotFound {
+		t.Errorf("alice got bob's video: %v", err)
+	}
+	if _, err := db.GetAccount("alice", "bob-a"); err != ErrAccountNotFound {
+		t.Errorf("alice got bob's account: %v", err)
+	}
+	if account, err := db.GetAccountByDomain("bob", "x.com"); err != nil || account.ID != "bob-a" {
+		t.Errorf("bob's x.com = %+v, %v", account, err)
+	}
+
+	// Writes by id don't reach another user's rows.
+	db.SavePosition("alice", "bob-v", 42)
+	db.DeleteVideo("alice", "bob-v")
+	db.DeleteAccount("alice", "bob-a")
+	if video, err := db.GetVideo("bob", "bob-v"); err != nil || video.PositionSeconds != 0 {
+		t.Errorf("bob's video = %+v, %v", video, err)
+	}
+	if _, err := db.GetAccount("bob", "bob-a"); err != nil {
+		t.Errorf("bob's account deleted by alice: %v", err)
+	}
+	if all, _ := db.AllVideos(); len(all) != 2 {
+		t.Errorf("all videos = %d", len(all))
 	}
 }

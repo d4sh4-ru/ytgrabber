@@ -104,17 +104,29 @@ describe('HttpTransport', () => {
         expect(requests).toEqual([]);
     });
 
-    it('signs in with the token', async () => {
+    it('signs in with a code', async () => {
         const transport = new HttpTransport();
-        reply = json(200, { authenticated: false });
-        expect(await transport.checkSession()).toBe(false);
+        reply = json(200, { authenticated: false, setupRequired: true });
+        expect(await transport.session()).toEqual({ authenticated: false, setupRequired: true });
 
-        reply = json(401, { error: 'неверный токен' });
-        await expect(transport.login('wrong')).rejects.toThrow('неверный токен');
+        reply = json(401, { error: 'код не подходит или истёк' });
+        await expect(
+            transport.signIn({ code: 'wrong', name: 'Анна', deviceName: 'Mac' }),
+        ).rejects.toThrow('код не подходит');
         expect(requests[1]).toEqual({
             url: '/api/v1/session',
             method: 'POST',
-            body: JSON.stringify({ token: 'wrong' }),
+            body: JSON.stringify({ code: 'wrong', name: 'Анна', deviceName: 'Mac' }),
+        });
+    });
+
+    it('revokes a device by id', async () => {
+        reply = new Response(null, { status: 204 });
+        await new HttpTransport().call('RemoveDevice', ['d1']);
+        expect(requests[0]).toEqual({
+            url: '/api/v1/devices/d1',
+            method: 'DELETE',
+            body: undefined,
         });
     });
 });

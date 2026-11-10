@@ -3,8 +3,9 @@
 // WebSocket with the events the desktop gets from Wails, library files
 // under /media/ and the web frontend itself.
 //
-// Until users and devices exist (issue #14) there is a single user,
-// core.LocalUser, and a single access token from the configuration.
+// Several users share a server, each with their own queue, library and
+// site accounts; every browser, phone or script they use is a device
+// with a token of its own (auth.go).
 package server
 
 import (
@@ -19,10 +20,8 @@ import (
 	"strings"
 
 	"ytgrabber/internal/core"
+	"ytgrabber/internal/storage"
 )
-
-// user is whose data the server works with until there are accounts.
-const user = core.LocalUser
 
 // maxJSONBody bounds request bodies the API decodes; cookies.txt uploads
 // have their own limit (maxCookiesUpload).
@@ -30,8 +29,9 @@ const maxJSONBody = 1 << 20
 
 // Config is what New needs besides the core.
 type Config struct {
-	// Token grants access to everything; see auth.go.
-	Token string
+	// SetupCode signs the first admin in while the server has no users;
+	// see auth.go.
+	SetupCode string
 	// WebDir holds the built frontend; empty serves the API only.
 	WebDir string
 }
@@ -43,17 +43,21 @@ type Server struct {
 	auth   *auth
 	Events *Hub
 	webDir string
+	// whoIs says whose data a request works with.
+	whoIs func(*http.Request) core.UserID
 }
 
 func New(app *core.App, cfg Config) (*Server, error) {
-	if cfg.Token == "" {
-		return nil, errors.New("server: empty access token")
+	if cfg.SetupCode == "" {
+		return nil, errors.New("server: empty setup code")
 	}
+	events := NewHub()
 	return &Server{
 		app:    app,
-		auth:   newAuth(cfg.Token),
-		Events: NewHub(),
+		auth:   newAuth(app, events, cfg.SetupCode),
+		Events: events,
 		webDir: cfg.WebDir,
+		whoIs:  requestUser,
 	}, nil
 }
 
@@ -70,19 +74,36 @@ func (s *Server) Handler() http.Handler {
 		if rt.handle != nil {
 			h = apiHandler(rt.handle)
 		}
+		if rt.admin {
+			h = requireAdmin(h)
+		}
 		if !rt.public {
 			h = protect(h)
 		}
 		mux.Handle(rt.method+" "+apiPrefix+rt.path, h)
 	}
 	mux.Handle("GET /api/v1/openapi.json", http.HandlerFunc(serveSpec))
-	mux.Handle("GET "+mediaPrefix, protect(core.MediaHandler(s.app)))
+	mux.Handle("GET "+mediaPrefix, protect(core.MediaHandler(s.app, s.userOf)))
 
 	mux.Handle("/api/", http.NotFoundHandler())
 	if s.webDir != "" {
 		mux.Handle("/", s.frontend())
 	}
 	return securityHeaders(mux)
+}
+
+// serveEvents opens the event stream of the request's user and device.
+func (s *Server) serveEvents(w http.ResponseWriter, r *http.Request) {
+	who := subscriber{user: s.userOf(r)}
+	if id := identityOf(r); id != nil {
+		who.device = id.device.ID
+	}
+	s.Events.serveWS(w, r, who)
+}
+
+// userOf is the user a request acts for.
+func (s *Server) userOf(r *http.Request) core.UserID {
+	return s.whoIs(r)
 }
 
 // mediaPrefix serves library files (core.MediaHandler); the URLs come in
@@ -103,7 +124,7 @@ func (s *Server) importCookies(r *http.Request) (any, error) {
 		return nil, badRequest("не передан файл cookies.txt")
 	}
 	defer file.Close()
-	return s.app.ImportCookies(user, r.FormValue("site"), file)
+	return s.app.ImportCookies(s.userOf(r), r.FormValue("site"), file)
 }
 
 // frontend serves the built Angular app. Unknown paths get index.html,
@@ -151,6 +172,8 @@ func apiHandler(h func(*http.Request) (any, error)) http.Handler {
 			var known httpError
 			if errors.As(err, &known) {
 				status = known.status
+			} else if isNotFound(err) {
+				status = http.StatusNotFound
 			}
 			writeJSON(w, status, errorResponse{Error: err.Error()})
 			return
@@ -165,6 +188,10 @@ func apiHandler(h func(*http.Request) (any, error)) http.Handler {
 		}
 		writeJSON(w, http.StatusOK, result)
 	})
+}
+
+func isNotFound(err error) bool {
+	return core.IsNotFound(err) || errors.Is(err, storage.ErrUserNotFound) || errors.Is(err, storage.ErrDeviceNotFound)
 }
 
 type httpError struct {

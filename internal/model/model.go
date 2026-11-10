@@ -2,6 +2,8 @@
 // engine and the frontend (Wails generates TypeScript classes from them).
 package model
 
+import "time"
+
 type DownloadStatus string
 
 const (
@@ -43,7 +45,9 @@ const (
 // DownloadJob is a download that hasn't made it into the library yet:
 // queued, running or failed.
 type DownloadJob struct {
-	ID      string `json:"id"`
+	ID string `json:"id"`
+	// UserID is whose job it is (core.UserID); never sent to clients.
+	UserID  string `json:"-"`
 	URL     string `json:"url"`
 	Title   string `json:"title"`
 	Quality string `json:"quality"`
@@ -91,7 +95,9 @@ const (
 // stored here and sent to the frontend; the cookies themselves live in an
 // encrypted snapshot (package accounts) and never leave the backend.
 type Account struct {
-	ID     string        `json:"id"`
+	ID string `json:"id"`
+	// UserID is whose account it is (core.UserID); never sent to clients.
+	UserID string        `json:"-"`
 	Domain string        `json:"domain"`
 	Source AccountSource `json:"source"`
 	// Browser is the browser id (package browsers), BrowserName its
@@ -124,7 +130,10 @@ const (
 // files by path — WebViews block file:// access — but through MediaURL /
 // ThumbnailURL, which the app's media handler serves by record id.
 type VideoRecord struct {
-	ID              string    `json:"id"`
+	ID string `json:"id"`
+	// UserID is whose library the entry is in (core.UserID); never sent
+	// to clients.
+	UserID          string    `json:"-"`
 	Title           string    `json:"title"`
 	SourceURL       string    `json:"sourceUrl"`
 	MediaKind       MediaKind `json:"mediaKind"`
@@ -138,4 +147,58 @@ type VideoRecord struct {
 	MediaURL        string  `json:"mediaUrl"`
 	ThumbnailURL    string  `json:"thumbnailUrl"`
 	FileMissing     bool    `json:"fileMissing"`
+}
+
+// Role is what a server user may do: an admin also manages users, the
+// tools and the server's settings.
+type Role string
+
+const (
+	RoleAdmin Role = "admin"
+	RoleUser  Role = "user"
+)
+
+// User is someone with their own library, queue and site accounts on a
+// server. The desktop app has none: it is the single local user.
+type User struct {
+	ID        string `json:"id"`
+	Name      string `json:"name"`
+	Role      Role   `json:"role" enum:"admin,user"`
+	CreatedAt string `json:"createdAt"`
+}
+
+// Device is one signed-in browser, phone or API client of a user. It is
+// known by a random token of its own, stored only as a hash; revoking the
+// device signs it out.
+type Device struct {
+	ID         string `json:"id"`
+	UserID     string `json:"-"`
+	Name       string `json:"name"`
+	CreatedAt  string `json:"createdAt"`
+	LastSeenAt string `json:"lastSeenAt"`
+	// Current marks the device the request came from.
+	Current bool `json:"current"`
+}
+
+// CodeKind is what a one-time code does when entered on the login screen.
+type CodeKind string
+
+const (
+	// CodeSetup creates the first admin; it exists until there is one.
+	CodeSetup CodeKind = "setup"
+	// CodeInvite creates a new user.
+	CodeInvite CodeKind = "invite"
+	// CodeLink signs a new device in as an existing user.
+	CodeLink CodeKind = "link"
+)
+
+// Code is a stored one-time code (an invite or a device link), kept as a
+// hash like device tokens.
+type Code struct {
+	Hash      string
+	Kind      CodeKind
+	UserID    string // link: who the device signs in as
+	Role      Role   // invite: the new user's role
+	CreatedBy string
+	ExpiresAt time.Time
 }

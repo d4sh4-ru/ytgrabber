@@ -1,4 +1,5 @@
 import { NEVER, Observable } from 'rxjs';
+import type { CodeCheck, SessionInfo, SignInRequest } from '../api/session';
 import { Transport } from '../api/transport';
 
 /**
@@ -8,7 +9,7 @@ import { Transport } from '../api/transport';
 export class FakeTransport extends Transport {
     public isDesktop = true;
     public readonly reconnected$: Observable<void> = NEVER;
-    public isAuthenticated = true;
+    public sessionInfo: SessionInfo = { authenticated: true };
 
     public call<T>(method: string, _args: readonly unknown[] = []): Promise<T> {
         return Promise.reject(new Error(`unexpected call ${method}`));
@@ -18,12 +19,24 @@ export class FakeTransport extends Transport {
         return NEVER;
     }
 
-    public checkSession(): Promise<boolean> {
-        return Promise.resolve(this.isAuthenticated);
+    public session(): Promise<SessionInfo> {
+        return Promise.resolve(this.sessionInfo);
     }
 
-    public login(): Promise<void> {
-        this.isAuthenticated = true;
+    public checkCode(): Promise<CodeCheck> {
+        return Promise.resolve({ kind: 'link' });
+    }
+
+    public signIn(request: SignInRequest): Promise<SessionInfo> {
+        this.sessionInfo = {
+            authenticated: true,
+            user: { id: 'u', name: request.name ?? 'u', role: 'user', createdAt: '' },
+        };
+        return Promise.resolve(this.sessionInfo);
+    }
+
+    public signOut(): Promise<void> {
+        this.sessionInfo = { authenticated: false };
         return Promise.resolve();
     }
 }

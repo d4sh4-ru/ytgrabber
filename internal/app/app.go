@@ -38,7 +38,7 @@ func Hooks(a *App) (onStartup func(context.Context), onShutdown func(context.Con
 
 // MediaHandler serves library files to the WebView; see core.MediaHandler.
 func MediaHandler(a *App) http.Handler {
-	return core.MediaHandler(a.core)
+	return core.MediaHandler(a.core, func(*http.Request) core.UserID { return core.LocalUser })
 }
 
 func (a *App) startup(ctx context.Context) {

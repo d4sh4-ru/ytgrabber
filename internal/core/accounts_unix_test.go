@@ -77,7 +77,7 @@ func importTestAccount(t *testing.T, app *App) *model.Account {
 		".example.com\tTRUE\t/\tTRUE\t2000000000\tsession\ts1\n"+
 		".other.org\tTRUE\t/\tTRUE\t2000000000\tforeign\tf1\n"), 0o644)
 
-	account, err := app.importCookiesFromPath("example.com", file)
+	account, err := app.importCookiesFromPath(LocalUser, "example.com", file)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -86,7 +86,7 @@ func importTestAccount(t *testing.T, app *App) *model.Account {
 
 func snapshotNames(t *testing.T, app *App, account *model.Account) []string {
 	t.Helper()
-	cookies, err := app.accounts.Load(account.ID, account.Domain)
+	cookies, err := app.accounts.Load(account.ID, account.UserID, account.Domain)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -128,7 +128,7 @@ func TestImportCookiesFile(t *testing.T) {
 
 	empty := filepath.Join(t.TempDir(), "cookies.txt")
 	os.WriteFile(empty, []byte("# Netscape HTTP Cookie File\n.other.org\tTRUE\t/\tTRUE\t2000000000\ta\tb\n"), 0o644)
-	if _, err := app.importCookiesFromPath("vk.com", empty); err == nil {
+	if _, err := app.importCookiesFromPath(LocalUser, "vk.com", empty); err == nil {
 		t.Error("imported a file without the site's cookies")
 	}
 }
@@ -159,7 +159,7 @@ func TestDownloadWithAccount(t *testing.T) {
 	if got := snapshotNames(t, app, account); !slices.Equal(got, []string{"rotated_one", "session"}) {
 		t.Errorf("snapshot after write-back = %q", got)
 	}
-	updated, _ := app.db.GetAccount(account.ID)
+	updated, _ := app.db.GetAccount("local", account.ID)
 	if updated.LastUsedAt == "" || updated.CookieCount != 2 {
 		t.Errorf("account after download = %+v", updated)
 	}
@@ -200,13 +200,13 @@ func TestLoginRequiredExpiresAccount(t *testing.T) {
 	if job := jobs[0]; job.ErrorKind != model.ErrorLoginRequired || !job.AccountUsed || job.Site != "example.com" {
 		t.Errorf("job = %+v", job)
 	}
-	if updated, _ := app.db.GetAccount(account.ID); updated.Status != model.AccountExpired {
+	if updated, _ := app.db.GetAccount("local", account.ID); updated.Status != model.AccountExpired {
 		t.Errorf("account status = %s", updated.Status)
 	}
 
 	// After a fresh import the retry runs again with the account.
 	importTestAccount(t, app)
-	if updated, _ := app.db.GetAccount(account.ID); updated.Status != model.AccountOK {
+	if updated, _ := app.db.GetAccount("local", account.ID); updated.Status != model.AccountOK {
 		t.Errorf("re-imported account status = %s", updated.Status)
 	}
 	if err := app.RetryJob(LocalUser, jobs[0].ID, true); err != nil {
@@ -313,7 +313,7 @@ func TestCheckAccountWithoutOnlineCheck(t *testing.T) {
 	account := importTestAccount(t, app)
 
 	// Simulate the session cookie having expired since the import.
-	app.accounts.Save(account.ID, account.Domain, []accounts.Cookie{
+	app.accounts.Save(account.ID, account.UserID, account.Domain, []accounts.Cookie{
 		{Domain: ".example.com", Path: "/", Name: "session", Value: "s1", Expires: 1},
 	})
 	checked, err := app.CheckAccount(LocalUser, account.ID)

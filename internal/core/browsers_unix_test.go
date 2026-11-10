@@ -97,7 +97,7 @@ func TestConnectChromeProfile(t *testing.T) {
 	if spec, _ := os.ReadFile(filepath.Join(record, "spec")); string(spec) != "chrome:"+profileDir {
 		t.Errorf("--cookies-from-browser %q", spec)
 	}
-	cookies, err := app.accounts.Load(account.ID, "instagram.com")
+	cookies, err := app.accounts.Load(account.ID, account.UserID, "instagram.com")
 	if err != nil || len(cookies) != 1 || cookies[0].Value != "chrome-secret" {
 		t.Errorf("snapshot = %+v, %v", cookies, err)
 	}

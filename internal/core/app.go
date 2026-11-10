@@ -43,6 +43,15 @@ type EventSink interface {
 	Publish(name string, data ...interface{})
 }
 
+// UserEventSink is an EventSink that can also deliver an event to one
+// user only. Events about a user's jobs, library and accounts go to that
+// user; a sink without PublishTo (the desktop, with its single user) gets
+// them through Publish.
+type UserEventSink interface {
+	EventSink
+	PublishTo(user UserID, name string, data ...interface{})
+}
+
 // EventFunc adapts a function to EventSink.
 type EventFunc func(name string, data ...interface{})
 
@@ -140,6 +149,16 @@ func WithToolsInstalledAutomatically() Option {
 // builds from channel (stable by default).
 func WithYtDlpChannel(channel installer.Channel) Option {
 	return func(a *App) { a.ytDlpChannel = channel }
+}
+
+// WithCookiesKey makes the accounts' cookies encrypted with key (32
+// bytes, see accounts.DeriveKey) instead of the key file in the data dir.
+func WithCookiesKey(key []byte) Option {
+	return func(a *App) {
+		if err := a.accounts.UseKey(key); err != nil {
+			panic(err) // the caller derives the key, it can't be the wrong size
+		}
+	}
 }
 
 func New(paths platform.Paths, opts ...Option) *App {
@@ -320,6 +339,28 @@ func (a *App) publish(name string, data ...interface{}) {
 		return
 	}
 	a.events.Publish(name, data...)
+}
+
+// publishTo emits an event meant for user only.
+func (a *App) publishTo(user UserID, name string, data ...interface{}) {
+	if a.shuttingDown.Load() {
+		return
+	}
+	if sink, ok := a.events.(UserEventSink); ok {
+		sink.PublishTo(user, name, data...)
+		return
+	}
+	a.events.Publish(name, data...)
+}
+
+// ErrJobNotFound: no such job, or it is another user's.
+var ErrJobNotFound = errors.New("задача не найдена")
+
+// IsNotFound tells whether err means the thing asked for doesn't exist
+// for this user, which is also what another user's job, video or account
+// looks like.
+func IsNotFound(err error) bool {
+	return errors.Is(err, ErrJobNotFound) || errors.Is(err, storage.ErrVideoNotFound) || errors.Is(err, storage.ErrAccountNotFound)
 }
 
 // GetAppInfo возвращает версию, пути к данным/логу и ошибку запуска.

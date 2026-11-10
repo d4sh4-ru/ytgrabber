@@ -23,7 +23,7 @@ func (a *App) GetLibrary(user UserID) ([]*model.VideoRecord, error) {
 		return []*model.VideoRecord{}, err
 	}
 
-	videos, err := a.db.LoadVideos()
+	videos, err := a.db.LoadVideos(string(user))
 	if err != nil {
 		return []*model.VideoRecord{}, fmt.Errorf("не удалось загрузить библиотеку: %w", err)
 	}
@@ -74,12 +74,12 @@ func (a *App) DeleteVideo(user UserID, id string, deleteFiles bool) error {
 		return err
 	}
 
-	video, err := a.db.GetVideo(id)
+	video, err := a.db.GetVideo(string(user), id)
 	if err != nil {
 		return err
 	}
 
-	if err := a.db.DeleteVideo(id); err != nil {
+	if err := a.db.DeleteVideo(string(user), id); err != nil {
 		return fmt.Errorf("не удалось удалить запись: %w", err)
 	}
 
@@ -95,7 +95,7 @@ func (a *App) DeleteVideo(user UserID, id string, deleteFiles bool) error {
 		}
 	}
 
-	a.publish("library-changed")
+	a.publishTo(user, "library-changed")
 	return nil
 }
 
@@ -115,12 +115,12 @@ func (a *App) SavePlaybackPosition(user UserID, id string, seconds float64) (flo
 	if err := a.ensureReady(); err != nil {
 		return 0, err
 	}
-	video, err := a.db.GetVideo(id)
+	video, err := a.db.GetVideo(string(user), id)
 	if err != nil {
 		return 0, err
 	}
 	position := resumePosition(seconds, video.DurationSeconds)
-	if err := a.db.SavePosition(id, position); err != nil {
+	if err := a.db.SavePosition(string(user), id, position); err != nil {
 		return 0, fmt.Errorf("не удалось сохранить позицию: %w", err)
 	}
 	return position, nil
@@ -143,7 +143,7 @@ func (a *App) RevealVideo(user UserID, id string) error {
 		return err
 	}
 
-	video, err := a.db.GetVideo(id)
+	video, err := a.db.GetVideo(string(user), id)
 	if err != nil {
 		return err
 	}
