@@ -1,3 +1,7 @@
+@if (isDesktopApp) {
+    <app-server-connection />
+}
+
 @if (!isDesktop) {
     <app-people />
 }
@@ -251,7 +255,7 @@
             </dd>
         </dl>
 
-        @if (isDesktop) {
+        @if (isDesktopApp) {
             <div class="settings__update">
                 <div class="settings__row">
                     <div class="settings__label">
@@ -308,7 +312,8 @@
                 @if (update?.available && update?.notes) {
                     <pre class="settings__output settings__notes">{{ update?.notes }}</pre>
                 }
-                @if (settings) {
+                <!-- Connected to a server, settings are the server's, not the app's. -->
+                @if (settings && isDesktop) {
                     <label class="settings__check">
                         <input
                             type="checkbox"

@@ -35,8 +35,10 @@
                 } @else {
                     <a
                         class="btn"
-                        title="Скачать на устройство"
-                        aria-label="Скачать на устройство"
+                        [title]="isDesktopApp ? 'Скачать на компьютер' : 'Скачать на устройство'"
+                        [attr.aria-label]="
+                            isDesktopApp ? 'Скачать на компьютер' : 'Скачать на устройство'
+                        "
                         download
                         [href]="downloadUrl"
                         (click)="onDownload($event)"

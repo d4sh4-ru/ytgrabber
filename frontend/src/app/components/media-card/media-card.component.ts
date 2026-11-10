@@ -7,6 +7,7 @@ import {
     Output,
 } from '@angular/core';
 import { model } from '../../api/models';
+import { ConnectionService } from '../../services/connection.service';
 import { Transport } from '../../api/transport';
 import {
     deviceDownloadUrl,
@@ -40,8 +41,14 @@ export class MediaCardComponent {
     @Output()
     public readonly deleteRequested = new EventEmitter<model.VideoRecord>();
 
-    /** The desktop shows the file in its folder; a browser saves it to the device. */
+    private readonly connectionService = inject(ConnectionService);
+
+    /**
+     * The desktop shows the file in its folder; a browser saves it to the
+     * device; the desktop connected to a server saves it to the computer.
+     */
     protected readonly isDesktop = inject(Transport).isDesktop;
+    protected readonly isDesktopApp = inject(Transport).isDesktopApp;
 
     /** The warning shown before a download over mobile data; null when none. */
     protected downloadWarning: string | null = null;
@@ -88,6 +95,11 @@ export class MediaCardComponent {
     protected onDownload(event: Event): void {
         // Let the link save the file without opening the player.
         event.stopPropagation();
+        if (this.isDesktopApp) {
+            event.preventDefault();
+            void this.connectionService.saveToComputer(this.item);
+            return;
+        }
         const warning = meteredDownloadWarning(this.item);
         if (warning) {
             event.preventDefault();

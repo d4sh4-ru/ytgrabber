@@ -14,8 +14,12 @@
                     @if (!isDesktop && !item.fileMissing) {
                         <a
                             class="btn btn--icon"
-                            title="Скачать на устройство"
-                            aria-label="Скачать на устройство"
+                            [title]="
+                                isDesktopApp ? 'Скачать на компьютер' : 'Скачать на устройство'
+                            "
+                            [attr.aria-label]="
+                                isDesktopApp ? 'Скачать на компьютер' : 'Скачать на устройство'
+                            "
                             download
                             [href]="downloadUrl"
                             (click)="onDownload($event)"
@@ -40,7 +44,9 @@
                     {{
                         isDesktop
                             ? 'откройте его через «Показать в папке».'
-                            : 'скачайте его на устройство.'
+                            : isDesktopApp
+                              ? 'скачайте его на компьютер.'
+                              : 'скачайте его на устройство.'
                     }}
                 </p>
             }

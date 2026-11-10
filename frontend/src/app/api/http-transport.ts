@@ -122,6 +122,7 @@ const RECONNECT_MAX_MS = 30000;
  */
 export class HttpTransport implements Transport {
     public readonly isDesktop = false;
+    public readonly isDesktopApp = false;
     public readonly reconnected$: Observable<void>;
 
     private readonly api: Api = createClient<paths>({

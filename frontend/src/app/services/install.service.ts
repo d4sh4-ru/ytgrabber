@@ -54,7 +54,7 @@ export class InstallService {
 
     public constructor() {
         this.offer$ = this.offerSubject$.asObservable();
-        if (this.transport.isDesktop || isInstalled() || isDismissed()) {
+        if (this.transport.isDesktopApp || isInstalled() || isDismissed()) {
             return;
         }
         window.addEventListener('beforeinstallprompt', (event: Event): void => {

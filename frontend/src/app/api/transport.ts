@@ -1,7 +1,9 @@
 import { Injectable } from '@angular/core';
 import { Observable } from 'rxjs';
 import type { CodeCheck, SessionInfo, SignInRequest } from './session';
+import { desktopConnection } from './connection';
 import { HttpTransport } from './http-transport';
+import { RemoteTransport } from './remote-transport';
 import { WailsTransport } from './wails-transport';
 
 /** Wails injects its bindings as window.go before the app's scripts run. */
@@ -9,25 +11,39 @@ export function isWails(): boolean {
     return typeof (window as { go?: unknown }).go === 'object';
 }
 
+function createTransport(): Transport {
+    if (!isWails()) {
+        return new HttpTransport();
+    }
+    return desktopConnection()?.server ? new RemoteTransport() : new WailsTransport();
+}
+
 /**
  * How the frontend reaches the backend. Services call backend methods by
  * name and listen to its events through this class only, so the same
  * services work in the desktop app (WailsTransport) and in a browser
- * talking to ytgrabber-server (HttpTransport).
+ * talking to ytgrabber-server (HttpTransport). The desktop app connected
+ * to a server is a mix of both (RemoteTransport).
  *
- * Used as the DI token too: the desktop transport inside Wails, the HTTP
- * one everywhere else.
+ * Used as the DI token too: one of the desktop transports inside Wails,
+ * by the mode main.ts found out, the HTTP one everywhere else.
  */
 @Injectable({
     providedIn: 'root',
-    useFactory: (): Transport => (isWails() ? new WailsTransport() : new HttpTransport()),
+    useFactory: createTransport,
 })
 export abstract class Transport {
     /**
-     * True in the desktop app. Native dialogs, the file manager, browser
+     * True in the desktop app working with its local library. Native dialogs, the file manager, browser
      * profiles, app updates and "delete all data" exist only there.
      */
     public abstract readonly isDesktop: boolean;
+
+    /**
+     * True in the desktop app in either mode, connected to a server too:
+     * the app's own updates and its link to the server.
+     */
+    public abstract readonly isDesktopApp: boolean;
 
     /**
      * Emits when the event stream (re)connects: events may have been

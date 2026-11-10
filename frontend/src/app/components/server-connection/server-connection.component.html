@@ -1,0 +1,71 @@
+<section class="server">
+    <h2 class="server__heading">Сервер</h2>
+    @if (server) {
+        <div class="server__row">
+            <div class="server__label">
+                <span
+                    >Подключено к <code class="server__address">{{ server }}</code></span
+                >
+                @if (status.connected) {
+                    <span class="server__ok">На связи</span>
+                } @else if (status.error) {
+                    <span class="server__error">{{ status.error }}</span>
+                } @else {
+                    <span class="server__muted">Подключение…</span>
+                }
+                @if (status.warning) {
+                    <span class="server__muted">{{ status.warning }}</span>
+                }
+            </div>
+            <div class="server__buttons">
+                @if (!status.connected) {
+                    <button
+                        type="button"
+                        class="btn"
+                        [disabled]="isSwitching"
+                        (click)="onReconnect()"
+                    >
+                        Повторить
+                    </button>
+                }
+                <button type="button" class="btn" [disabled]="isSwitching" (click)="onUseLocal()">
+                    Работать локально
+                </button>
+            </div>
+        </div>
+        <p class="server__muted">
+            Загрузки, библиотека и настройки — на сервере. Локальная библиотека не пропадает: она
+            вернётся, если работать локально. Выйти с этого компьютера можно в списке устройств
+            ниже.
+        </p>
+    } @else {
+        <p class="server__muted">
+            Приложение может работать с ytgrabber-server: загрузки идут на сервере, а библиотека
+            общая для всех устройств. Для сервера в домашней сети или за VPN он должен быть доступен
+            с этого компьютера.
+        </p>
+        <form class="server__form" (submit)="onConnect($event)">
+            <input
+                class="server__input"
+                type="text"
+                inputmode="url"
+                autocomplete="url"
+                spellcheck="false"
+                placeholder="Адрес сервера, например ytgrabber.example.com"
+                [value]="address"
+                [disabled]="isSwitching"
+                (input)="onAddressInput($event)"
+            />
+            <button
+                type="submit"
+                class="btn btn--primary"
+                [disabled]="!address.trim() || isSwitching"
+            >
+                {{ isSwitching ? 'Подключение…' : 'Подключиться' }}
+            </button>
+        </form>
+        @if (connectError) {
+            <span class="server__error">{{ connectError }}</span>
+        }
+    }
+</section>
