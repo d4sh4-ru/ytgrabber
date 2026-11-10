@@ -157,6 +157,31 @@ func (a *App) RemoveAccount(user UserID, id string) error {
 	return nil
 }
 
+// AccountCookies is the account's cookies as a cookies.txt, for the
+// desktop to hand them to a server: only that site's unexpired cookies,
+// as they were stored. They leave the encrypted store only for that.
+func (a *App) AccountCookies(user UserID, id string) (*model.Account, []byte, error) {
+	if err := a.ensureReady(); err != nil {
+		return nil, nil, err
+	}
+	account, err := a.db.GetAccount(string(user), id)
+	if err != nil {
+		return nil, nil, err
+	}
+	unlock := a.accounts.Lock(id)
+	cookies, err := a.accounts.Load(id, account.UserID, account.Domain)
+	unlock()
+	if err != nil {
+		return nil, nil, fmt.Errorf("не удалось прочитать cookies %s: %w", account.Domain, err)
+	}
+	cookies = accounts.FilterCookies(cookies, account.Domain, time.Now())
+	if len(cookies) == 0 {
+		return nil, nil, fmt.Errorf("у %s не осталось действующих cookies: обновите вход", account.Domain)
+	}
+	decorateAccount(account)
+	return account, accounts.FormatCookies(cookies), nil
+}
+
 // CheckAccount проверяет, действует ли вход: есть ли непросроченный
 // cookie сессии, а для сайтов с проверочной ссылкой (YouTube) — пускает ли
 // сайт с этими cookies (yt-dlp без скачивания).

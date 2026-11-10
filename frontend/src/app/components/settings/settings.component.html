@@ -112,6 +112,9 @@
     } @empty {
         <p class="settings__muted">Нет подключённых сайтов.</p>
     }
+    @if (isDesktopApp && !isDesktop) {
+        <app-local-accounts />
+    }
 </section>
 
 <section class="settings__section">

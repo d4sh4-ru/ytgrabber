@@ -240,6 +240,19 @@ func TestImportCookiesFromReader(t *testing.T) {
 	if _, err := app.ImportCookies(LocalUser, "example.com", strings.NewReader("not cookies")); err == nil {
 		t.Error("garbage accepted as cookies.txt")
 	}
+
+	// Handing the cookies to a server: only that site's, as cookies.txt.
+	exported, data, err := app.AccountCookies(LocalUser, account.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if exported.Domain != "example.com" || !strings.Contains(string(data), "\tsid\tvalue") ||
+		strings.Contains(string(data), "leak") {
+		t.Errorf("exported %s: %q", exported.Domain, data)
+	}
+	if _, _, err := app.AccountCookies(UserID("someone-else"), account.ID); err == nil {
+		t.Error("another user read the account's cookies")
+	}
 }
 
 func TestDeleteVideoKeepsSharedThumbnail(t *testing.T) {

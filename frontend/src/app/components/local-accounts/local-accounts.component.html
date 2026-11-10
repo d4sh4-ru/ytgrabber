@@ -1,0 +1,36 @@
+@if (localAccounts.length > 0) {
+    <div class="local">
+        <span class="local__title">На этом компьютере</span>
+        <p class="local__muted">
+            У сервера нет браузеров, из которых брать вход. Отправьте ему cookies сайтов,
+            подключённых здесь: сервер и компьютер будут пользоваться одним входом. Если сайт
+            разлогинит одного, обновите вход и отправьте снова.
+        </p>
+        @for (account of localAccounts; track account.id) {
+            <div class="local__row">
+                <span class="local__label">
+                    <strong>{{ account.domain }}</strong>
+                    @if (account.browserName) {
+                        <span class="local__muted"
+                            >{{ account.browserName }} · {{ account.profile }}</span
+                        >
+                    }
+                </span>
+                <button
+                    type="button"
+                    class="btn"
+                    [disabled]="sendingId === account.id"
+                    (click)="onSend(account)"
+                >
+                    {{
+                        sendingId === account.id
+                            ? 'Отправка…'
+                            : isOnServer(account)
+                              ? 'Обновить на сервере'
+                              : 'Отправить на сервер'
+                    }}
+                </button>
+            </div>
+        }
+    </div>
+}

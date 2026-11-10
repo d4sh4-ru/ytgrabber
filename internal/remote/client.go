@@ -1,12 +1,14 @@
 package remote
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
 	"log"
+	"mime/multipart"
 	"net"
 	"net/http"
 	"net/url"
@@ -21,6 +23,8 @@ const (
 	mediaPrefix = "/media/"
 	sessionPath = "/api/v1/session"
 	eventsPath  = "/api/v1/events"
+	// accountsPath takes a cookies.txt upload (internal/server/routes.go).
+	accountsPath = "/api/v1/accounts"
 
 	// sessionCookie is the server's cookie with the device token
 	// (internal/server/auth.go): sign-in hands the token over in it.
@@ -335,6 +339,63 @@ func (c *Client) SignOut(ctx context.Context) {
 	c.mu.Lock()
 	c.token = ""
 	c.mu.Unlock()
+}
+
+// SendCookies connects site's account on the server with cookiesTxt (a
+// cookies.txt), as uploading the file in a browser would, and returns the
+// server's account as JSON.
+func (c *Client) SendCookies(ctx context.Context, site string, cookiesTxt []byte) (json.RawMessage, error) {
+	server, token := c.current()
+	if server == nil {
+		return nil, errors.New("приложение не подключено к серверу")
+	}
+	if token == "" {
+		return nil, errors.New("сначала войдите на сервер")
+	}
+	var body bytes.Buffer
+	form := multipart.NewWriter(&body)
+	if err := form.WriteField("site", site); err != nil {
+		return nil, err
+	}
+	file, err := form.CreateFormFile("file", "cookies.txt")
+	if err != nil {
+		return nil, err
+	}
+	file.Write(cookiesTxt)
+	if err := form.Close(); err != nil {
+		return nil, err
+	}
+
+	ctx, cancel := context.WithTimeout(ctx, time.Minute)
+	defer cancel()
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, server.String()+accountsPath, &body)
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set("Authorization", "Bearer "+token)
+	req.Header.Set("Content-Type", form.FormDataContentType())
+	resp, err := c.http.Do(req)
+	if err != nil {
+		return nil, unreachable(server, err)
+	}
+	defer resp.Body.Close()
+	reply, err := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
+	if err != nil {
+		return nil, unreachable(server, err)
+	}
+	switch {
+	case resp.StatusCode == http.StatusUnauthorized:
+		return nil, errSignedOut
+	case resp.StatusCode != http.StatusOK:
+		var failure struct {
+			Error string `json:"error"`
+		}
+		if json.Unmarshal(reply, &failure) == nil && failure.Error != "" {
+			return nil, errors.New(failure.Error)
+		}
+		return nil, fmt.Errorf("сервер не принял cookies: %s", resp.Status)
+	}
+	return json.RawMessage(reply), nil
 }
 
 // Download saves the library file at mediaPath (a /media/ URL) to dest.

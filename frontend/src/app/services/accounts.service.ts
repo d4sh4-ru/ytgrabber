@@ -77,6 +77,21 @@ export class AccountsService {
         return account;
     }
 
+    /**
+     * The sites connected on this computer, while the app works with a
+     * server: their cookies can be sent there.
+     */
+    public localAccounts(): Promise<model.Account[]> {
+        return this.transport.call<model.Account[]>('GetLocalAccounts');
+    }
+
+    /** Connects the server's account of a site with this computer's cookies of it. */
+    public async sendToServer(localId: string): Promise<model.Account> {
+        const account = await this.transport.call<model.Account>('SendAccountToServer', [localId]);
+        await this.refresh();
+        return account;
+    }
+
     public async remove(id: string): Promise<void> {
         await this.transport.call<void>('RemoveAccount', [id]);
         await this.refresh();
