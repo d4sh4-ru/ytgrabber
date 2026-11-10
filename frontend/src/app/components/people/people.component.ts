@@ -12,6 +12,7 @@ import { NotificationService } from '../../services/notification.service';
 import { PeopleService } from '../../services/people.service';
 import { SessionService } from '../../services/session.service';
 import { formatRelativeTime, pluralRu } from '../../shared/format-relative-time';
+import { IconComponent } from '../icon/icon.component';
 import { ConfirmDialogComponent } from '../confirm-dialog/confirm-dialog.component';
 
 /** A code on screen to type in, open as a link or scan as a QR code. */
@@ -32,7 +33,7 @@ interface ShownCode {
 @Component({
     selector: 'app-people',
     standalone: true,
-    imports: [ConfirmDialogComponent],
+    imports: [ConfirmDialogComponent, IconComponent],
     templateUrl: './people.component.html',
     styleUrl: './people.component.scss',
     changeDetection: ChangeDetectionStrategy.OnPush,
@@ -246,8 +247,10 @@ export class PeopleComponent implements OnInit, OnDestroy {
         try {
             await navigator.clipboard.writeText(text);
             this.notificationService.info('Скопировано');
-        } catch (error: unknown) {
-            this.notificationService.error(error);
+        } catch {
+            this.notificationService.error(
+                new Error('Не удалось скопировать: выделите текст в поле и скопируйте вручную'),
+            );
         }
     }
 

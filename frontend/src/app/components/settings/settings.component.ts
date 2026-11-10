@@ -100,6 +100,23 @@ export class SettingsComponent implements OnInit, OnDestroy {
     protected isInstallingUpdate = false;
     protected hasCheckedUpdate = false;
 
+    // --- Session (server only) ---
+    protected isSigningOut = false;
+
+    // --- Session ---
+    protected async onSignOut(): Promise<void> {
+        this.isSigningOut = true;
+        this.changeDetectorRef.markForCheck();
+        try {
+            await this.sessionService.signOut();
+            location.reload();
+        } catch (error: unknown) {
+            this.notificationService.error(error);
+            this.isSigningOut = false;
+            this.changeDetectorRef.markForCheck();
+        }
+    }
+
     // --- Delete all data ---
     protected storage: core.StorageInfo | null = null;
     protected resetStep: ResetStep = 'idle';

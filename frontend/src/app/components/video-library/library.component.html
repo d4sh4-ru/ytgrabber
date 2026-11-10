@@ -37,9 +37,9 @@
 @if (pendingDelete) {
     <app-confirm-dialog
         [title]="'Удалить «' + pendingDelete.title + '»?'"
-        message="Запись исчезнет из библиотеки."
+        [message]="isDesktop ? 'Запись исчезнет из библиотеки.' : 'Файл будет удалён с сервера.'"
         confirmLabel="Удалить"
-        optionLabel="Также удалить файл с диска"
+        [optionLabel]="isDesktop ? 'Также удалить файл с диска' : ''"
         [option]="!pendingDelete.fileMissing"
         (confirmed)="onDeleteConfirmed($event)"
         (cancelled)="onDeleteCancelled()"

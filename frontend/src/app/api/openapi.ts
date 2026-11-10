@@ -241,7 +241,7 @@ export interface paths {
         get?: never;
         put?: never;
         post?: never;
-        /** Убрать из библиотеки */
+        /** Удалить из библиотеки вместе с файлами */
         delete: operations['deleteLibraryId'];
         options?: never;
         head?: never;
@@ -1398,10 +1398,7 @@ export interface operations {
     };
     deleteLibraryId: {
         parameters: {
-            query?: {
-                /** @description true — удалить и файлы с диска */
-                deleteFiles?: string;
-            };
+            query?: never;
             header?: never;
             path: {
                 id: string;

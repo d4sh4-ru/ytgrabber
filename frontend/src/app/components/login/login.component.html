@@ -28,7 +28,15 @@
         <button type="submit" class="btn btn--primary" [disabled]="isSubmitting || !code.trim()">
             {{ isSubmitting ? 'Проверка…' : 'Дальше' }}
         </button>
+        @if (canScan) {
+            <button type="button" class="btn" [disabled]="isSubmitting" (click)="onScan()">
+                Сканировать QR-код
+            </button>
+        }
     </form>
+    @if (isScanning) {
+        <app-qr-scanner (scanned)="onScanned($event)" (closed)="onScanClosed()" />
+    }
 } @else {
     <form class="login" (submit)="onSubmitDetails($event)">
         <h1 class="login__title">{{ title }}</h1>

@@ -1518,14 +1518,6 @@
             "schema": {
               "type": "string"
             }
-          },
-          {
-            "description": "true — удалить и файлы с диска",
-            "in": "query",
-            "name": "deleteFiles",
-            "schema": {
-              "type": "string"
-            }
           }
         ],
         "responses": {
@@ -1587,7 +1579,7 @@
             "description": "Нет такой записи (или она другого пользователя)"
           }
         },
-        "summary": "Убрать из библиотеки"
+        "summary": "Удалить из библиотеки вместе с файлами"
       }
     },
     "/library/{id}/position": {
