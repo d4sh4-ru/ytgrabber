@@ -29,6 +29,11 @@
         justify-content: center;
         height: 90px;
         background: v.$bg-elevated;
+
+        @include v.narrow {
+            height: auto;
+            aspect-ratio: 16 / 9;
+        }
     }
 
     &__image {
@@ -86,6 +91,21 @@
             display: inline-flex;
             text-decoration: none;
             padding: 4px 6px;
+
+            // 36px to look at, 44px to hit: the ::after reaches 4px around.
+            @include v.touch {
+                position: relative;
+                min-width: 36px;
+                min-height: 36px;
+                padding: 6px;
+                background: rgba(v.$bg-elevated, 0.85);
+
+                &::after {
+                    content: '';
+                    position: absolute;
+                    inset: -4px;
+                }
+            }
         }
 
         .btn--danger {
@@ -100,6 +120,20 @@
         white-space: nowrap;
         overflow: hidden;
         text-overflow: ellipsis;
+
+        @include v.narrow {
+            // Two lines: at 160px one line holds a couple of words.
+            display: -webkit-box;
+            -webkit-box-orient: vertical;
+            -webkit-line-clamp: 2;
+            line-clamp: 2;
+            white-space: normal;
+        }
+    }
+
+    &__dialog {
+        display: contents;
+        cursor: default;
     }
 
     &__duration {

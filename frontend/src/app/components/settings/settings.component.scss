@@ -30,8 +30,10 @@
 
     &__heading-row {
         display: flex;
+        flex-wrap: wrap;
         align-items: center;
         justify-content: space-between;
+        gap: 8px;
     }
 
     &__heading {
@@ -46,6 +48,12 @@
         align-items: center;
         justify-content: space-between;
         gap: 12px;
+
+        // Phones: the buttons go under the label instead of squeezing it.
+        @include v.narrow {
+            flex-wrap: wrap;
+            gap: 8px;
+        }
     }
 
     &__tool {
@@ -68,7 +76,12 @@
     &__buttons {
         display: flex;
         flex-shrink: 0;
+        flex-wrap: wrap;
         gap: 6px;
+
+        @include v.narrow {
+            margin-left: auto;
+        }
     }
 
     &__path {
@@ -118,6 +131,10 @@
         gap: 6px;
         font-size: 13px;
         cursor: pointer;
+
+        @include v.touch {
+            min-height: v.$touch-target;
+        }
     }
 
     &__hint {
@@ -140,6 +157,10 @@
         border-radius: v.$radius-sm;
         background: v.$bg-elevated;
         color: v.$text-primary;
+
+        @include v.touch {
+            min-height: v.$touch-target;
+        }
     }
 
     &__output {
@@ -158,6 +179,16 @@
         gap: 4px 12px;
         margin: 0;
         font-size: 13px;
+
+        @include v.narrow {
+            grid-template-columns: 1fr;
+            gap: 0;
+
+            dd {
+                margin-bottom: 6px;
+                overflow-wrap: anywhere;
+            }
+        }
 
         dt {
             color: v.$text-secondary;

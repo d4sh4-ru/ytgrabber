@@ -8,18 +8,26 @@
 .download-form {
     display: flex;
     gap: 8px;
-
     margin-left: -(v.$radius-sm);
     margin-right: -(v.$radius-sm);
 
+    @include v.narrow {
+        flex-wrap: wrap;
+    }
+
     &__input {
         flex: 1;
+        min-width: 0;
         padding: 8px 10px;
         border: 1px solid v.$border-subtle;
         border-radius: v.$radius-sm;
         background: v.$bg-surface;
         color: v.$text-primary;
         font-size: 14px;
+
+        @include v.narrow {
+            flex-basis: 100%;
+        }
 
         &:focus {
             outline: none;
@@ -36,12 +44,17 @@
     }
 
     &__quality {
+        min-width: 0;
         padding: 8px 10px;
         border: 1px solid v.$border-subtle;
         border-radius: v.$radius-sm;
         background: v.$bg-surface;
         color: v.$text-primary;
         font-size: 14px;
+
+        @include v.narrow {
+            flex: 1;
+        }
 
         &:focus {
             outline: none;
@@ -68,6 +81,14 @@
     }
 }
 
+.download-form__input,
+.download-form__quality,
+.download-form__submit {
+    @include v.touch {
+        min-height: v.$touch-target;
+    }
+}
+
 .download-form__option {
     display: flex;
     align-items: center;
@@ -76,6 +97,12 @@
     color: v.$text-secondary;
     font-size: 12px;
     cursor: pointer;
+
+    @include v.touch {
+        min-height: v.$touch-target;
+        margin-top: 4px;
+        font-size: 14px;
+    }
 }
 
 .vertical-divider {

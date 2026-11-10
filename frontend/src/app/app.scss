@@ -4,9 +4,18 @@
     max-width: 720px;
     margin: 0 auto;
     padding: 16px;
+    // Landscape iPhones: keep clear of the notch on either side.
+    padding-right: max(16px, env(safe-area-inset-right));
+    padding-left: max(16px, env(safe-area-inset-left));
     display: flex;
     flex-direction: column;
     gap: 20px;
+
+    @include v.narrow {
+        padding: max(12px, env(safe-area-inset-top)) max(12px, env(safe-area-inset-right)) 0
+            max(12px, env(safe-area-inset-left));
+        gap: 16px;
+    }
 
     &__header {
         display: flex;
@@ -24,9 +33,26 @@
     &__tabs {
         display: flex;
         gap: 4px;
+
+        // Phones: a tab bar along the bottom edge, in reach of the thumb.
+        @include v.narrow {
+            position: fixed;
+            right: 0;
+            bottom: 0;
+            left: 0;
+            z-index: 15;
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 0;
+            padding: 0 env(safe-area-inset-right) env(safe-area-inset-bottom)
+                env(safe-area-inset-left);
+            border-top: 1px solid v.$border-subtle;
+            background: v.$bg-surface;
+        }
     }
 
     &__tab {
+        position: relative;
         display: flex;
         align-items: center;
         gap: 6px;
@@ -42,6 +68,32 @@
             border-bottom-color: v.$accent;
             color: v.$text-primary;
         }
+
+        @include v.touch {
+            min-height: v.$touch-target;
+        }
+
+        @include v.narrow {
+            flex-direction: column;
+            justify-content: center;
+            gap: 2px;
+            height: v.$bottom-nav-height;
+            padding: 4px;
+            border-bottom: none;
+            font-size: 11px;
+
+            &--active {
+                color: v.$accent;
+            }
+        }
+    }
+
+    &__tab-icon {
+        display: none;
+
+        @include v.narrow {
+            display: inline-flex;
+        }
     }
 
     &__tab-badge {
@@ -54,6 +106,14 @@
         font-size: 11px;
         font-weight: 600;
         line-height: 1.6;
+
+        // On the icon's top-right corner.
+        @include v.narrow {
+            position: absolute;
+            top: 4px;
+            left: calc(50% + 6px);
+            line-height: 1.4;
+        }
     }
 }
 
@@ -64,4 +124,9 @@
 .app__section {
     // Room for the fixed audio player bar.
     padding-bottom: 88px;
+
+    // ...and on phones for the tab bar under it.
+    @include v.narrow {
+        padding-bottom: calc(88px + #{v.$bottom-nav-height} + env(safe-area-inset-bottom));
+    }
 }

@@ -1,5 +1,5 @@
 @if (item) {
-    <div class="backdrop" (click)="onClose()">
+    <div class="backdrop video-modal__backdrop" (click)="onClose()">
         <div class="video-modal" role="dialog" aria-modal="true" (click)="$event.stopPropagation()">
             <div class="video-modal__header">
                 <span class="video-modal__title" [title]="item.title">{{ item.title }}</span>
@@ -11,6 +11,18 @@
                         <button class="btn" type="button" (click)="onStartOver()">С начала</button>
                     }
                     <button class="btn" type="button" (click)="onFullscreen()">Развернуть</button>
+                    @if (!isDesktop && !item.fileMissing) {
+                        <a
+                            class="btn btn--icon"
+                            title="Скачать на устройство"
+                            aria-label="Скачать на устройство"
+                            download
+                            [href]="downloadUrl"
+                            (click)="onDownload($event)"
+                        >
+                            <app-icon name="download" [size]="18" />
+                        </a>
+                    }
                     <button
                         class="btn btn--icon"
                         type="button"
@@ -24,21 +36,48 @@
             @if (playbackError) {
                 <p class="video-modal__error">
                     Не удалось воспроизвести файл. Он мог быть удалён или использует кодек, который
-                    не поддерживает встроенный плеер — откройте его через «Показать в папке».
+                    не поддерживает встроенный плеер —
+                    {{
+                        isDesktop
+                            ? 'откройте его через «Показать в папке».'
+                            : 'скачайте его на устройство.'
+                    }}
                 </p>
             }
-            <video
-                #videoElement
-                class="video-modal__player"
-                [src]="item.mediaUrl"
-                controls
-                autoplay
-                (loadedmetadata)="onLoadedMetadata()"
-                (timeupdate)="onTimeUpdate()"
-                (pause)="onPaused()"
-                (ended)="onPaused()"
-                (error)="onPlaybackError()"
-            ></video>
+            <div class="video-modal__stage">
+                <video
+                    #videoElement
+                    class="video-modal__player"
+                    [src]="item.mediaUrl"
+                    controls
+                    autoplay
+                    playsinline
+                    (loadedmetadata)="onLoadedMetadata()"
+                    (timeupdate)="onTimeUpdate()"
+                    (pause)="onPaused()"
+                    (ended)="onPaused()"
+                    (error)="onPlaybackError()"
+                    (pointerup)="onVideoPointerUp($event)"
+                ></video>
+                @if (seekHint) {
+                    <span
+                        class="video-modal__seek-hint"
+                        [class.video-modal__seek-hint--forward]="seekHint === 'forward'"
+                        aria-hidden="true"
+                        >{{ seekHintLabel }}</span
+                    >
+                }
+            </div>
         </div>
     </div>
+
+    @if (downloadWarning) {
+        <app-confirm-dialog
+            title="Скачать по мобильной сети?"
+            confirmLabel="Скачать"
+            [message]="downloadWarning"
+            (confirmed)="onDownloadConfirmed()"
+            (cancelled)="onDownloadCancelled()"
+        />
+    }
 }

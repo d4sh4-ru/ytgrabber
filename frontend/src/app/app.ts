@@ -22,6 +22,7 @@ import { AudioPlayerBarComponent } from './components/audio-player-bar/audio-pla
 import { SettingsComponent } from './components/settings/settings.component';
 import { ToastHostComponent } from './components/toast-host/toast-host.component';
 import { LoginComponent } from './components/login/login.component';
+import { IconComponent } from './components/icon/icon.component';
 import { Transport } from './api/transport';
 import { SessionService } from './services/session.service';
 
@@ -40,6 +41,7 @@ const ACTIVE_JOB_STATUSES: ReadonlySet<string> = new Set(['pending', 'downloadin
         SettingsComponent,
         ToastHostComponent,
         LoginComponent,
+        IconComponent,
     ],
     templateUrl: './app.html',
     styleUrl: './app.scss',

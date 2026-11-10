@@ -617,6 +617,7 @@ export interface components {
             mediaKind: 'video' | 'audio';
             mediaUrl: string;
             positionSeconds: number;
+            sizeBytes: number;
             sourceUrl: string;
             thumbnailUrl: string;
             title: string;

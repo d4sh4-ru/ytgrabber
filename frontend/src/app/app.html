@@ -11,6 +11,7 @@
                     [class.app__tab--active]="activeTab === 'add'"
                     (click)="setTab('add')"
                 >
+                    <app-icon class="app__tab-icon" name="download" [size]="22" />
                     Загрузки
                     @if (activeJobsCount > 0) {
                         <span class="app__tab-badge">{{ activeJobsCount }}</span>
@@ -22,6 +23,7 @@
                     [class.app__tab--active]="activeTab === 'library'"
                     (click)="setTab('library')"
                 >
+                    <app-icon class="app__tab-icon" name="library" [size]="22" />
                     Библиотека
                 </button>
                 <button
@@ -30,6 +32,7 @@
                     [class.app__tab--active]="activeTab === 'settings'"
                     (click)="setTab('settings')"
                 >
+                    <app-icon class="app__tab-icon" name="sliders" [size]="22" />
                     Настройки
                     @if (missingRequiredTools.length > 0) {
                         <span class="app__tab-badge app__tab-badge--warning">!</span>
