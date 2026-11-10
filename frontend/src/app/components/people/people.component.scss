@@ -1,0 +1,144 @@
+@use '../../../styles/variables' as v;
+
+:host {
+    display: contents;
+}
+
+.people {
+    &__section {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        padding: 12px;
+        border: 1px solid v.$border-subtle;
+        border-radius: v.$radius-md;
+        background: v.$bg-surface;
+    }
+
+    &__heading-row {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+    }
+
+    &__heading {
+        margin: 0;
+        font-size: 14px;
+        font-weight: 600;
+    }
+
+    &__row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        padding: 8px 0;
+        border-top: 1px solid v.$border-subtle;
+    }
+
+    &__label {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+        min-width: 0;
+        font-size: 13px;
+    }
+
+    &__muted {
+        margin: 0;
+        color: v.$text-secondary;
+        font-size: 12px;
+        line-height: 1.5;
+    }
+
+    &__tag {
+        margin-left: 6px;
+        padding: 1px 6px;
+        border-radius: v.$radius-sm;
+        background: rgba(v.$accent, 0.2);
+        color: v.$accent;
+        font-size: 11px;
+    }
+
+    &__buttons {
+        display: flex;
+        flex-shrink: 0;
+        flex-wrap: wrap;
+        gap: 6px;
+
+        &--end {
+            justify-content: flex-end;
+        }
+    }
+
+    &__token {
+        display: flex;
+        gap: 6px;
+        padding-top: 8px;
+        border-top: 1px solid v.$border-subtle;
+    }
+
+    &__input,
+    &__select {
+        min-width: 0;
+        padding: 6px 8px;
+        border: 1px solid v.$border-subtle;
+        border-radius: v.$radius-sm;
+        background: v.$bg-primary;
+        color: v.$text-primary;
+        font-size: 13px;
+    }
+
+    &__input {
+        flex: 1;
+    }
+
+    &__mono {
+        font-family: ui-monospace, monospace;
+    }
+
+    &__secret {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+    }
+
+    &__backdrop {
+        position: fixed;
+        inset: 0;
+        z-index: 100;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 16px;
+        background: rgba(0, 0, 0, 0.6);
+    }
+
+    &__dialog {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        width: 100%;
+        max-width: 360px;
+        padding: 16px;
+        border-radius: v.$radius-md;
+        background: v.$bg-elevated;
+    }
+
+    &__qr {
+        align-self: center;
+        width: 200px;
+        height: 200px;
+        border-radius: v.$radius-sm;
+        image-rendering: pixelated;
+    }
+
+    &__code {
+        font-family: ui-monospace, monospace;
+        font-size: 22px;
+        letter-spacing: 2px;
+        text-align: center;
+    }
+}

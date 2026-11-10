@@ -1,5 +1,6 @@
 import { NEVER, Observable } from 'rxjs';
 import { EventsOn } from '../wailsjs/wailsjs/runtime';
+import type { CodeCheck, SessionInfo } from './session';
 import type { Transport } from './transport';
 
 type Binding = (...args: unknown[]) => Promise<unknown>;
@@ -34,11 +35,19 @@ export class WailsTransport implements Transport {
         });
     }
 
-    public checkSession(): Promise<boolean> {
-        return Promise.resolve(true);
+    public session(): Promise<SessionInfo> {
+        return Promise.resolve({ authenticated: true });
     }
 
-    public login(): Promise<void> {
+    public checkCode(): Promise<CodeCheck> {
+        return Promise.reject(new Error('В приложении нет входа'));
+    }
+
+    public signIn(): Promise<SessionInfo> {
+        return this.session();
+    }
+
+    public signOut(): Promise<void> {
         return Promise.resolve();
     }
 }

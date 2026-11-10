@@ -26,6 +26,8 @@ import {
 } from '../confirm-dialog/confirm-dialog.component';
 import { AccountConnectDialogComponent } from '../account-connect-dialog/account-connect-dialog.component';
 import { Transport } from '../../api/transport';
+import { SessionService } from '../../services/session.service';
+import { PeopleComponent } from '../people/people.component';
 
 const CONFIGURABLE_TOOLS: ReadonlySet<string> = new Set<ConfigurableTool>(['yt-dlp', 'ffmpeg']);
 const CONCURRENCY_OPTIONS: readonly number[] = [1, 2, 3, 4, 5];
@@ -36,7 +38,7 @@ type ResetStep = 'idle' | 'choose' | 'confirm';
 @Component({
     selector: 'app-settings',
     standalone: true,
-    imports: [ConfirmDialogComponent, AccountConnectDialogComponent],
+    imports: [ConfirmDialogComponent, AccountConnectDialogComponent, PeopleComponent],
     templateUrl: './settings.component.html',
     styleUrl: './settings.component.scss',
     changeDetection: ChangeDetectionStrategy.OnPush,
@@ -48,11 +50,14 @@ export class SettingsComponent implements OnInit, OnDestroy {
     private readonly accountsService = inject(AccountsService);
     private readonly updateService = inject(UpdateService);
     private readonly notificationService = inject(NotificationService);
+    private readonly sessionService = inject(SessionService);
     private readonly changeDetectorRef = inject(ChangeDetectorRef);
     private readonly destroy$ = new Subject<void>();
 
     /** Folder pickers, updates and "delete all data" exist only on the desktop. */
     protected readonly isDesktop = inject(Transport).isDesktop;
+    /** On a server only admins install tools and change its settings. */
+    protected isAdmin = true;
 
     // --- Settings ---
     protected settings: core.Settings | null = null;
@@ -166,6 +171,13 @@ export class SettingsComponent implements OnInit, OnDestroy {
             .pipe(takeUntil(this.destroy$))
             .subscribe((progress: UpdateProgress | null): void => {
                 this.updateProgress = progress;
+                this.changeDetectorRef.markForCheck();
+            });
+
+        this.sessionService.isAdmin$
+            .pipe(takeUntil(this.destroy$))
+            .subscribe((isAdmin: boolean): void => {
+                this.isAdmin = isAdmin;
                 this.changeDetectorRef.markForCheck();
             });
 

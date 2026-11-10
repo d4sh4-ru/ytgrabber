@@ -34,6 +34,7 @@ var migrations = []func(tx *sql.Tx, env MigrationEnv) error{
 	migratePlaybackPosition,
 	migrateJobErrorDetails,
 	migrateUsers,
+	migrateUserDevices,
 }
 
 // migrateUsers gives jobs, library entries (with their playback

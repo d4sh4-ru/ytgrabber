@@ -20,11 +20,13 @@ type route struct {
 	path    string // relative to apiPrefix, "{name}" for path parameters
 	summary string
 	public  bool // reachable without a token
+	admin   bool // only for admins
 
 	query    []queryParam
 	request  any  // pointer to the JSON body type; nil: no body
 	upload   bool // multipart/form-data with "site" and "file" instead of JSON
 	response any  // the JSON response type; nil: 204 No Content
+	svg      bool // answers with an SVG image instead
 
 	handle func(*http.Request) (any, error) // JSON endpoints
 	raw    http.HandlerFunc                 // everything else
@@ -61,8 +63,25 @@ type installRequest struct {
 	Names []string `json:"names"`
 }
 
+type codeRequest struct {
+	Code string `json:"code"`
+}
+
 type loginRequest struct {
-	Token string `json:"token"`
+	// Code is the setup code, an invite or a device link.
+	Code string `json:"code"`
+	// Name is the new user's, for the setup code and invites.
+	Name string `json:"name,omitempty"`
+	// DeviceName tells this device apart in the list of devices.
+	DeviceName string `json:"deviceName,omitempty"`
+}
+
+type deviceRequest struct {
+	Name string `json:"name"`
+}
+
+type inviteRequest struct {
+	Role string `json:"role,omitempty" enum:"admin,user"`
 }
 
 // Responses without a core type.
@@ -74,6 +93,40 @@ type healthResponse struct {
 
 type sessionResponse struct {
 	Authenticated bool `json:"authenticated"`
+	// SetupRequired: the server has no users yet, the setup code makes
+	// the first admin.
+	SetupRequired bool        `json:"setupRequired,omitempty"`
+	User          *model.User `json:"user,omitempty"`
+	DeviceID      string      `json:"deviceId,omitempty"`
+}
+
+type codeResponse struct {
+	Kind model.CodeKind `json:"kind" enum:"setup,invite,link"`
+	// UserName is who a device link signs in as.
+	UserName string `json:"userName,omitempty"`
+}
+
+// codeIssued is a one-time code as the user types it.
+type codeIssued struct {
+	Code      string `json:"code"`
+	ExpiresAt string `json:"expiresAt"`
+}
+
+type newDeviceResponse struct {
+	Device *model.Device `json:"device"`
+	// Token is shown this once: the server keeps only its hash.
+	Token string `json:"token"`
+}
+
+type userInfo struct {
+	ID         string     `json:"id"`
+	Name       string     `json:"name"`
+	Role       model.Role `json:"role" enum:"admin,user"`
+	CreatedAt  string     `json:"createdAt"`
+	Devices    int        `json:"devices"`
+	LastSeenAt string     `json:"lastSeenAt"`
+	// Current is the admin looking at the list.
+	Current bool `json:"current"`
 }
 
 type errorResponse struct {
@@ -101,22 +154,71 @@ func (s *Server) routes() []route {
 			},
 		},
 
-		// Session: the login screen trades the token for a cookie.
+		// Session: the login screen trades a one-time code for a device.
 		{
-			method: "GET", path: "/session", summary: "Вошёл ли клиент", public: true,
+			method: "GET", path: "/session", summary: "Кто вошёл; нужна ли первая настройка", public: true,
 			response: sessionResponse{}, raw: s.auth.getSession,
 		},
 		{
-			method: "POST", path: "/session", summary: "Войти по токену: ставит cookie сессии", public: true,
-			request: &loginRequest{}, response: sessionResponse{}, raw: s.auth.login,
+			method: "POST", path: "/session/code", summary: "Что сделает код (не расходуя его)", public: true,
+			request: &codeRequest{}, response: codeResponse{}, raw: s.auth.checkCode,
+			doc: "Код настройки, приглашение или код устройства. Неверные коды ограничены: " +
+				"10 в минуту на сервер, дальше 429.",
 		},
 		{
-			method: "DELETE", path: "/session", summary: "Выйти: удаляет cookie сессии", public: true,
+			method: "POST", path: "/session", summary: "Войти по коду: новое устройство и cookie сессии", public: true,
+			request: &loginRequest{}, response: sessionResponse{}, raw: s.auth.login,
+			doc: "Код настройки создаёт первого администратора, приглашение — нового пользователя " +
+				"(нужно name), код устройства входит как тот, кто его создал. Код одноразовый.",
+		},
+		{
+			method: "DELETE", path: "/session", summary: "Выйти: отзывает это устройство", public: true,
 			raw: s.auth.logout,
 		},
 
+		// Devices: the user's own.
 		{
-			method: "GET", path: "/events", summary: "События (WebSocket)", raw: func(w http.ResponseWriter, r *http.Request) { s.Events.serveWS(w, r, s.userOf(r)) },
+			method: "GET", path: "/devices", summary: "Мои устройства",
+			response: []*model.Device{}, handle: s.listDevices,
+		},
+		{
+			method: "POST", path: "/devices", summary: "Токен для скрипта или API-клиента",
+			request: &deviceRequest{}, response: newDeviceResponse{}, handle: jsonBody(s.createDevice),
+		},
+		{
+			method: "DELETE", path: "/devices/{id}", summary: "Отозвать устройство: выходит и теряет события",
+			handle: s.removeDevice,
+		},
+		{
+			method: "POST", path: "/devices/link", summary: "Код, которым войти на другом устройстве (10 минут)",
+			response: codeIssued{}, handle: s.linkDevice,
+		},
+		{
+			method: "GET", path: "/qr", summary: "QR-код текста (ссылки с кодом) в SVG",
+			query: []queryParam{{name: "text", description: "что закодировать, до 512 байт"}},
+			svg:   true, raw: serveQR,
+		},
+
+		// Users: the admin's.
+		{
+			method: "GET", path: "/users", summary: "Пользователи", admin: true,
+			response: []userInfo{}, handle: s.listUsers,
+		},
+		{
+			method: "POST", path: "/users/invites", summary: "Приглашение нового пользователя (сутки)", admin: true,
+			request: &inviteRequest{}, response: codeIssued{}, handle: jsonBody(s.inviteUser),
+		},
+		{
+			method: "POST", path: "/users/{id}/link", summary: "Код входа для пользователя, потерявшего устройства (сутки)", admin: true,
+			response: codeIssued{}, handle: s.linkUser,
+		},
+		{
+			method: "DELETE", path: "/users/{id}", summary: "Удалить пользователя со всеми его данными", admin: true,
+			handle: s.removeUser,
+		},
+
+		{
+			method: "GET", path: "/events", summary: "События (WebSocket)", raw: s.serveEvents,
 			doc: "WebSocket. Каждое сообщение — JSON {\"name\": ..., \"data\": ...}: " +
 				"download-status и download-progress (model.DownloadJob), job-removed (id задачи), " +
 				"library-changed, accounts-changed, tool-install-progress. " +
@@ -213,7 +315,7 @@ func (s *Server) routes() []route {
 			handle:   func(r *http.Request) (any, error) { return s.app.GetSettings(s.userOf(r)), nil },
 		},
 		{
-			method: "PUT", path: "/settings/max-concurrent-downloads", summary: "Сколько загрузок идёт одновременно",
+			method: "PUT", path: "/settings/max-concurrent-downloads", summary: "Сколько загрузок идёт одновременно", admin: true,
 			request: &intValueRequest{}, response: core.Settings{},
 			handle: jsonBody(func(_ *http.Request, body *intValueRequest) (any, error) {
 				return s.app.SetMaxConcurrentDownloads(body.Value)
@@ -227,27 +329,27 @@ func (s *Server) routes() []route {
 			handle:   func(*http.Request) (any, error) { return s.app.GetDependencies(), nil },
 		},
 		{
-			method: "POST", path: "/tools/install", summary: "Установить программы; прогресс — событиями tool-install-progress",
+			method: "POST", path: "/tools/install", summary: "Установить программы; прогресс — событиями tool-install-progress", admin: true,
 			request: &installRequest{}, response: tools.Report{},
 			handle: jsonBody(func(_ *http.Request, body *installRequest) (any, error) {
 				return s.app.InstallTools(body.Names)
 			}),
 		},
 		{
-			method: "POST", path: "/tools/install/cancel", summary: "Прервать установку",
+			method: "POST", path: "/tools/install/cancel", summary: "Прервать установку", admin: true,
 			handle: func(*http.Request) (any, error) {
 				s.app.CancelToolInstall()
 				return nil, nil
 			},
 		},
 		{
-			method: "POST", path: "/tools/yt-dlp/rollback",
+			method: "POST", path: "/tools/yt-dlp/rollback", admin: true,
 			summary:  "Вернуть версию yt-dlp, которую заменило последнее обновление",
 			response: tools.Report{},
 			handle:   func(*http.Request) (any, error) { return s.app.RollbackYtDlp() },
 		},
 		{
-			method: "POST", path: "/tools/yt-dlp/update", summary: "Обновить yt-dlp; возвращает, что получилось",
+			method: "POST", path: "/tools/yt-dlp/update", summary: "Обновить yt-dlp; возвращает, что получилось", admin: true,
 			response: "",
 			handle:   func(*http.Request) (any, error) { return s.app.UpdateYtDlp() },
 		},

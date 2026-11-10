@@ -34,11 +34,18 @@ const (
 // clients.
 type Hub struct {
 	mu      sync.Mutex
-	clients map[chan []byte]core.UserID
+	clients map[chan []byte]subscriber
+}
+
+// subscriber is whose a socket is: events go by user, revoking a device
+// closes that device's sockets.
+type subscriber struct {
+	user   core.UserID
+	device string
 }
 
 func NewHub() *Hub {
-	return &Hub{clients: make(map[chan []byte]core.UserID)}
+	return &Hub{clients: make(map[chan []byte]subscriber)}
 }
 
 // Publish sends an event to every client. It never blocks the core: a
@@ -67,7 +74,7 @@ func (h *Hub) send(user *core.UserID, name string, data []interface{}) {
 	h.mu.Lock()
 	defer h.mu.Unlock()
 	for client, owner := range h.clients {
-		if user != nil && owner != *user {
+		if user != nil && owner.user != *user {
 			continue
 		}
 		select {
@@ -79,12 +86,42 @@ func (h *Hub) send(user *core.UserID, name string, data []interface{}) {
 	}
 }
 
-func (h *Hub) subscribe(user core.UserID) chan []byte {
+func (h *Hub) subscribe(who subscriber) chan []byte {
 	client := make(chan []byte, clientBuffer)
 	h.mu.Lock()
-	h.clients[client] = user
+	h.clients[client] = who
 	h.mu.Unlock()
 	return client
+}
+
+// count is how many clients are connected.
+func (h *Hub) count() int {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	return len(h.clients)
+}
+
+// closeDevice ends the event streams of a revoked device.
+func (h *Hub) closeDevice(device string) {
+	h.disconnect(func(who subscriber) bool { return who.device == device })
+}
+
+// closeUser ends the event streams of a removed user.
+func (h *Hub) closeUser(user core.UserID) {
+	h.disconnect(func(who subscriber) bool { return who.user == user })
+}
+
+// disconnect closes the matching clients' channels; serveWS then closes
+// their sockets.
+func (h *Hub) disconnect(match func(subscriber) bool) {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	for client, who := range h.clients {
+		if match(who) {
+			delete(h.clients, client)
+			close(client)
+		}
+	}
 }
 
 func (h *Hub) unsubscribe(client chan []byte) {
@@ -100,15 +137,15 @@ func (h *Hub) unsubscribe(client chan []byte) {
 // this server, so another site can't open a socket with the user's cookie.
 var upgrader = websocket.Upgrader{}
 
-// serveWS streams user's events to one client. Clients only listen;
+// serveWS streams the events of who's user to one client. Clients only listen;
 // anything they send is read and discarded so pings and close frames are
 // handled.
-func (h *Hub) serveWS(w http.ResponseWriter, r *http.Request, user core.UserID) {
+func (h *Hub) serveWS(w http.ResponseWriter, r *http.Request, who subscriber) {
 	conn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
 		return // Upgrade has answered already
 	}
-	client := h.subscribe(user)
+	client := h.subscribe(who)
 
 	done := make(chan struct{})
 	go func() {
@@ -135,7 +172,7 @@ func (h *Hub) serveWS(w http.ResponseWriter, r *http.Request, user core.UserID) 
 		select {
 		case message, ok := <-client:
 			if !ok {
-				return // dropped as too slow
+				return // dropped as too slow, or the device was revoked
 			}
 			conn.SetWriteDeadline(time.Now().Add(writeTimeout))
 			if err := conn.WriteMessage(websocket.TextMessage, message); err != nil {

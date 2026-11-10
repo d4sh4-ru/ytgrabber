@@ -14,6 +14,7 @@ import { ToolInstallService, ToolInstallState } from './services/tool-install.se
 import { UpdateService } from './services/update.service';
 import { PlaybackService } from './services/playback.service';
 import { core, model, tools } from './api/models';
+import type { SessionInfo } from './api/session';
 import { DownloadFormComponent } from './components/download-form/download-form.component';
 import { LibraryComponent } from './components/video-library/library.component';
 import { VideoPlayerModalComponent } from './components/video-player-modal/video-player-modal.component';
@@ -22,6 +23,7 @@ import { SettingsComponent } from './components/settings/settings.component';
 import { ToastHostComponent } from './components/toast-host/toast-host.component';
 import { LoginComponent } from './components/login/login.component';
 import { Transport } from './api/transport';
+import { SessionService } from './services/session.service';
 
 type AppTab = 'add' | 'library' | 'settings';
 
@@ -53,10 +55,13 @@ export class App implements OnInit, OnDestroy {
     private readonly notificationService = inject(NotificationService);
     private readonly changeDetectorRef = inject(ChangeDetectorRef);
     private readonly transport = inject(Transport);
+    private readonly sessionService = inject(SessionService);
     private readonly destroy$ = new Subject<void>();
 
     // --- Session (server only) ---
     protected isLoginRequired = false;
+    protected isSetupRequired = false;
+    protected isAdmin = true;
     private isStarted = false;
 
     // --- Navigation ---
@@ -85,8 +90,11 @@ export class App implements OnInit, OnDestroy {
     }
 
     protected get canInstallMissing(): boolean {
-        return (this.dependencies?.tools ?? []).some(
-            (tool) => tool.required && !tool.found && !tool.custom && tool.installable,
+        return (
+            this.isAdmin &&
+            (this.dependencies?.tools ?? []).some(
+                (tool) => tool.required && !tool.found && !tool.custom && tool.installable,
+            )
         );
     }
 
@@ -106,8 +114,10 @@ export class App implements OnInit, OnDestroy {
         // lost; the load result is then merged with whatever arrived.
         this.subscribeToEvents();
 
-        if (!(await this.hasSession())) {
+        const session = await this.loadSession();
+        if (!session?.authenticated) {
             this.isLoginRequired = true;
+            this.isSetupRequired = session?.setupRequired === true;
             this.changeDetectorRef.markForCheck();
             return;
         }
@@ -126,12 +136,12 @@ export class App implements OnInit, OnDestroy {
         void this.start();
     }
 
-    private async hasSession(): Promise<boolean> {
+    private async loadSession(): Promise<SessionInfo | null> {
         try {
-            return await this.transport.checkSession();
+            return await this.sessionService.load();
         } catch (error: unknown) {
             this.notificationService.error(error);
-            return false;
+            return null;
         }
     }
 
@@ -199,6 +209,13 @@ export class App implements OnInit, OnDestroy {
             .pipe(takeUntil(this.destroy$))
             .subscribe((report: tools.Report | null): void => {
                 this.dependencies = report;
+                this.changeDetectorRef.markForCheck();
+            });
+
+        this.sessionService.isAdmin$
+            .pipe(takeUntil(this.destroy$))
+            .subscribe((isAdmin: boolean): void => {
+                this.isAdmin = isAdmin;
                 this.changeDetectorRef.markForCheck();
             });
 

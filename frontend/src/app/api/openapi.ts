@@ -56,6 +56,58 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    '/devices': {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Мои устройства */
+        get: operations['getDevices'];
+        put?: never;
+        /** Токен для скрипта или API-клиента */
+        post: operations['postDevices'];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    '/devices/link': {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Код, которым войти на другом устройстве (10 минут) */
+        post: operations['postDevicesLink'];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    '/devices/{id}': {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Отозвать устройство: выходит и теряет события */
+        delete: operations['deleteDevicesId'];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     '/events': {
         parameters: {
             query?: never;
@@ -233,6 +285,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    '/qr': {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** QR-код текста (ссылки с кодом) в SVG */
+        get: operations['getQr'];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     '/session': {
         parameters: {
             query?: never;
@@ -240,13 +309,36 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Вошёл ли клиент */
+        /** Кто вошёл; нужна ли первая настройка */
         get: operations['getSession'];
         put?: never;
-        /** Войти по токену: ставит cookie сессии */
+        /**
+         * Войти по коду: новое устройство и cookie сессии
+         * @description Код настройки создаёт первого администратора, приглашение — нового пользователя (нужно name), код устройства входит как тот, кто его создал. Код одноразовый.
+         */
         post: operations['postSession'];
-        /** Выйти: удаляет cookie сессии */
+        /** Выйти: отзывает это устройство */
         delete: operations['deleteSession'];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    '/session/code': {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Что сделает код (не расходуя его)
+         * @description Код настройки, приглашение или код устройства. Неверные коды ограничены: 10 в минуту на сервер, дальше 429.
+         */
+        post: operations['postSessionCode'];
+        delete?: never;
         options?: never;
         head?: never;
         patch?: never;
@@ -371,6 +463,74 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    '/users': {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Пользователи */
+        get: operations['getUsers'];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    '/users/invites': {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Приглашение нового пользователя (сутки) */
+        post: operations['postUsersInvites'];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    '/users/{id}': {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Удалить пользователя со всеми его данными */
+        delete: operations['deleteUsersId'];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    '/users/{id}/link': {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Код входа для пользователя, потерявшего устройства (сутки) */
+        post: operations['postUsersIdLink'];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -407,6 +567,13 @@ export interface components {
             /** @enum {string} */
             status: 'ok' | 'expired' | 'error';
         };
+        'model.Device': {
+            createdAt: string;
+            current: boolean;
+            id: string;
+            lastSeenAt: string;
+            name: string;
+        };
         'model.DownloadJob': {
             accountUsed: boolean;
             createdAt: string;
@@ -432,6 +599,13 @@ export interface components {
             /** @enum {string} */
             kind: 'video' | 'audio';
             progress: number;
+        };
+        'model.User': {
+            createdAt: string;
+            id: string;
+            name: string;
+            /** @enum {string} */
+            role: 'admin' | 'user';
         };
         'model.VideoRecord': {
             downloadedAt: string;
@@ -642,6 +816,197 @@ export interface operations {
                 content: {
                     'application/json': components['schemas']['model.Account'];
                 };
+            };
+            /** @description Ошибка; текст для пользователя */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': {
+                        error: string;
+                    };
+                };
+            };
+            /** @description Нужен вход */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': {
+                        error: string;
+                    };
+                };
+            };
+            /** @description Нет такой записи (или она другого пользователя) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': {
+                        error: string;
+                    };
+                };
+            };
+        };
+    };
+    getDevices: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['model.Device'][];
+                };
+            };
+            /** @description Ошибка; текст для пользователя */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': {
+                        error: string;
+                    };
+                };
+            };
+            /** @description Нужен вход */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': {
+                        error: string;
+                    };
+                };
+            };
+        };
+    };
+    postDevices: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                'application/json': {
+                    name: string;
+                };
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': {
+                        device: components['schemas']['model.Device'];
+                        token: string;
+                    };
+                };
+            };
+            /** @description Ошибка; текст для пользователя */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': {
+                        error: string;
+                    };
+                };
+            };
+            /** @description Нужен вход */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': {
+                        error: string;
+                    };
+                };
+            };
+        };
+    };
+    postDevicesLink: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': {
+                        code: string;
+                        expiresAt: string;
+                    };
+                };
+            };
+            /** @description Ошибка; текст для пользователя */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': {
+                        error: string;
+                    };
+                };
+            };
+            /** @description Нужен вход */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': {
+                        error: string;
+                    };
+                };
+            };
+        };
+    };
+    deleteDevicesId: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Готово */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description Ошибка; текст для пользователя */
             400: {
@@ -1186,6 +1551,40 @@ export interface operations {
             };
         };
     };
+    getQr: {
+        parameters: {
+            query?: {
+                /** @description что закодировать, до 512 байт */
+                text?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'image/svg+xml': string;
+                };
+            };
+            /** @description Нужен вход */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': {
+                        error: string;
+                    };
+                };
+            };
+        };
+    };
     getSession: {
         parameters: {
             query?: never;
@@ -1203,6 +1602,9 @@ export interface operations {
                 content: {
                     'application/json': {
                         authenticated: boolean;
+                        deviceId?: string;
+                        setupRequired?: boolean;
+                        user?: components['schemas']['model.User'];
                     };
                 };
             };
@@ -1218,7 +1620,9 @@ export interface operations {
         requestBody: {
             content: {
                 'application/json': {
-                    token: string;
+                    code: string;
+                    deviceName?: string;
+                    name?: string;
                 };
             };
         };
@@ -1231,6 +1635,9 @@ export interface operations {
                 content: {
                     'application/json': {
                         authenticated: boolean;
+                        deviceId?: string;
+                        setupRequired?: boolean;
+                        user?: components['schemas']['model.User'];
                     };
                 };
             };
@@ -1262,6 +1669,47 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+        };
+    };
+    postSessionCode: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                'application/json': {
+                    code: string;
+                };
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': {
+                        /** @enum {string} */
+                        kind: 'setup' | 'invite' | 'link';
+                        userName?: string;
+                    };
+                };
+            };
+            /** @description Ошибка; текст для пользователя */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': {
+                        error: string;
+                    };
+                };
             };
         };
     };
@@ -1344,6 +1792,17 @@ export interface operations {
             };
             /** @description Нужен вход */
             401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': {
+                        error: string;
+                    };
+                };
+            };
+            /** @description Только для администратора */
+            403: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -1443,6 +1902,17 @@ export interface operations {
                     };
                 };
             };
+            /** @description Только для администратора */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': {
+                        error: string;
+                    };
+                };
+            };
         };
     };
     postToolsInstallCancel: {
@@ -1474,6 +1944,17 @@ export interface operations {
             };
             /** @description Нужен вход */
             401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': {
+                        error: string;
+                    };
+                };
+            };
+            /** @description Только для администратора */
+            403: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -1525,6 +2006,17 @@ export interface operations {
                     };
                 };
             };
+            /** @description Только для администратора */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': {
+                        error: string;
+                    };
+                };
+            };
         };
     };
     postToolsYtDlpUpdate: {
@@ -1558,6 +2050,275 @@ export interface operations {
             };
             /** @description Нужен вход */
             401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': {
+                        error: string;
+                    };
+                };
+            };
+            /** @description Только для администратора */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': {
+                        error: string;
+                    };
+                };
+            };
+        };
+    };
+    getUsers: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': {
+                        createdAt: string;
+                        current: boolean;
+                        devices: number;
+                        id: string;
+                        lastSeenAt: string;
+                        name: string;
+                        /** @enum {string} */
+                        role: 'admin' | 'user';
+                    }[];
+                };
+            };
+            /** @description Ошибка; текст для пользователя */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': {
+                        error: string;
+                    };
+                };
+            };
+            /** @description Нужен вход */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': {
+                        error: string;
+                    };
+                };
+            };
+            /** @description Только для администратора */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': {
+                        error: string;
+                    };
+                };
+            };
+        };
+    };
+    postUsersInvites: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                'application/json': {
+                    /** @enum {string} */
+                    role?: 'admin' | 'user';
+                };
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': {
+                        code: string;
+                        expiresAt: string;
+                    };
+                };
+            };
+            /** @description Ошибка; текст для пользователя */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': {
+                        error: string;
+                    };
+                };
+            };
+            /** @description Нужен вход */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': {
+                        error: string;
+                    };
+                };
+            };
+            /** @description Только для администратора */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': {
+                        error: string;
+                    };
+                };
+            };
+        };
+    };
+    deleteUsersId: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Готово */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Ошибка; текст для пользователя */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': {
+                        error: string;
+                    };
+                };
+            };
+            /** @description Нужен вход */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': {
+                        error: string;
+                    };
+                };
+            };
+            /** @description Только для администратора */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': {
+                        error: string;
+                    };
+                };
+            };
+            /** @description Нет такой записи (или она другого пользователя) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': {
+                        error: string;
+                    };
+                };
+            };
+        };
+    };
+    postUsersIdLink: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': {
+                        code: string;
+                        expiresAt: string;
+                    };
+                };
+            };
+            /** @description Ошибка; текст для пользователя */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': {
+                        error: string;
+                    };
+                };
+            };
+            /** @description Нужен вход */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': {
+                        error: string;
+                    };
+                };
+            };
+            /** @description Только для администратора */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': {
+                        error: string;
+                    };
+                };
+            };
+            /** @description Нет такой записи (или она другого пользователя) */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };

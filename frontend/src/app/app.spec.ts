@@ -158,7 +158,7 @@ describe('App', () => {
 
     it('asks a server user to sign in before loading anything', async () => {
         transport.isDesktop = false;
-        transport.isAuthenticated = false;
+        transport.sessionInfo = { authenticated: false };
         const fixture = TestBed.createComponent(App);
         fixture.detectChanges();
         await settle(fixture);
@@ -166,10 +166,14 @@ describe('App', () => {
         expect(element.querySelector('app-login')).not.toBeNull();
         expect(element.querySelector('app-download-form')).toBeNull();
 
+        // A device link: no name to ask for, the device name is guessed.
         const input = element.querySelector<HTMLInputElement>('app-login input');
-        input!.value = 'token';
+        input!.value = 'ABCDE-FGHJK';
         input!.dispatchEvent(new Event('input'));
         fixture.detectChanges();
+        element.querySelector<HTMLButtonElement>('app-login button[type=submit]')!.click();
+        await settle(fixture);
+        expect(element.querySelectorAll('app-login input').length).toBe(1);
         element.querySelector<HTMLButtonElement>('app-login button[type=submit]')!.click();
         await settle(fixture);
         await settle(fixture);

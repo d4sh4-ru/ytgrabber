@@ -1,5 +1,6 @@
 import { Injectable } from '@angular/core';
 import { Observable } from 'rxjs';
+import type { CodeCheck, SessionInfo, SignInRequest } from './session';
 import { HttpTransport } from './http-transport';
 import { WailsTransport } from './wails-transport';
 
@@ -40,9 +41,15 @@ export abstract class Transport {
     /** A backend event; unsubscribing stops listening. */
     public abstract events$<T>(name: string): Observable<T>;
 
-    /** Whether this client may use the backend; the desktop always may. */
-    public abstract checkSession(): Promise<boolean>;
+    /** Who is signed in; the desktop is always its single local user. */
+    public abstract session(): Promise<SessionInfo>;
 
-    /** Signs in with the server's access token. */
-    public abstract login(token: string): Promise<void>;
+    /** What a code would do on the login screen, without using it up. */
+    public abstract checkCode(code: string): Promise<CodeCheck>;
+
+    /** Uses a code up and signs this browser in as a new device. */
+    public abstract signIn(request: SignInRequest): Promise<SessionInfo>;
+
+    /** Signs out, revoking this device. */
+    public abstract signOut(): Promise<void>;
 }
