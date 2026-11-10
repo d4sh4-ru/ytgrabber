@@ -18,3 +18,38 @@ $radius-md: 6px;
 
 $font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
 $warning: #fbbf24;
+
+// ---- Phones ----
+
+// Below this width the layout switches to the phone one: tabs at the
+// bottom, the player on the whole screen. The desktop window never gets
+// this narrow (its minimum is 720px).
+$narrow-width: 600px;
+
+// The smallest comfortable tap target (Apple HIG, WCAG 2.5.5).
+$touch-target: 44px;
+
+// Height of the bottom tab bar on phones, without the safe area below it.
+$bottom-nav-height: 56px;
+
+@mixin narrow {
+    @media (max-width: #{$narrow-width - 0.02px}) {
+        @content;
+    }
+}
+
+// A phone in either orientation: narrow, or a touch screen too short to
+// spare room around a video (a phone held sideways is wider than
+// $narrow-width).
+@mixin phone {
+    @media (max-width: #{$narrow-width - 0.02px}), (pointer: coarse) and (max-height: 500px) {
+        @content;
+    }
+}
+
+// Fingers, not a mouse: whatever the screen width.
+@mixin touch {
+    @media (pointer: coarse) {
+        @content;
+    }
+}

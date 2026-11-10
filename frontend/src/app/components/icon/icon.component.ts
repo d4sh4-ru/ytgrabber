@@ -10,7 +10,9 @@ export type IconName =
     | 'download'
     | 'trash'
     | 'alert'
-    | 'chevron-down';
+    | 'chevron-down'
+    | 'library'
+    | 'sliders';
 
 /** Stroke width per icon; the close cross is drawn heavier to read at small sizes. */
 const STROKE_WIDTHS: Readonly<Record<IconName, number>> = {
@@ -24,6 +26,8 @@ const STROKE_WIDTHS: Readonly<Record<IconName, number>> = {
     trash: 1.75,
     alert: 2,
     'chevron-down': 2,
+    library: 1.75,
+    sliders: 1.75,
 };
 
 /**

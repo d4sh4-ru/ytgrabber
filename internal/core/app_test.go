@@ -283,7 +283,7 @@ func TestGetLibraryMarksMissingFiles(t *testing.T) {
 	if err != nil || len(videos) != 1 {
 		t.Fatalf("videos = %+v, %v", videos, err)
 	}
-	if !videos[0].FileMissing || videos[0].MediaURL != "/media/gone/file.mp4" || videos[0].ThumbnailURL != "" {
+	if !videos[0].FileMissing || videos[0].SizeBytes != 0 || videos[0].MediaURL != "/media/gone/file.mp4" || videos[0].ThumbnailURL != "" {
 		t.Errorf("video = %+v", videos[0])
 	}
 }
@@ -309,7 +309,7 @@ func TestLibraryRepairsMangledEntries(t *testing.T) {
 	}
 
 	videos, _ := app.GetLibrary(LocalUser)
-	if v := videos[0]; v.FilePath != real || v.ThumbnailPath != thumb || v.Title != "Привет мир" || v.FileMissing || v.ThumbnailURL == "" {
+	if v := videos[0]; v.FilePath != real || v.ThumbnailPath != thumb || v.Title != "Привет мир" || v.FileMissing || v.SizeBytes != 1 || v.ThumbnailURL == "" {
 		t.Errorf("repaired = %+v", v)
 	}
 	// The repair is stored, not redone on every read.

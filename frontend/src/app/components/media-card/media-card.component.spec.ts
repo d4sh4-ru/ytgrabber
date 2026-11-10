@@ -56,10 +56,53 @@ describe('MediaCardComponent', () => {
         const browser = render({ mediaUrl: '/media/v/file.mp4' });
         expect(browser.querySelector('[aria-label="Показать в папке"]')).toBeNull();
         expect(browser.querySelector('a[download]')?.getAttribute('href')).toBe(
-            '/media/v/file.mp4?download=1',
+            '/media/v/file.mp4?download=1&ngsw-bypass=1',
         );
         expect(
             render({ mediaUrl: '/media/v/file.mp4', fileMissing: true }).querySelector('a'),
         ).toBeNull();
+    });
+
+    it('asks before downloading over mobile data, without opening the player', () => {
+        Object.defineProperty(navigator, 'connection', {
+            value: { type: 'cellular' },
+            configurable: true,
+        });
+        try {
+            transport.isDesktop = false;
+            const fixture = TestBed.createComponent(MediaCardComponent);
+            fixture.componentRef.setInput(
+                'item',
+                model.VideoRecord.createFrom({
+                    id: 'v',
+                    title: 'clip',
+                    mediaKind: 'video',
+                    mediaUrl: '/media/v/file.mp4',
+                    sizeBytes: 2 * 1024 * 1024 * 1024,
+                }),
+            );
+            const opened = vi.fn();
+            fixture.componentInstance.opened.subscribe(opened);
+            fixture.detectChanges();
+            const element = fixture.nativeElement as HTMLElement;
+
+            const link = element.querySelector<HTMLAnchorElement>('a[download]')!;
+            const click = new MouseEvent('click', { bubbles: true, cancelable: true });
+            link.dispatchEvent(click);
+            fixture.detectChanges();
+
+            expect(click.defaultPrevented).toBe(true);
+            expect(element.querySelector('app-confirm-dialog')?.textContent).toContain('2.0 ГБ');
+
+            element.querySelector<HTMLButtonElement>('app-confirm-dialog .btn')!.click();
+            fixture.detectChanges();
+            expect(element.querySelector('app-confirm-dialog')).toBeNull();
+            expect(opened).not.toHaveBeenCalled();
+        } finally {
+            Object.defineProperty(navigator, 'connection', {
+                value: undefined,
+                configurable: true,
+            });
+        }
     });
 });

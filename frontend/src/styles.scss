@@ -16,6 +16,9 @@ body {
     color: v.$text-primary;
     font-family: v.$font-family;
     font-size: 14px;
+    // Phones: no text inflation in landscape, no grey flash on tap.
+    -webkit-text-size-adjust: 100%;
+    -webkit-tap-highlight-color: transparent;
 }
 
 button {
@@ -82,6 +85,31 @@ button {
         border-color: v.$error;
         color: v.$error;
     }
+
+    @include v.touch {
+        min-width: v.$touch-target;
+        min-height: v.$touch-target;
+        padding: 8px 12px;
+        font-size: 14px;
+    }
+}
+
+// iOS Safari zooms into any field with text under 16px.
+@include v.touch {
+    input,
+    select,
+    textarea {
+        font-size: 16px !important;
+    }
+
+    // No double-tap zoom delay on controls.
+    button,
+    a,
+    input,
+    select,
+    label {
+        touch-action: manipulation;
+    }
 }
 
 .banner {
@@ -113,6 +141,7 @@ button {
 
     &__actions {
         display: flex;
+        flex-wrap: wrap;
         gap: 6px;
     }
 }
@@ -124,5 +153,7 @@ button {
     display: flex;
     align-items: center;
     justify-content: center;
+    padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom)
+        env(safe-area-inset-left);
     background: rgba(v.$bg-primary, 0.75);
 }

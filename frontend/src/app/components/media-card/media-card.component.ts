@@ -8,14 +8,21 @@ import {
 } from '@angular/core';
 import { model } from '../../api/models';
 import { Transport } from '../../api/transport';
+import {
+    deviceDownloadUrl,
+    meteredDownloadWarning,
+    startDeviceDownload,
+} from '../../shared/device-download';
 import { formatDuration } from '../../shared/format-duration';
+import { bypassServiceWorker } from '../../shared/media-url';
+import { ConfirmDialogComponent } from '../confirm-dialog/confirm-dialog.component';
 import { IconComponent } from '../icon/icon.component';
 
 /** A library tile for both videos and audio; audio shows its cover or a note icon. */
 @Component({
     selector: 'app-media-card',
     standalone: true,
-    imports: [IconComponent],
+    imports: [IconComponent, ConfirmDialogComponent],
     templateUrl: './media-card.component.html',
     styleUrl: './media-card.component.scss',
     changeDetection: ChangeDetectionStrategy.OnPush,
@@ -36,6 +43,9 @@ export class MediaCardComponent {
     /** The desktop shows the file in its folder; a browser saves it to the device. */
     protected readonly isDesktop = inject(Transport).isDesktop;
 
+    /** The warning shown before a download over mobile data; null when none. */
+    protected downloadWarning: string | null = null;
+
     protected get durationLabel(): string | null {
         return this.item.durationSeconds > 0 ? formatDuration(this.item.durationSeconds) : null;
     }
@@ -55,7 +65,11 @@ export class MediaCardComponent {
 
     /** The server sends the file as an attachment under its own name. */
     protected get downloadUrl(): string {
-        return `${this.item.mediaUrl}?download=1`;
+        return deviceDownloadUrl(this.item);
+    }
+
+    protected get thumbnailSrc(): string {
+        return bypassServiceWorker(this.item.thumbnailUrl);
     }
 
     protected get isAudio(): boolean {
@@ -74,6 +88,20 @@ export class MediaCardComponent {
     protected onDownload(event: Event): void {
         // Let the link save the file without opening the player.
         event.stopPropagation();
+        const warning = meteredDownloadWarning(this.item);
+        if (warning) {
+            event.preventDefault();
+            this.downloadWarning = warning;
+        }
+    }
+
+    protected onDownloadConfirmed(): void {
+        this.downloadWarning = null;
+        startDeviceDownload(this.downloadUrl);
+    }
+
+    protected onDownloadCancelled(): void {
+        this.downloadWarning = null;
     }
 
     protected onDelete(event: Event): void {

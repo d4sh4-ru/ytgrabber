@@ -8,12 +8,7 @@
 >
     <div class="media-card__cover">
         @if (item.thumbnailUrl) {
-            <img
-                class="media-card__image"
-                [src]="item.thumbnailUrl"
-                [alt]="item.title"
-                loading="lazy"
-            />
+            <img class="media-card__image" [src]="thumbnailSrc" [alt]="item.title" loading="lazy" />
         } @else if (isAudio) {
             <span class="media-card__icon"><app-icon name="music" [size]="32" /></span>
         }
@@ -63,4 +58,22 @@
     </div>
     <p class="media-card__title" [title]="item.title">{{ item.title }}</p>
     <span class="media-card__duration">{{ durationLabel ?? '&nbsp;' }}</span>
+
+    <!-- Outside the actions (they fade out without hover) and kept from
+         opening the player: the dialog's clicks would bubble to the card. -->
+    @if (downloadWarning) {
+        <span
+            class="media-card__dialog"
+            (click)="$event.stopPropagation()"
+            (keydown)="$event.stopPropagation()"
+        >
+            <app-confirm-dialog
+                title="Скачать по мобильной сети?"
+                confirmLabel="Скачать"
+                [message]="downloadWarning"
+                (confirmed)="onDownloadConfirmed()"
+                (cancelled)="onDownloadCancelled()"
+            />
+        </span>
+    }
 </div>

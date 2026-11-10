@@ -15,6 +15,10 @@
         color: v.$text-primary;
         font-size: 13px;
 
+        @include v.touch {
+            min-height: v.$touch-target;
+        }
+
         &:focus {
             outline: none;
             border-color: v.$accent;
@@ -33,6 +37,7 @@
 
     &__match {
         display: flex;
+        flex-wrap: wrap;
         align-items: center;
         justify-content: space-between;
         gap: 8px;

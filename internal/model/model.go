@@ -147,6 +147,9 @@ type VideoRecord struct {
 	MediaURL        string  `json:"mediaUrl"`
 	ThumbnailURL    string  `json:"thumbnailUrl"`
 	FileMissing     bool    `json:"fileMissing"`
+	// SizeBytes is the file's size, read along with FileMissing; 0 when
+	// the file is gone.
+	SizeBytes int64 `json:"sizeBytes"`
 }
 
 // Role is what a server user may do: an admin also manages users, the

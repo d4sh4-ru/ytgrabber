@@ -2,8 +2,8 @@
 
 .toast-host {
     position: fixed;
-    top: 12px;
-    right: 12px;
+    top: max(12px, env(safe-area-inset-top));
+    right: max(12px, env(safe-area-inset-right));
     z-index: 30;
     display: flex;
     flex-direction: column;
@@ -40,6 +40,11 @@
         background: transparent;
         color: v.$text-secondary;
         cursor: pointer;
+
+        @include v.touch {
+            margin: -10px -10px -10px 0;
+            padding: 12px;
+        }
 
         &:hover {
             color: v.$text-primary;

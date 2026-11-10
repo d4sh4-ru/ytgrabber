@@ -11,6 +11,7 @@
                     [class.app__tab--active]="activeTab === 'add'"
                     (click)="setTab('add')"
                 >
+                    <app-icon class="app__tab-icon" name="download" [size]="22" />
                     Загрузки
                     @if (activeJobsCount > 0) {
                         <span class="app__tab-badge">{{ activeJobsCount }}</span>
@@ -22,6 +23,7 @@
                     [class.app__tab--active]="activeTab === 'library'"
                     (click)="setTab('library')"
                 >
+                    <app-icon class="app__tab-icon" name="library" [size]="22" />
                     Библиотека
                 </button>
                 <button
@@ -30,6 +32,7 @@
                     [class.app__tab--active]="activeTab === 'settings'"
                     (click)="setTab('settings')"
                 >
+                    <app-icon class="app__tab-icon" name="sliders" [size]="22" />
                     Настройки
                     @if (missingRequiredTools.length > 0) {
                         <span class="app__tab-badge app__tab-badge--warning">!</span>
@@ -110,10 +113,50 @@
                 </div>
             }
 
+            @if (isWebAppUpdateReady) {
+                <div class="banner banner--info">
+                    <span>Приложение обновилось. Новая версия откроется после перезагрузки.</span>
+                    <div class="banner__actions">
+                        <button type="button" class="btn btn--primary" (click)="onReloadWebApp()">
+                            Перезагрузить
+                        </button>
+                    </div>
+                </div>
+            }
+
+            @switch (installOffer) {
+                @case ('prompt') {
+                    <div class="banner banner--info">
+                        <span>Установите YT Grabber: он откроется с экрана, как приложение.</span>
+                        <div class="banner__actions">
+                            <button type="button" class="btn btn--primary" (click)="onInstall()">
+                                Установить
+                            </button>
+                            <button type="button" class="btn" (click)="onDismissInstall()">
+                                Не нужно
+                            </button>
+                        </div>
+                    </div>
+                }
+                @case ('ios') {
+                    <div class="banner banner--info">
+                        <span
+                            >Чтобы открывать YT Grabber как приложение, нажмите «Поделиться» и
+                            выберите «На экран „Домой“».</span
+                        >
+                        <div class="banner__actions">
+                            <button type="button" class="btn" (click)="onDismissInstall()">
+                                Понятно
+                            </button>
+                        </div>
+                    </div>
+                }
+            }
+
             <section class="app__section">
                 @switch (activeTab) {
                     @case ('add') {
-                        <app-download-form [jobs]="jobs" />
+                        <app-download-form [jobs]="jobs" [sharedUrl]="sharedUrl" />
                     }
                     @case ('library') {
                         <app-library [items]="library" (videoSelected)="onVideoSelected($event)" />

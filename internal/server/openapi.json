@@ -316,6 +316,9 @@
           "positionSeconds": {
             "type": "number"
           },
+          "sizeBytes": {
+            "type": "integer"
+          },
           "sourceUrl": {
             "type": "string"
           },
@@ -337,7 +340,8 @@
           "downloadedAt",
           "mediaUrl",
           "thumbnailUrl",
-          "fileMissing"
+          "fileMissing",
+          "sizeBytes"
         ],
         "type": "object"
       },

@@ -181,6 +181,19 @@ describe('App', () => {
         expect(element.querySelector('app-download-form')).not.toBeNull();
     });
 
+    it('puts a link shared from another app in the download form', async () => {
+        history.pushState(null, '', '/share?title=Clip&text=Clip%20https%3A%2F%2Fyoutu.be%2Fabc');
+        try {
+            const compiled = await render();
+            const input = compiled.querySelector<HTMLInputElement>('app-download-form input');
+            expect(input?.value).toBe('https://youtu.be/abc');
+            // Off /share, so a reload doesn't bring it back.
+            expect(location.pathname).toBe('/');
+        } finally {
+            history.replaceState(null, '', '/');
+        }
+    });
+
     it('shows the startup error instead of the UI', async () => {
         settingsService.startupError = 'database is locked';
         const compiled = await render();

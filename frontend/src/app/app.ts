@@ -6,7 +6,8 @@ import {
     OnDestroy,
     OnInit,
 } from '@angular/core';
-import { merge, Subject, takeUntil } from 'rxjs';
+import { SwUpdate, VersionEvent } from '@angular/service-worker';
+import { filter, merge, Subject, takeUntil } from 'rxjs';
 import { DownloadService } from './services/download.service';
 import { NotificationService } from './services/notification.service';
 import { SettingsService } from './services/settings.service';
@@ -22,8 +23,11 @@ import { AudioPlayerBarComponent } from './components/audio-player-bar/audio-pla
 import { SettingsComponent } from './components/settings/settings.component';
 import { ToastHostComponent } from './components/toast-host/toast-host.component';
 import { LoginComponent } from './components/login/login.component';
+import { IconComponent } from './components/icon/icon.component';
 import { Transport } from './api/transport';
 import { SessionService } from './services/session.service';
+import { InstallOffer, InstallService } from './services/install.service';
+import { SHARE_PATH, sharedLink } from './shared/shared-link';
 
 type AppTab = 'add' | 'library' | 'settings';
 
@@ -40,6 +44,7 @@ const ACTIVE_JOB_STATUSES: ReadonlySet<string> = new Set(['pending', 'downloadin
         SettingsComponent,
         ToastHostComponent,
         LoginComponent,
+        IconComponent,
     ],
     templateUrl: './app.html',
     styleUrl: './app.scss',
@@ -56,6 +61,9 @@ export class App implements OnInit, OnDestroy {
     private readonly changeDetectorRef = inject(ChangeDetectorRef);
     private readonly transport = inject(Transport);
     private readonly sessionService = inject(SessionService);
+    private readonly installService = inject(InstallService);
+    /** Absent in the desktop app and in tests: nothing registers a worker there. */
+    private readonly swUpdate = inject(SwUpdate, { optional: true });
     private readonly destroy$ = new Subject<void>();
 
     // --- Session (server only) ---
@@ -66,6 +74,13 @@ export class App implements OnInit, OnDestroy {
 
     // --- Navigation ---
     protected activeTab: AppTab = 'add';
+    /** A link shared to the app from another one (Android share sheet). */
+    protected sharedUrl: string | null = null;
+
+    // --- Web app ---
+    protected installOffer: InstallOffer | null = null;
+    /** A new version of the web app is downloaded and starts on reload. */
+    protected isWebAppUpdateReady = false;
 
     // --- App state ---
     protected startupError = '';
@@ -110,6 +125,7 @@ export class App implements OnInit, OnDestroy {
 
     // --- Lifecycle ---
     public async ngOnInit(): Promise<void> {
+        this.takeSharedLink();
         // Subscribe before the initial load so no event emitted meanwhile is
         // lost; the load result is then merged with whatever arrived.
         this.subscribeToEvents();
@@ -170,8 +186,62 @@ export class App implements OnInit, OnDestroy {
         this.activeTab = tab;
     }
 
+    /** Opens the download form with what the share sheet brought. */
+    private takeSharedLink(): void {
+        if (location.pathname !== SHARE_PATH) {
+            return;
+        }
+        this.sharedUrl = sharedLink(new URL(location.href));
+        this.activeTab = 'add';
+        // Off /share, so a reload doesn't bring the same link back.
+        history.replaceState(null, '', '/');
+    }
+
+    // --- Web app ---
+    protected async onInstall(): Promise<void> {
+        await this.installService.install();
+    }
+
+    protected onDismissInstall(): void {
+        this.installService.dismiss();
+    }
+
+    protected onReloadWebApp(): void {
+        location.reload();
+    }
+
+    private subscribeToWebApp(): void {
+        this.installService.offer$
+            .pipe(takeUntil(this.destroy$))
+            .subscribe((offer: InstallOffer | null): void => {
+                this.installOffer = offer;
+                this.changeDetectorRef.markForCheck();
+            });
+
+        if (!this.swUpdate?.isEnabled) {
+            return;
+        }
+        // Not reloaded by itself: that would cut off a video or a form.
+        this.swUpdate.versionUpdates
+            .pipe(
+                filter((event: VersionEvent) => event.type === 'VERSION_READY'),
+                takeUntil(this.destroy$),
+            )
+            .subscribe((): void => {
+                this.isWebAppUpdateReady = true;
+                this.changeDetectorRef.markForCheck();
+            });
+        // The cached app is broken beyond repair (files gone from the
+        // server): only a reload from the network helps.
+        this.swUpdate.unrecoverable.pipe(takeUntil(this.destroy$)).subscribe((): void => {
+            location.reload();
+        });
+    }
+
     // --- Jobs ---
     private subscribeToEvents(): void {
+        this.subscribeToWebApp();
+
         // Events sent while the connection was down are lost: reload.
         this.transport.reconnected$.pipe(takeUntil(this.destroy$)).subscribe((): void => {
             if (this.isStarted) {

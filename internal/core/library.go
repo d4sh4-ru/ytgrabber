@@ -157,10 +157,14 @@ func (a *App) RevealVideo(user UserID, id string) error {
 }
 
 // decorateVideo fills the fields computed at read time: whether the file
-// is still there and the URLs the frontend loads it by.
+// is still there, how big it is and the URLs the frontend loads it by.
 func decorateVideo(video *model.VideoRecord) {
-	_, err := os.Stat(video.FilePath)
+	info, err := os.Stat(video.FilePath)
 	video.FileMissing = err != nil
+	video.SizeBytes = 0
+	if err == nil {
+		video.SizeBytes = info.Size()
+	}
 
 	base := mediaRoutePrefix + url.PathEscape(video.ID) + "/"
 	// The extension is kept in the URL on purpose: the Angular dev server

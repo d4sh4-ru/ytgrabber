@@ -16,6 +16,12 @@
         font-size: 13px;
         cursor: pointer;
 
+        @include v.touch {
+            min-height: v.$touch-target;
+            padding: 6px 12px;
+            font-size: 14px;
+        }
+
         &--active {
             border-bottom-color: v.$accent;
             color: v.$text-primary;
@@ -26,6 +32,11 @@
         display: grid;
         grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
         gap: 8px;
+
+        // 360px phones: two columns, not one wide one.
+        @include v.narrow {
+            grid-template-columns: repeat(auto-fill, minmax(min(140px, calc(50% - 4px)), 1fr));
+        }
     }
 
     &__empty {

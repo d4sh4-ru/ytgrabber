@@ -12,12 +12,13 @@ import (
 	"encoding/json"
 	"errors"
 	"log"
+	"mime"
 	"net/http"
 	"os"
 	"path"
 	"path/filepath"
 	"reflect"
-	"strings"
+	"regexp"
 
 	"ytgrabber/internal/core"
 	"ytgrabber/internal/storage"
@@ -127,9 +128,21 @@ func (s *Server) importCookies(r *http.Request) (any, error) {
 	return s.app.ImportCookies(s.userOf(r), r.FormValue("site"), file)
 }
 
+// hashedAsset matches the bundles Angular names by their content
+// (main-THDFXXSR.js): a new build is a new name, so they can be cached
+// for good.
+var hashedAsset = regexp.MustCompile(`-[A-Z0-9]{8}\.(js|css)$`)
+
+func init() {
+	// Not in Go's table; the browser wants it for the web app manifest.
+	mime.AddExtensionType(".webmanifest", "application/manifest+json")
+}
+
 // frontend serves the built Angular app. Unknown paths get index.html,
-// which is never cached so a new image takes effect on reload; the
-// hashed bundles can be cached for good.
+// so the app's own routes (/share from the share sheet) open it. Only
+// the hashed bundles are cached for good; everything else (index.html,
+// the service worker and its manifest ngsw.json, the web app manifest,
+// icons) is revalidated, so a new image takes effect on reload.
 func (s *Server) frontend() http.Handler {
 	files := http.FileServer(http.Dir(s.webDir))
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -140,8 +153,10 @@ func (s *Server) frontend() http.Handler {
 		name := path.Clean("/" + r.URL.Path)
 		if name != "/" {
 			if info, err := os.Stat(filepath.Join(s.webDir, filepath.FromSlash(name))); err == nil && !info.IsDir() {
-				if !strings.HasSuffix(name, ".html") {
+				if hashedAsset.MatchString(name) {
 					w.Header().Set("Cache-Control", "public, max-age=31536000, immutable")
+				} else {
+					w.Header().Set("Cache-Control", "no-cache")
 				}
 				files.ServeHTTP(w, r)
 				return

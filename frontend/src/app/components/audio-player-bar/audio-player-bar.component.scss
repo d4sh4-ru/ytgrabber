@@ -1,13 +1,19 @@
 @use '../../../styles/variables' as v;
 
 :host {
-    margin: 0 auto 12px;
-    padding: 0 12px;
+    margin: 0 auto;
+    padding: 0 max(12px, env(safe-area-inset-right)) 0 max(12px, env(safe-area-inset-left));
     position: fixed;
     left: 0;
     right: 0;
-    bottom: 0;
+    bottom: max(12px, env(safe-area-inset-bottom));
     z-index: 10;
+
+    // Phones: just above the tab bar.
+    @include v.narrow {
+        padding: 0 max(8px, env(safe-area-inset-right)) 0 max(8px, env(safe-area-inset-left));
+        bottom: calc(#{v.$bottom-nav-height} + env(safe-area-inset-bottom) + 8px);
+    }
 }
 
 .audio-player-bar {
@@ -23,6 +29,12 @@
     padding: 0 16px;
     border-top: 1px solid v.$border-subtle;
     background: v.$bg-elevated;
+
+    @include v.narrow {
+        gap: 10px;
+        padding: 0 8px 0 10px;
+        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+    }
 
     &__toggle {
         flex-shrink: 0;
@@ -40,6 +52,11 @@
         &:hover {
             border-color: v.$accent;
         }
+
+        @include v.touch {
+            width: v.$touch-target;
+            height: v.$touch-target;
+        }
     }
 
     &__cover {
@@ -48,6 +65,10 @@
         height: 44px;
         border-radius: v.$radius-sm;
         object-fit: cover;
+
+        @include v.narrow {
+            display: none;
+        }
     }
 
     &__body {
@@ -86,5 +107,10 @@
         flex-shrink: 0;
         width: 80px;
         accent-color: v.$accent;
+
+        // Phones have volume buttons, and iOS ignores the volume property anyway.
+        @include v.narrow {
+            display: none;
+        }
     }
 }
