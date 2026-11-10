@@ -1,6 +1,7 @@
 import createClient, { Client } from 'openapi-fetch';
 import { filter, map, Observable, Subject } from 'rxjs';
 import type { paths } from './openapi';
+import type { CodeCheck, SessionInfo, SignInRequest } from './session';
 import type { Transport } from './transport';
 
 /** Typed client for the server's API, generated from internal/server/openapi.json. */
@@ -30,6 +31,10 @@ const API_PREFIX = '/api/v1';
 const idOf = (args: readonly unknown[]): { path: { id: string } } => ({
     path: { id: String(args[0]) },
 });
+
+type Role = NonNullable<
+    paths['/users/invites']['post']['requestBody']['content']['application/json']['role']
+>;
 
 /**
  * The backend methods the server has (internal/server/routes.go). The
@@ -74,6 +79,16 @@ const CALLS: Readonly<Record<string, Call>> = {
             params: idOf(args),
             body: { seconds: Number(args[1]) },
         }),
+
+    // Devices and users: server only.
+    GetDevices: (api) => api.GET('/devices'),
+    CreateApiToken: (api, [name]) => api.POST('/devices', { body: { name: String(name) } }),
+    RemoveDevice: (api, args) => api.DELETE('/devices/{id}', { params: idOf(args) }),
+    CreateDeviceLink: (api) => api.POST('/devices/link'),
+    GetUsers: (api) => api.GET('/users'),
+    InviteUser: (api, [role]) => api.POST('/users/invites', { body: { role: role as Role } }),
+    CreateUserLink: (api, args) => api.POST('/users/{id}/link', { params: idOf(args) }),
+    RemoveUser: (api, args) => api.DELETE('/users/{id}', { params: idOf(args) }),
 
     GetAccounts: (api) => api.GET('/accounts'),
     CheckAccount: (api, args) => api.POST('/accounts/{id}/check', { params: idOf(args) }),
@@ -141,16 +156,24 @@ export class HttpTransport implements Transport {
         );
     }
 
-    public async checkSession(): Promise<boolean> {
-        const session = unwrap<{ authenticated: boolean }>(await this.api.GET('/session'));
-        return session.authenticated;
+    public async session(): Promise<SessionInfo> {
+        return unwrap<SessionInfo>(await this.api.GET('/session'));
     }
 
-    public async login(token: string): Promise<void> {
-        unwrap(await this.api.POST('/session', { body: { token } }));
+    public async checkCode(code: string): Promise<CodeCheck> {
+        return unwrap<CodeCheck>(await this.api.POST('/session/code', { body: { code } }));
+    }
+
+    public async signIn(request: SignInRequest): Promise<SessionInfo> {
+        const session = unwrap<SessionInfo>(await this.api.POST('/session', { body: request }));
         // A socket opened before the login was refused; retry right away.
         this.reconnectDelay = RECONNECT_MIN_MS;
         this.socket?.close();
+        return session;
+    }
+
+    public async signOut(): Promise<void> {
+        unwrap(await this.api.DELETE('/session'));
     }
 
     // --- Events ---

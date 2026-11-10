@@ -4,12 +4,13 @@
 // Configuration comes from flags or environment variables:
 //
 //	-listen    YTG_LISTEN      address to listen on (127.0.0.1:8080)
-//	-data      YTG_DATA_DIR    database, accounts, tools, token (./data)
+//	-data      YTG_DATA_DIR    database, accounts, tools, setup code (./data)
 //	-media     YTG_MEDIA_DIR   downloaded files (./media)
 //	-web       YTG_WEB_DIR     built frontend; empty serves the API only
-//	           YTG_TOKEN       access token; YTG_TOKEN_FILE reads it from
-//	                           a file (Docker secrets). Without either, a
-//	                           token is generated once and kept in the data dir.
+//	           YTG_TOKEN       setup code: creates the first admin while the
+//	                           server has no users; YTG_TOKEN_FILE reads it
+//	                           from a file (Docker secrets). Without either, a
+//	                           code is generated once and kept in the data dir.
 //	           YTG_SECRET_KEY_FILE  a secret (openssl rand -base64 32) the
 //	                           cookies of connected accounts are encrypted
 //	                           with; without it the key is a file in the data dir.
@@ -93,7 +94,7 @@ func run() error {
 		}
 	}
 
-	token, generated, err := loadToken(data)
+	token, _, err := loadToken(data)
 	if err != nil {
 		return err
 	}
@@ -108,7 +109,7 @@ func run() error {
 		LegacyDownloadsDir:  media,
 	}, coreOptions(managed, channel, cookiesKey)...)
 
-	srv, err := server.New(app, server.Config{Token: token, WebDir: *webDir})
+	srv, err := server.New(app, server.Config{SetupCode: token, WebDir: *webDir})
 	if err != nil {
 		return err
 	}
@@ -123,9 +124,7 @@ func run() error {
 		return errors.New(info.StartupError)
 	}
 
-	if generated {
-		log.Printf("ytgrabber-server: access token (kept in %s): %s", tokenPath(data), token)
-	}
+	logSetupCode(app, token, tokenPath(data))
 	if !isLoopback(*listen) {
 		log.Printf("ytgrabber-server: listening on %s — make sure it is reachable only through your VPN", *listen)
 	}
@@ -209,6 +208,24 @@ func env(name string, fallback string) string {
 	return fallback
 }
 
+// logSetupCode shows the setup code while the server has no users: it is
+// what the first admin enters to set the server up. A code from
+// YTG_TOKEN(_FILE) is the operator's own and isn't printed.
+func logSetupCode(app *core.App, code string, path string) {
+	db, err := app.Users()
+	if err != nil {
+		return
+	}
+	if n, err := db.CountUsers(); err != nil || n > 0 {
+		return
+	}
+	if os.Getenv("YTG_TOKEN") == "" && os.Getenv("YTG_TOKEN_FILE") == "" {
+		log.Printf("ytgrabber-server: open the server in a browser and enter the setup code (kept in %s): %s", path, code)
+	} else {
+		log.Printf("ytgrabber-server: open the server in a browser and enter the setup code from YTG_TOKEN")
+	}
+}
+
 // loadSecretKey reads YTG_SECRET_KEY_FILE into the key for the accounts'
 // cookies; nil when it isn't set.
 func loadSecretKey() ([]byte, error) {
@@ -231,7 +248,7 @@ func tokenPath(dataDir string) string {
 	return filepath.Join(dataDir, "token")
 }
 
-// loadToken returns the access token from YTG_TOKEN, YTG_TOKEN_FILE or
+// loadToken returns the setup code from YTG_TOKEN, YTG_TOKEN_FILE or
 // the data dir, generating and saving one on the first start.
 func loadToken(dataDir string) (token string, generated bool, err error) {
 	if token := strings.TrimSpace(os.Getenv("YTG_TOKEN")); token != "" {

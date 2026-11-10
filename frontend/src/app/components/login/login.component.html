@@ -1,23 +1,90 @@
-<form class="login" (submit)="onSubmit($event)">
-    <h1 class="login__title">YT Grabber</h1>
-    <p class="login__text">
-        Введите токен доступа к серверу. Он выводится в журнал при первом запуске и хранится в файле
-        <code>token</code> в папке данных сервера.
-    </p>
-    <input
-        class="login__input"
-        type="password"
-        name="token"
-        autocomplete="current-password"
-        placeholder="Токен"
-        [value]="token"
-        [disabled]="isSubmitting"
-        (input)="onTokenInput($event)"
-    />
-    @if (error) {
-        <p class="login__error">{{ error }}</p>
-    }
-    <button type="submit" class="btn btn--primary" [disabled]="isSubmitting || !token.trim()">
-        {{ isSubmitting ? 'Вход…' : 'Войти' }}
-    </button>
-</form>
+@if (step === 'code') {
+    <form class="login" (submit)="onSubmitCode($event)">
+        <h1 class="login__title">YT Grabber</h1>
+        <p class="login__text">
+            @if (isSetup) {
+                Сервер ещё не настроен. Введите код настройки: он выводится в журнал сервера и
+                хранится в файле <code>token</code> в папке данных.
+            } @else {
+                Введите код приглашения от администратора или код входа, созданный на другом вашем
+                устройстве («Настройки → Устройства»).
+            }
+        </p>
+        <input
+            class="login__input"
+            type="text"
+            name="code"
+            autocomplete="one-time-code"
+            autocapitalize="characters"
+            spellcheck="false"
+            [placeholder]="isSetup ? 'Код настройки' : 'XXXXX-XXXXX'"
+            [value]="code"
+            [disabled]="isSubmitting"
+            (input)="onCodeInput($event)"
+        />
+        @if (error) {
+            <p class="login__error">{{ error }}</p>
+        }
+        <button type="submit" class="btn btn--primary" [disabled]="isSubmitting || !code.trim()">
+            {{ isSubmitting ? 'Проверка…' : 'Дальше' }}
+        </button>
+    </form>
+} @else {
+    <form class="login" (submit)="onSubmitDetails($event)">
+        <h1 class="login__title">{{ title }}</h1>
+        <p class="login__text">
+            @switch (checked?.kind) {
+                @case ('setup') {
+                    Вы станете администратором: сможете приглашать пользователей и управлять
+                    сервером. Всё, что уже скачано на сервер, будет вашим.
+                }
+                @case ('invite') {
+                    У вас будут своя очередь, библиотека и подключённые сайты.
+                }
+                @default {
+                    Это устройство появится в списке ваших устройств.
+                }
+            }
+        </p>
+        @if (needsName) {
+            <label class="login__label">
+                Ваше имя
+                <input
+                    class="login__input"
+                    type="text"
+                    name="name"
+                    autocomplete="nickname"
+                    maxlength="40"
+                    [value]="name"
+                    [disabled]="isSubmitting"
+                    (input)="onNameInput($event)"
+                />
+            </label>
+        }
+        <label class="login__label">
+            Название устройства
+            <input
+                class="login__input"
+                type="text"
+                name="deviceName"
+                maxlength="60"
+                [value]="deviceName"
+                [disabled]="isSubmitting"
+                (input)="onDeviceNameInput($event)"
+            />
+        </label>
+        @if (error) {
+            <p class="login__error">{{ error }}</p>
+        }
+        <button
+            type="submit"
+            class="btn btn--primary"
+            [disabled]="isSubmitting || (needsName && !name.trim())"
+        >
+            {{ isSubmitting ? 'Вход…' : 'Войти' }}
+        </button>
+        <button type="button" class="btn" [disabled]="isSubmitting" (click)="onBack()">
+            Другой код
+        </button>
+    </form>
+}

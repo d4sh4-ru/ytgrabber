@@ -1,6 +1,6 @@
 <div class="app">
     @if (isLoginRequired) {
-        <app-login (loggedIn)="onLoggedIn()" />
+        <app-login [isSetup]="isSetupRequired" (loggedIn)="onLoggedIn()" />
     } @else {
         <header class="app__header">
             <h1 class="app__title">YT Grabber</h1>

@@ -1,0 +1,177 @@
+<section class="people__section">
+    <div class="people__heading-row">
+        <h2 class="people__heading">Устройства</h2>
+        <button type="button" class="btn" (click)="onAddDevice()">+ Войти на другом</button>
+    </div>
+    <p class="people__muted">
+        Вы вошли как <strong>{{ userName }}</strong
+        >{{ isAdmin ? ' (администратор)' : '' }}. Отзовите устройство, если оно потеряно: оно сразу
+        выйдет.
+    </p>
+    @for (device of devices; track device.id) {
+        <div class="people__row">
+            <div class="people__label">
+                <span>
+                    <strong>{{ device.name }}</strong>
+                    @if (device.current) {
+                        <span class="people__tag">это устройство</span>
+                    }
+                </span>
+                <span class="people__muted">{{ lastSeenLabel(device.lastSeenAt) }}</span>
+            </div>
+            <button type="button" class="btn btn--danger" (click)="onRevokeRequested(device)">
+                {{ device.current ? 'Выйти' : 'Отозвать' }}
+            </button>
+        </div>
+    }
+    <form class="people__token" (submit)="onCreateToken($event)">
+        <input
+            class="people__input"
+            type="text"
+            maxlength="60"
+            placeholder="Токен для скрипта: название"
+            [value]="tokenName"
+            (input)="onTokenNameInput($event)"
+        />
+        <button type="submit" class="btn" [disabled]="!tokenName.trim()">Создать токен</button>
+    </form>
+    @if (apiToken) {
+        <div class="people__secret">
+            <span class="people__muted"
+                >Скопируйте токен сейчас: он больше не будет показан. Заголовок
+                <code>Authorization: Bearer &lt;токен&gt;</code>.</span
+            >
+            <input
+                class="people__input people__mono"
+                readonly
+                [value]="apiToken"
+                (focus)="onSelectAll($event)"
+            />
+            <div class="people__buttons">
+                @if (canCopy) {
+                    <button type="button" class="btn" (click)="onCopy(apiToken)">
+                        Скопировать
+                    </button>
+                }
+                <button type="button" class="btn" (click)="onTokenShown()">Готово</button>
+            </div>
+        </div>
+    }
+    <div>
+        <button type="button" class="btn" [disabled]="isSigningOut" (click)="onSignOut()">
+            {{ isSigningOut ? 'Выход…' : 'Выйти на этом устройстве' }}
+        </button>
+    </div>
+</section>
+
+@if (isAdmin) {
+    <section class="people__section">
+        <div class="people__heading-row">
+            <h2 class="people__heading">Пользователи</h2>
+            <div class="people__buttons">
+                <select
+                    class="people__select"
+                    aria-label="Роль приглашённого"
+                    [value]="inviteRole"
+                    (change)="onInviteRoleChange($event)"
+                >
+                    <option value="user">пользователь</option>
+                    <option value="admin">администратор</option>
+                </select>
+                <button type="button" class="btn" (click)="onInvite()">+ Пригласить</button>
+            </div>
+        </div>
+        <p class="people__muted">
+            У каждого своя очередь, библиотека и подключённые сайты. Администраторы ещё приглашают
+            людей и управляют программами и настройками сервера.
+        </p>
+        @for (user of users; track user.id) {
+            <div class="people__row">
+                <div class="people__label">
+                    <span>
+                        <strong>{{ user.name }}</strong>
+                        <span class="people__muted"> · {{ roleLabel(user.role) }}</span>
+                        @if (user.current) {
+                            <span class="people__tag">вы</span>
+                        }
+                    </span>
+                    <span class="people__muted"
+                        >{{ devicesLabel(user.devices) }} ·
+                        {{ lastSeenLabel(user.lastSeenAt) }}</span
+                    >
+                </div>
+                @if (!user.current) {
+                    <div class="people__buttons">
+                        <button type="button" class="btn" (click)="onLinkUser(user)">
+                            Код входа
+                        </button>
+                        <button
+                            type="button"
+                            class="btn btn--danger"
+                            (click)="onRemoveUserRequested(user)"
+                        >
+                            Удалить
+                        </button>
+                    </div>
+                }
+            </div>
+        }
+    </section>
+}
+
+@if (shownCode; as shown) {
+    <div class="people__backdrop" (click)="onCodeClosed()">
+        <div
+            class="people__dialog"
+            role="dialog"
+            aria-modal="true"
+            (click)="$event.stopPropagation()"
+        >
+            <h2 class="people__heading">{{ shown.title }}</h2>
+            <p class="people__muted">{{ shown.hint }}</p>
+            <img class="people__qr" [src]="shown.qrUrl" alt="QR-код ссылки" />
+            <div class="people__code">{{ shown.code }}</div>
+            <input
+                class="people__input"
+                readonly
+                [value]="shown.url"
+                (focus)="onSelectAll($event)"
+            />
+            <p class="people__muted">Действует до {{ expiresLabel(shown.expiresAt) }}.</p>
+            <div class="people__buttons people__buttons--end">
+                @if (canCopy) {
+                    <button type="button" class="btn" (click)="onCopy(shown.url)">
+                        Скопировать ссылку
+                    </button>
+                }
+                <button type="button" class="btn btn--primary" (click)="onCodeClosed()">
+                    Готово
+                </button>
+            </div>
+        </div>
+    </div>
+}
+
+@if (deviceToRevoke; as device) {
+    <app-confirm-dialog
+        [title]="device.current ? 'Выйти на этом устройстве?' : 'Отозвать «' + device.name + '»?'"
+        message="Устройство сразу выйдет. Чтобы вернуться на нём, понадобится новый код входа."
+        [confirmLabel]="isRevoking ? 'Отзыв…' : device.current ? 'Выйти' : 'Отозвать'"
+        [danger]="true"
+        [busy]="isRevoking"
+        (confirmed)="onRevokeConfirmed()"
+        (cancelled)="onRevokeCancelled()"
+    />
+}
+
+@if (userToRemove; as user) {
+    <app-confirm-dialog
+        [title]="'Удалить пользователя ' + user.name + '?'"
+        message="Будут удалены его загрузки, библиотека вместе с файлами, подключённые сайты и устройства. Это нельзя отменить."
+        [confirmLabel]="isRemovingUser ? 'Удаление…' : 'Удалить'"
+        [danger]="true"
+        [busy]="isRemovingUser"
+        (confirmed)="onRemoveUserConfirmed()"
+        (cancelled)="onRemoveUserCancelled()"
+    />
+}

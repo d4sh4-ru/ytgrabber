@@ -1,3 +1,7 @@
+@if (!isDesktop) {
+    <app-people />
+}
+
 <section class="settings__section">
     <h2 class="settings__heading">Загрузки</h2>
     @if (settings) {
@@ -24,6 +28,8 @@
             <select
                 id="concurrency"
                 class="settings__select"
+                [disabled]="!isAdmin"
+                [title]="isAdmin ? '' : 'Меняет администратор сервера'"
                 [value]="settings.maxConcurrentDownloads"
                 (change)="onConcurrencyChange($event)"
             >
@@ -108,7 +114,9 @@
     <div class="settings__heading-row">
         <h2 class="settings__heading">Внешние программы</h2>
         <div class="settings__buttons">
-            @if (installState.isRunning) {
+            @if (!isAdmin) {
+                <!-- Installing and updating is the admin's. -->
+            } @else if (installState.isRunning) {
                 <button type="button" class="btn" (click)="onCancelInstall()">
                     Отменить установку
                 </button>
@@ -178,7 +186,7 @@
                 }
             </div>
             <div class="settings__buttons">
-                @if (tool.name === 'yt-dlp' && tool.found) {
+                @if (isAdmin && tool.name === 'yt-dlp' && tool.found) {
                     <button
                         type="button"
                         class="btn"
@@ -199,7 +207,13 @@
                         </button>
                     }
                 }
-                @if (!tool.found && !tool.custom && tool.installable && !installState.isRunning) {
+                @if (
+                    isAdmin &&
+                    !tool.found &&
+                    !tool.custom &&
+                    tool.installable &&
+                    !installState.isRunning
+                ) {
                     <button type="button" class="btn" (click)="onInstall([tool.name])">
                         Установить
                     </button>

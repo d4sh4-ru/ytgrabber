@@ -78,6 +78,11 @@ func TestResponsesMatchSpec(t *testing.T) {
 		{"GET", "/settings", "/settings", ""},
 		{"PUT", "/settings/max-concurrent-downloads", "/settings/max-concurrent-downloads", `{"value":2}`},
 		{"GET", "/tools", "/tools", ""},
+		{"GET", "/devices", "/devices", ""},
+		{"POST", "/devices", "/devices", `{"name":"script"}`},
+		{"POST", "/devices/link", "/devices/link", ""},
+		{"GET", "/users", "/users", ""},
+		{"POST", "/users/invites", "/users/invites", `{"role":"user"}`},
 		{"POST", "/jobs", "/jobs", `{"url":"ftp://bad","quality":"audio"}`},
 	}
 	for _, c := range cases {
@@ -85,7 +90,7 @@ func TestResponsesMatchSpec(t *testing.T) {
 		if c.body != "" {
 			body = strings.NewReader(c.body)
 		}
-		resp := f.do(c.method, "/api/v1"+c.path, testToken, body)
+		resp := f.do(c.method, "/api/v1"+c.path, f.token, body)
 		data, _ := io.ReadAll(resp.Body)
 		var value any
 		if err := json.Unmarshal(data, &value); err != nil {
