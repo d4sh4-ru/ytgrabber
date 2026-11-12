@@ -99,6 +99,33 @@
         }
     }
 
+    &__proxy {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+    }
+
+    &__proxy-field {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+    }
+
+    &__input {
+        flex: 1 1 220px;
+        min-width: 0;
+        padding: 6px 8px;
+        border: 1px solid v.$border-subtle;
+        border-radius: v.$radius-sm;
+        background: v.$bg-primary;
+        color: v.$text-primary;
+        font-size: 13px;
+
+        @include v.touch {
+            min-height: v.$touch-target;
+        }
+    }
+
     &__muted {
         color: v.$text-secondary;
         font-size: 12px;

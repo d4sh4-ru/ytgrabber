@@ -247,9 +247,12 @@ func (a *App) checkAccountOnline(account *model.Account, checkURL string) error 
 
 	ctx, cancel := context.WithTimeout(context.Background(), accountCheckTimeout)
 	defer cancel()
-	cmd := toolSet.Command(ctx, toolSet.YtDlp.Path,
-		"--ignore-config", "--encoding", "utf-8", "--flat-playlist", "--playlist-items", "1", "--simulate", "--no-warnings",
-		"--cookies", session.path, "--", checkURL)
+	args := []string{"--ignore-config", "--encoding", "utf-8", "--flat-playlist", "--playlist-items", "1", "--simulate", "--no-warnings",
+		"--cookies", session.path}
+	if proxy := a.proxy(); proxy != "" {
+		args = append(args, "--proxy", proxy)
+	}
+	cmd := toolSet.Command(ctx, toolSet.YtDlp.Path, append(args, "--", checkURL)...)
 	var stderr bytes.Buffer
 	cmd.Stderr = &stderr
 	runErr := cmd.Run()

@@ -77,6 +77,7 @@ func TestResponsesMatchSpec(t *testing.T) {
 		{"GET", "/accounts", "/accounts", ""},
 		{"GET", "/settings", "/settings", ""},
 		{"PUT", "/settings/max-concurrent-downloads", "/settings/max-concurrent-downloads", `{"value":2}`},
+		{"PUT", "/settings/proxy", "/settings/proxy", `{"proxy":"socks5://user:pass@127.0.0.1:1080"}`},
 		{"GET", "/tools", "/tools", ""},
 		{"GET", "/devices", "/devices", ""},
 		{"POST", "/devices", "/devices", `{"name":"script"}`},

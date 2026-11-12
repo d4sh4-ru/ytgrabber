@@ -108,6 +108,10 @@ func (a *App) SetMaxConcurrentDownloads(n int) (core.Settings, error) {
 	return a.core.SetMaxConcurrentDownloads(n)
 }
 
+func (a *App) SetProxy(proxy string) (core.Settings, error) {
+	return a.core.SetProxy(proxy)
+}
+
 func (a *App) OpenDownloadsDir() error {
 	return a.core.OpenDownloadsDir(user)
 }

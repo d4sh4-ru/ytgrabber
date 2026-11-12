@@ -63,6 +63,11 @@ export class SettingsService {
         return this.transport.call<core.Settings>('SetMaxConcurrentDownloads', [value]);
     }
 
+    /** Proxy for yt-dlp; '' turns it off. The returned value hides the password. */
+    public setProxy(proxy: string): Promise<core.Settings> {
+        return this.transport.call<core.Settings>('SetProxy', [proxy]);
+    }
+
     public setUpdateSettings(autoCheck: boolean, prerelease: boolean): Promise<core.Settings> {
         return this.transport.call<core.Settings>('SetUpdateSettings', [autoCheck, prerelease]);
     }
