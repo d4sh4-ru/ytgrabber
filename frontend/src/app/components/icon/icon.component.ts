@@ -14,7 +14,14 @@ export type IconName =
     | 'library'
     | 'sliders'
     | 'copy'
-    | 'plus';
+    | 'plus'
+    | 'link'
+    | 'retry'
+    | 'lock'
+    | 'expand'
+    | 'check'
+    | 'scan'
+    | 'info';
 
 /** Stroke width per icon; the close cross is drawn heavier to read at small sizes. */
 const STROKE_WIDTHS: Readonly<Record<IconName, number>> = {
@@ -32,6 +39,13 @@ const STROKE_WIDTHS: Readonly<Record<IconName, number>> = {
     sliders: 1.75,
     copy: 1.75,
     plus: 2,
+    link: 2,
+    retry: 2,
+    lock: 2,
+    expand: 2,
+    check: 2.5,
+    scan: 2,
+    info: 2,
 };
 
 /**

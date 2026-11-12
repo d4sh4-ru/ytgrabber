@@ -1,34 +1,86 @@
 @use '../styles/variables' as v;
 
 .app {
-    max-width: 720px;
-    margin: 0 auto;
-    padding: 16px;
-    // Landscape iPhones: keep clear of the notch on either side.
-    padding-right: max(16px, env(safe-area-inset-right));
-    padding-left: max(16px, env(safe-area-inset-left));
     display: flex;
     flex-direction: column;
-    gap: 20px;
+    min-height: 100%;
+
+    &__main {
+        width: 100%;
+        max-width: 960px;
+        margin: 0 auto;
+        padding: 24px 32px;
+        // Landscape iPhones: keep clear of the notch on either side.
+        padding-right: max(32px, env(safe-area-inset-right));
+        padding-left: max(32px, env(safe-area-inset-left));
+        display: flex;
+        flex-direction: column;
+        gap: 20px;
+
+        @include v.narrow {
+            padding: 12px max(12px, env(safe-area-inset-right)) 0
+                max(12px, env(safe-area-inset-left));
+            gap: 16px;
+        }
+    }
+
+    &__section {
+        // Room for the fixed audio player bar.
+        padding-bottom: 88px;
+
+        // ...and on phones for the tab bar under it.
+        @include v.narrow {
+            padding-bottom: calc(88px + #{v.$bottom-nav-height} + env(safe-area-inset-bottom));
+        }
+    }
+}
+
+// The bar across the top: logo, tabs and, when there is a server, its
+// status. On phones only the logo stays; the tabs move to the bottom.
+.topbar {
+    position: sticky;
+    top: 0;
+    z-index: 15;
+    display: flex;
+    align-items: center;
+    gap: 24px;
+    padding: 10px 20px;
+    padding-right: max(20px, env(safe-area-inset-right));
+    padding-left: max(20px, env(safe-area-inset-left));
+    border-bottom: 1px solid v.$border-subtle;
+    background: v.$bg-surface;
 
     // Under a status bar the title keeps a gap from it, not just clear of
     // it; --app-top-gap is wider where iOS blurs past the bar (styles.scss).
     @include v.narrow {
+        position: static;
         padding: max(12px, calc(env(safe-area-inset-top) + var(--app-top-gap, 8px)))
             max(12px, env(safe-area-inset-right)) 0 max(12px, env(safe-area-inset-left));
-        gap: 16px;
+        border-bottom: none;
+        background: transparent;
     }
 
-    &__header {
+    &__brand {
         display: flex;
         align-items: center;
-        justify-content: space-between;
-        gap: 16px;
+        gap: 10px;
+        flex-shrink: 0;
+    }
+
+    &__logo {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 28px;
+        height: 28px;
+        border-radius: v.$radius-sm;
+        background: v.$accent;
+        color: v.$on-accent;
     }
 
     &__title {
         margin: 0;
-        font-size: 16px;
+        font-size: 15px;
         font-weight: 600;
     }
 
@@ -70,18 +122,28 @@
         position: relative;
         display: flex;
         align-items: center;
-        gap: 6px;
-        padding: 8px 4px;
+        gap: 8px;
+        height: 38px;
+        padding: 0 14px;
         border: none;
-        border-bottom: 2px solid transparent;
+        border-radius: v.$radius-sm;
         background: transparent;
         color: v.$text-secondary;
-        font-size: 13px;
+        font-size: 14px;
+        font-weight: 500;
         cursor: pointer;
 
-        &--active {
-            border-bottom-color: v.$accent;
+        &:hover {
             color: v.$text-primary;
+        }
+
+        &--active {
+            background: v.$bg-elevated;
+            color: v.$text-primary;
+
+            .topbar__tab-icon {
+                color: v.$accent-text;
+            }
         }
 
         @include v.touch {
@@ -94,53 +156,86 @@
             gap: 2px;
             height: v.$bottom-nav-height;
             padding: 4px;
-            border-bottom: none;
+            border-radius: 0;
             font-size: 11px;
 
             &--active {
+                background: transparent;
                 color: v.$accent-text;
             }
         }
     }
 
     &__tab-icon {
-        display: none;
-
-        @include v.narrow {
-            display: inline-flex;
-        }
+        display: inline-flex;
     }
 
-    &__tab-badge {
+    &__badge {
+        min-width: 18px;
         padding: 0 6px;
-        border-radius: v.$radius-sm;
+        border-radius: 9px;
         background: v.$accent;
         color: v.$on-accent;
         font-size: 11px;
         font-weight: 600;
-        line-height: 1.6;
+        line-height: 18px;
+        text-align: center;
+
+        &--warning {
+            background: v.$warning-fill;
+            color: v.$on-warning;
+        }
 
         // On the icon's top-right corner.
         @include v.narrow {
             position: absolute;
             top: 4px;
             left: calc(50% + 6px);
-            line-height: 1.4;
+            line-height: 16px;
         }
     }
-}
 
-.app__tab-badge--warning {
-    background: v.$warning-fill;
-    color: v.$on-warning;
-}
+    &__status {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        min-width: 0;
+        margin-left: auto;
+        color: v.$text-secondary;
+        font-size: 13px;
+        white-space: nowrap;
 
-.app__section {
-    // Room for the fixed audio player bar.
-    padding-bottom: 88px;
+        .dot {
+            background: v.$text-faint;
+        }
 
-    // ...and on phones for the tab bar under it.
-    @include v.narrow {
-        padding-bottom: calc(88px + #{v.$bottom-nav-height} + env(safe-area-inset-bottom));
+        &--ok .dot {
+            background: v.$success;
+        }
+
+        &--error {
+            color: v.$error;
+
+            .dot {
+                background: v.$error;
+            }
+        }
+
+        @include v.narrow {
+            display: none;
+        }
+    }
+
+    // The address fits only on a wide window.
+    &__server {
+        display: none;
+        overflow: hidden;
+        max-width: 240px;
+        color: v.$text-faint;
+        text-overflow: ellipsis;
+
+        @media (min-width: 900px) {
+            display: inline;
+        }
     }
 }

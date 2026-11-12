@@ -1,202 +1,265 @@
 <div class="app">
-    @if (serverProblem) {
-        <div
-            class="banner"
-            [class.banner--error]="serverStatus.error"
-            [class.banner--warning]="!serverStatus.error"
-        >
-            <span>{{ serverProblem }}</span>
-            @if (serverStatus.error) {
-                <div class="banner__actions">
-                    <button
-                        type="button"
-                        class="btn"
-                        [disabled]="isSwitchingMode"
-                        (click)="onReconnectServer()"
-                    >
-                        Повторить
-                    </button>
-                    <button
-                        type="button"
-                        class="btn"
-                        [disabled]="isSwitchingMode"
-                        (click)="onUseLocal()"
-                    >
-                        Работать локально
-                    </button>
-                </div>
-            }
-        </div>
-    }
-    @if (isLoginRequired) {
-        <app-login [isSetup]="isSetupRequired" (loggedIn)="onLoggedIn()" />
-    } @else {
-        <header class="app__header">
-            <h1 class="app__title">YT Grabber</h1>
-            <nav class="app__tabs">
+    @if (!isLoginRequired) {
+        <header class="topbar">
+            <div class="topbar__brand">
+                <span class="topbar__logo"><app-icon name="download" [size]="17" /></span>
+                <h1 class="topbar__title">YT Grabber</h1>
+            </div>
+            <nav class="topbar__tabs">
                 <button
                     type="button"
-                    class="app__tab"
-                    [class.app__tab--active]="activeTab === 'add'"
+                    class="topbar__tab"
+                    [class.topbar__tab--active]="activeTab === 'add'"
                     (click)="setTab('add')"
                 >
-                    <app-icon class="app__tab-icon" name="download" [size]="22" />
+                    <app-icon class="topbar__tab-icon" name="download" />
                     Загрузки
                     @if (activeJobsCount > 0) {
-                        <span class="app__tab-badge">{{ activeJobsCount }}</span>
+                        <span class="topbar__badge">{{ activeJobsCount }}</span>
                     }
                 </button>
                 <button
                     type="button"
-                    class="app__tab"
-                    [class.app__tab--active]="activeTab === 'library'"
+                    class="topbar__tab"
+                    [class.topbar__tab--active]="activeTab === 'library'"
                     (click)="setTab('library')"
                 >
-                    <app-icon class="app__tab-icon" name="library" [size]="22" />
+                    <app-icon class="topbar__tab-icon" name="library" />
                     Библиотека
                 </button>
                 <button
                     type="button"
-                    class="app__tab"
-                    [class.app__tab--active]="activeTab === 'settings'"
+                    class="topbar__tab"
+                    [class.topbar__tab--active]="activeTab === 'settings'"
                     (click)="setTab('settings')"
                 >
-                    <app-icon class="app__tab-icon" name="sliders" [size]="22" />
+                    <app-icon class="topbar__tab-icon" name="sliders" />
                     Настройки
                     @if (missingRequiredTools.length > 0) {
-                        <span class="app__tab-badge app__tab-badge--warning">!</span>
+                        <span class="topbar__badge topbar__badge--warning">!</span>
                     }
                 </button>
             </nav>
-        </header>
-
-        @if (startupError) {
-            <div class="banner banner--error">
-                <strong>Приложение не смогло запуститься.</strong>
-                <span>{{ startupError }}</span>
-                <span
-                    >Если база данных повреждена, начните с чистого листа: «Удалить всё…»
-                    ниже.</span
+            @if (server) {
+                <div
+                    class="topbar__status"
+                    [class.topbar__status--ok]="serverStatus.connected && !serverStatus.error"
+                    [class.topbar__status--error]="!!serverStatus.error"
+                    [title]="serverStatus.error || server"
                 >
-            </div>
-            <app-settings />
-        } @else {
-            @if (missingRequiredTools.length > 0 && activeTab !== 'settings') {
-                <div class="banner banner--warning">
-                    <span
-                        >Не найдено: {{ missingRequiredTools.join(', ') }}. Без этого загрузка не
-                        работает.</span
-                    >
-                    <div class="banner__actions">
-                        @if (canInstallMissing) {
-                            <button
-                                type="button"
-                                class="btn btn--primary"
-                                [disabled]="isInstallingTools"
-                                (click)="onInstallMissing()"
-                            >
-                                {{ isInstallingTools ? 'Установка…' : 'Установить автоматически' }}
-                            </button>
-                        }
-                        <button type="button" class="btn" (click)="setTab('settings')">
-                            Подробнее
-                        </button>
-                    </div>
+                    <span class="dot"></span>
+                    <span>{{ serverStatusLabel }}</span>
+                    <span class="topbar__server mono">{{ server }}</span>
                 </div>
             }
+        </header>
+    }
 
-            @if (isUpdateBannerVisible && update) {
-                <div class="banner banner--info">
-                    <span>
-                        Доступна версия {{ update.version }}
-                        @if (update.prerelease) {
-                            (тестовая)
-                        }
-                    </span>
+    <main class="app__main">
+        @if (serverProblem) {
+            <div
+                class="banner"
+                [class.banner--error]="serverStatus.error"
+                [class.banner--warning]="!serverStatus.error"
+            >
+                <app-icon class="banner__icon" name="alert" [size]="18" />
+                <span class="banner__text">{{ serverProblem }}</span>
+                @if (serverStatus.error) {
                     <div class="banner__actions">
-                        @if (update.canInstall) {
-                            <button
-                                type="button"
-                                class="btn btn--primary"
-                                [disabled]="isInstallingUpdate"
-                                (click)="onInstallUpdate()"
-                            >
-                                {{
-                                    isInstallingUpdate ? 'Обновление…' : 'Обновить и перезапустить'
-                                }}
-                            </button>
-                        } @else {
-                            <button
-                                type="button"
-                                class="btn btn--primary"
-                                (click)="onOpenReleasePage()"
-                            >
-                                Скачать
-                            </button>
-                        }
-                        <button type="button" class="btn" (click)="setTab('settings')">
-                            Что нового
+                        <button
+                            type="button"
+                            class="btn btn--ghost"
+                            [disabled]="isSwitchingMode"
+                            (click)="onUseLocal()"
+                        >
+                            Работать локально
                         </button>
-                        <button type="button" class="btn" (click)="onDismissUpdate()">Позже</button>
-                    </div>
-                </div>
-            }
-
-            @if (isWebAppUpdateReady) {
-                <div class="banner banner--info">
-                    <span>Приложение обновилось. Новая версия откроется после перезагрузки.</span>
-                    <div class="banner__actions">
-                        <button type="button" class="btn btn--primary" (click)="onReloadWebApp()">
-                            Перезагрузить
+                        <button
+                            type="button"
+                            class="btn"
+                            [disabled]="isSwitchingMode"
+                            (click)="onReconnectServer()"
+                        >
+                            Повторить
                         </button>
-                    </div>
-                </div>
-            }
-
-            @switch (installOffer) {
-                @case ('prompt') {
-                    <div class="banner banner--info">
-                        <span>Установите YT Grabber: он откроется с экрана, как приложение.</span>
-                        <div class="banner__actions">
-                            <button type="button" class="btn btn--primary" (click)="onInstall()">
-                                Установить
-                            </button>
-                            <button type="button" class="btn" (click)="onDismissInstall()">
-                                Не нужно
-                            </button>
-                        </div>
                     </div>
                 }
-                @case ('ios') {
-                    <div class="banner banner--info">
+            </div>
+        }
+        @if (isLoginRequired) {
+            <app-login [isSetup]="isSetupRequired" (loggedIn)="onLoggedIn()" />
+        } @else {
+            @if (startupError) {
+                <div class="banner banner--error">
+                    <app-icon class="banner__icon" name="alert" [size]="18" />
+                    <div class="banner__text">
+                        <strong>Приложение не смогло запуститься.</strong>
+                        <span>{{ startupError }}</span>
                         <span
-                            >Чтобы открывать YT Grabber как приложение, нажмите «Поделиться» и
-                            выберите «На экран „Домой“».</span
+                            >Если база данных повреждена, начните с чистого листа: «Удалить всё…»
+                            ниже.</span
+                        >
+                    </div>
+                </div>
+                <app-settings />
+            } @else {
+                @if (missingRequiredTools.length > 0 && activeTab !== 'settings') {
+                    <div class="banner banner--warning">
+                        <app-icon class="banner__icon" name="alert" [size]="18" />
+                        <span class="banner__text"
+                            >Не найдено: {{ missingRequiredTools.join(', ') }}. Без этого загрузка
+                            не работает.</span
                         >
                         <div class="banner__actions">
-                            <button type="button" class="btn" (click)="onDismissInstall()">
-                                Понятно
+                            @if (canInstallMissing) {
+                                <button
+                                    type="button"
+                                    class="btn btn--primary"
+                                    [disabled]="isInstallingTools"
+                                    (click)="onInstallMissing()"
+                                >
+                                    {{
+                                        isInstallingTools
+                                            ? 'Установка…'
+                                            : 'Установить автоматически'
+                                    }}
+                                </button>
+                            }
+                            <button
+                                type="button"
+                                class="btn btn--ghost"
+                                (click)="setTab('settings')"
+                            >
+                                Подробнее
                             </button>
                         </div>
                     </div>
                 }
-            }
 
-            <section class="app__section">
-                @switch (activeTab) {
-                    @case ('add') {
-                        <app-download-form [jobs]="jobs" [sharedUrl]="sharedUrl" />
+                @if (isUpdateBannerVisible && update) {
+                    <div class="banner banner--info">
+                        <app-icon class="banner__icon" name="info" [size]="18" />
+                        <span class="banner__text">
+                            Доступна версия {{ update.version }}
+                            @if (update.prerelease) {
+                                (тестовая)
+                            }
+                        </span>
+                        <div class="banner__actions">
+                            @if (update.canInstall) {
+                                <button
+                                    type="button"
+                                    class="btn btn--primary"
+                                    [disabled]="isInstallingUpdate"
+                                    (click)="onInstallUpdate()"
+                                >
+                                    {{
+                                        isInstallingUpdate
+                                            ? 'Обновление…'
+                                            : 'Обновить и перезапустить'
+                                    }}
+                                </button>
+                            } @else {
+                                <button
+                                    type="button"
+                                    class="btn btn--primary"
+                                    (click)="onOpenReleasePage()"
+                                >
+                                    Скачать
+                                </button>
+                            }
+                            <button type="button" class="btn" (click)="setTab('settings')">
+                                Что нового
+                            </button>
+                            <button
+                                type="button"
+                                class="btn btn--ghost"
+                                (click)="onDismissUpdate()"
+                            >
+                                Позже
+                            </button>
+                        </div>
+                    </div>
+                }
+
+                @if (isWebAppUpdateReady) {
+                    <div class="banner banner--info">
+                        <app-icon class="banner__icon" name="info" [size]="18" />
+                        <span class="banner__text"
+                            >Приложение обновилось. Новая версия откроется после перезагрузки.</span
+                        >
+                        <div class="banner__actions">
+                            <button
+                                type="button"
+                                class="btn btn--primary"
+                                (click)="onReloadWebApp()"
+                            >
+                                Перезагрузить
+                            </button>
+                        </div>
+                    </div>
+                }
+
+                @switch (installOffer) {
+                    @case ('prompt') {
+                        <div class="banner banner--info">
+                            <app-icon class="banner__icon" name="info" [size]="18" />
+                            <span class="banner__text"
+                                >Установите YT Grabber: он откроется с экрана, как приложение.</span
+                            >
+                            <div class="banner__actions">
+                                <button
+                                    type="button"
+                                    class="btn btn--primary"
+                                    (click)="onInstall()"
+                                >
+                                    Установить
+                                </button>
+                                <button
+                                    type="button"
+                                    class="btn btn--ghost"
+                                    (click)="onDismissInstall()"
+                                >
+                                    Не нужно
+                                </button>
+                            </div>
+                        </div>
                     }
-                    @case ('library') {
-                        <app-library [items]="library" (videoSelected)="onVideoSelected($event)" />
-                    }
-                    @case ('settings') {
-                        <app-settings />
+                    @case ('ios') {
+                        <div class="banner banner--info">
+                            <app-icon class="banner__icon" name="info" [size]="18" />
+                            <span class="banner__text"
+                                >Чтобы открывать YT Grabber как приложение, нажмите «Поделиться» и
+                                выберите «На экран „Домой“».</span
+                            >
+                            <div class="banner__actions">
+                                <button type="button" class="btn" (click)="onDismissInstall()">
+                                    Понятно
+                                </button>
+                            </div>
+                        </div>
                     }
                 }
-            </section>
+
+                <section class="app__section">
+                    @switch (activeTab) {
+                        @case ('add') {
+                            <app-download-form [jobs]="jobs" [sharedUrl]="sharedUrl" />
+                        }
+                        @case ('library') {
+                            <app-library
+                                [items]="library"
+                                (videoSelected)="onVideoSelected($event)"
+                            />
+                        }
+                        @case ('settings') {
+                            <app-settings />
+                        }
+                    }
+                </section>
+            }
         }
-    }
+    </main>
 </div>
 
 <app-video-player-modal [item]="selectedVideo" (closed)="onModalClosed()" />
