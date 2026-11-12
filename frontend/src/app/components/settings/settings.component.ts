@@ -72,6 +72,9 @@ export class SettingsComponent implements OnInit, OnDestroy {
     // --- Settings ---
     protected settings: core.Settings | null = null;
     protected readonly concurrencyOptions = CONCURRENCY_OPTIONS;
+    /** The proxy as typed; the saved one comes back with the password masked. */
+    protected proxyDraft = '';
+    protected isSavingProxy = false;
 
     // --- Accounts ---
     protected accounts: model.Account[] = [];
@@ -122,6 +125,10 @@ export class SettingsComponent implements OnInit, OnDestroy {
     protected resetStep: ResetStep = 'idle';
     protected resetDeleteMedia = false;
     protected isResetting = false;
+
+    protected get isProxyChanged(): boolean {
+        return this.proxyDraft.trim() !== (this.settings?.proxy ?? '');
+    }
 
     protected get installableMissingCount(): number {
         return (this.dependencies?.tools ?? []).filter(
@@ -244,6 +251,30 @@ export class SettingsComponent implements OnInit, OnDestroy {
         await this.applySettings(this.settingsService.setMaxConcurrentDownloads(value));
     }
 
+    protected onProxyInput(event: Event): void {
+        this.proxyDraft = (event.target as HTMLInputElement).value;
+    }
+
+    protected async onSaveProxy(event: Event): Promise<void> {
+        event.preventDefault();
+        if (!this.isProxyChanged || this.isSavingProxy) {
+            return;
+        }
+        this.isSavingProxy = true;
+        this.changeDetectorRef.markForCheck();
+        try {
+            this.settings = await this.settingsService.setProxy(this.proxyDraft.trim());
+            this.proxyDraft = this.settings.proxy ?? '';
+            this.notificationService.info(
+                this.settings.proxy ? 'Прокси сохранён' : 'Прокси выключен',
+            );
+        } catch (error: unknown) {
+            this.notificationService.error(error);
+        }
+        this.isSavingProxy = false;
+        this.changeDetectorRef.markForCheck();
+    }
+
     private async load(): Promise<void> {
         try {
             const [settings, appInfo, storage] = await Promise.all([
@@ -252,6 +283,8 @@ export class SettingsComponent implements OnInit, OnDestroy {
                 this.isDesktop ? this.settingsService.getStorageInfo() : Promise.resolve(null),
             ]);
             this.settings = settings;
+            // Older servers don't send it.
+            this.proxyDraft = settings.proxy ?? '';
             this.appInfo = appInfo;
             this.storage = storage;
             this.changeDetectorRef.markForCheck();

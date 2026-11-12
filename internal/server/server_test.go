@@ -363,6 +363,7 @@ func TestInviteAndRoles(t *testing.T) {
 		{"POST", "/api/v1/tools/install", `{}`},
 		{"POST", "/api/v1/tools/yt-dlp/update", ""},
 		{"PUT", "/api/v1/settings/max-concurrent-downloads", `{"value":4}`},
+		{"PUT", "/api/v1/settings/proxy", `{"proxy":"http://evil:8080"}`},
 	} {
 		var body io.Reader
 		if req.body != "" {

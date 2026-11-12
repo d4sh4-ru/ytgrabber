@@ -119,8 +119,9 @@ const youtubeClients = "youtube:player_client=default,-web_embedded"
 //     cookies yt-dlp starts with YouTube's web_embedded client, whose
 //     streams now answer 403 without a PO token bound to the video, so
 //     that client is dropped (see youtubeClients).
+//   - proxy, when set, is passed as --proxy (http://, socks5://, ...).
 //   - "--" ends option parsing, so the URL can never be read as a flag.
-func BuildArgs(sourceURL string, quality string, downloadsDir string, ffmpegPath string, cookiesPath string) []string {
+func BuildArgs(sourceURL string, quality string, downloadsDir string, ffmpegPath string, cookiesPath string, proxy string) []string {
 	// The directory is part of the -o template, where "%" is special.
 	dir := strings.ReplaceAll(downloadsDir, "%", "%%")
 
@@ -144,6 +145,9 @@ func BuildArgs(sourceURL string, quality string, downloadsDir string, ffmpegPath
 	}
 	if cookiesPath != "" {
 		args = append(args, "--cookies", cookiesPath, "--extractor-args", youtubeClients)
+	}
+	if proxy != "" {
+		args = append(args, "--proxy", proxy)
 	}
 
 	switch quality {

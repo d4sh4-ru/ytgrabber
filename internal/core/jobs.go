@@ -376,7 +376,7 @@ func (a *App) handleCancelled(ctx context.Context, j *job) {
 
 func (a *App) execYtDlp(ctx context.Context, j *job, toolSet tools.Set, downloadsDir string, cookiesPath string) error {
 	cmd := toolSet.Command(ctx, toolSet.YtDlp.Path,
-		ytdlp.BuildArgs(j.URL, j.Quality, downloadsDir, toolSet.Ffmpeg.Path, cookiesPath)...)
+		ytdlp.BuildArgs(j.URL, j.Quality, downloadsDir, toolSet.Ffmpeg.Path, cookiesPath, a.proxy())...)
 
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {

@@ -42,7 +42,7 @@ func TestNormalizeURL(t *testing.T) {
 }
 
 func TestBuildYtDlpArgs(t *testing.T) {
-	args := BuildArgs("https://example.com/v", "1080p", "/tmp/100% videos", "/opt/ffmpeg", "")
+	args := BuildArgs("https://example.com/v", "1080p", "/tmp/100% videos", "/opt/ffmpeg", "", "")
 
 	if n := len(args); n < 2 || args[n-2] != "--" || args[n-1] != "https://example.com/v" {
 		t.Fatalf("URL must be the last argument after \"--\", got tail %q", args[max(len(args)-2, 0):])
@@ -74,18 +74,24 @@ func TestBuildYtDlpArgs(t *testing.T) {
 	if slices.Contains(args, "--cookies") {
 		t.Errorf("cookies passed without an account: %q", args)
 	}
-	withCookies := BuildArgs("https://example.com/v", "best", "/tmp", "", "/data/run/job.cookies")
+	withCookies := BuildArgs("https://example.com/v", "best", "/tmp", "", "/data/run/job.cookies", "socks5://127.0.0.1:1080")
 	if i := slices.Index(withCookies, "--cookies"); i == -1 || withCookies[i+1] != "/data/run/job.cookies" || i > slices.Index(withCookies, "--") {
 		t.Errorf("cookies file not passed before the URL: %q", withCookies)
 	}
 	if i := slices.Index(withCookies, "--extractor-args"); i == -1 || withCookies[i+1] != youtubeClients {
 		t.Errorf("signed-in download must skip the web_embedded client: %q", withCookies)
 	}
+	if i := slices.Index(withCookies, "--proxy"); i == -1 || withCookies[i+1] != "socks5://127.0.0.1:1080" || i > slices.Index(withCookies, "--") {
+		t.Errorf("proxy not passed before the URL: %q", withCookies)
+	}
+	if slices.Contains(args, "--proxy") {
+		t.Errorf("proxy passed when not set: %q", args)
+	}
 	if slices.Contains(args, "--extractor-args") {
 		t.Errorf("client list changed without cookies: %q", args)
 	}
 
-	audio := BuildArgs("https://example.com/v", "audio", "/tmp", "", "")
+	audio := BuildArgs("https://example.com/v", "audio", "/tmp", "", "", "")
 	if !slices.Contains(audio, "-x") || slices.Contains(audio, "--merge-output-format") {
 		t.Errorf("audio args wrong: %q", audio)
 	}

@@ -15,6 +15,18 @@ class SettingsServiceStub {
     public readonly resetCalls: boolean[] = [];
     public readonly updateSettingsCalls: [boolean, boolean][] = [];
     public rollbackCalls = 0;
+    public readonly proxyCalls: string[] = [];
+
+    public setProxy(proxy: string): Promise<core.Settings> {
+        this.proxyCalls.push(proxy);
+        // Like the backend: the password comes back masked.
+        return Promise.resolve(
+            core.Settings.createFrom({
+                downloadsDir: '/videos',
+                proxy: proxy.replace(/:[^:@/]+@/, ':xxxxx@'),
+            }),
+        );
+    }
 
     public rollbackYtDlp(): Promise<tools.Report> {
         this.rollbackCalls++;
@@ -614,6 +626,57 @@ describe('SettingsComponent: updates', () => {
         boxes[1].click();
         await settle();
         expect(settings.updateSettingsCalls).toEqual([[true, true]]);
+    });
+});
+
+describe('SettingsComponent: proxy', () => {
+    let fixture: ComponentFixture<SettingsComponent>;
+    let settings: SettingsServiceStub;
+
+    function element(): HTMLElement {
+        return fixture.nativeElement as HTMLElement;
+    }
+
+    function saveButton(): HTMLButtonElement {
+        return element().querySelector<HTMLButtonElement>('.settings__proxy button')!;
+    }
+
+    async function settle(): Promise<void> {
+        await new Promise((resolve) => setTimeout(resolve));
+        fixture.detectChanges();
+    }
+
+    beforeEach(async () => {
+        settings = new SettingsServiceStub();
+        await TestBed.configureTestingModule({
+            imports: [SettingsComponent],
+            providers: [
+                { provide: Transport, useValue: new FakeTransport() },
+                { provide: SettingsService, useValue: settings },
+                { provide: ToolInstallService, useValue: new ToolInstallServiceStub() },
+                { provide: AccountsService, useValue: new AccountsServiceStub() },
+                { provide: UpdateService, useValue: new UpdateServiceStub() },
+            ],
+        }).compileComponents();
+        fixture = TestBed.createComponent(SettingsComponent);
+        fixture.detectChanges();
+        await settle();
+    });
+
+    it('saves a changed proxy and shows it with the password hidden', async () => {
+        const input = element().querySelector<HTMLInputElement>('#proxy')!;
+        expect(saveButton().disabled).toBe(true);
+
+        input.value = ' socks5://user:secret@proxy.lan:1080 ';
+        input.dispatchEvent(new Event('input'));
+        fixture.detectChanges();
+        expect(saveButton().disabled).toBe(false);
+
+        saveButton().click();
+        await settle();
+        expect(settings.proxyCalls).toEqual(['socks5://user:secret@proxy.lan:1080']);
+        expect(input.value).toBe('socks5://user:xxxxx@proxy.lan:1080');
+        expect(saveButton().disabled).toBe(true);
     });
 });
 

@@ -45,6 +45,9 @@
           "prereleaseUpdates": {
             "type": "boolean"
           },
+          "proxy": {
+            "type": "string"
+          },
           "ytDlpPath": {
             "type": "string"
           }
@@ -54,6 +57,7 @@
           "ytDlpPath",
           "ffmpegPath",
           "maxConcurrentDownloads",
+          "proxy",
           "autoCheckUpdates",
           "prereleaseUpdates"
         ],
@@ -2124,6 +2128,96 @@
           }
         },
         "summary": "Сколько загрузок идёт одновременно"
+      }
+    },
+    "/settings/proxy": {
+      "put": {
+        "operationId": "putSettingsProxy",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "properties": {
+                  "proxy": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "proxy"
+                ],
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/core.Settings"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Ошибка; текст для пользователя"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Нужен вход"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Только для администратора"
+          }
+        },
+        "summary": "Прокси для yt-dlp (пароль в ответах скрыт)"
       }
     },
     "/tools": {

@@ -5,9 +5,12 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"net/url"
 	"os"
 	"path/filepath"
+	"slices"
 	"strconv"
+	"strings"
 
 	"ytgrabber/internal/platform"
 	"ytgrabber/internal/storage"
@@ -19,6 +22,7 @@ const (
 	settingYtDlpPath     = "ytdlp_path"
 	settingFfmpegPath    = "ffmpeg_path"
 	settingMaxConcurrent = "max_concurrent_downloads"
+	settingProxy         = "proxy"
 
 	settingUpdateAutoCheck  = "update_auto_check"
 	settingUpdatePrerelease = "update_prerelease"
@@ -36,6 +40,10 @@ type Settings struct {
 	YtDlpPath              string `json:"ytDlpPath"`
 	FfmpegPath             string `json:"ffmpegPath"`
 	MaxConcurrentDownloads int    `json:"maxConcurrentDownloads"`
+	// Proxy is the proxy yt-dlp goes through, e.g. socks5://host:1080;
+	// empty means a direct connection. Outside core the password in it
+	// is masked (see public).
+	Proxy string `json:"proxy"`
 	// AutoCheckUpdates looks for a new version at startup and daily;
 	// PrereleaseUpdates offers test versions too.
 	AutoCheckUpdates  bool `json:"autoCheckUpdates"`
@@ -59,6 +67,7 @@ func loadSettings(db *storage.DB, defaultDownloadsDir string) (Settings, error) 
 	}
 	settings.YtDlpPath = values[settingYtDlpPath]
 	settings.FfmpegPath = values[settingFfmpegPath]
+	settings.Proxy = values[settingProxy]
 	if n, err := strconv.Atoi(values[settingMaxConcurrent]); err == nil {
 		settings.MaxConcurrentDownloads = clampConcurrency(n)
 	}
@@ -91,9 +100,18 @@ func clampConcurrency(n int) int {
 func (a *App) GetSettings(user UserID) Settings {
 	a.mu.RLock()
 	defer a.mu.RUnlock()
-	settings := a.settings
+	settings := a.settings.public()
 	settings.DownloadsDir = a.downloadsDirLocked(user)
 	return settings
+}
+
+// public is s as shown to users: the proxy password is masked, since
+// every user can read the settings but only the admin sets the proxy.
+func (s Settings) public() Settings {
+	if u, err := url.Parse(s.Proxy); err == nil && s.Proxy != "" {
+		s.Proxy = u.Redacted()
+	}
+	return s
 }
 
 // downloadsDirLocked is where user's downloads go: the downloads folder
@@ -127,7 +145,14 @@ func userDirName(user UserID) string {
 func (a *App) currentSettings() Settings {
 	a.mu.RLock()
 	defer a.mu.RUnlock()
-	return a.settings
+	return a.settings.public()
+}
+
+// proxy is the proxy URL yt-dlp should use, "" for none.
+func (a *App) proxy() string {
+	a.mu.RLock()
+	defer a.mu.RUnlock()
+	return a.settings.Proxy
 }
 
 // SetDownloadsDir меняет папку загрузок на dir (выбранную в диалоге
@@ -196,6 +221,76 @@ func (a *App) SetMaxConcurrentDownloads(n int) (Settings, error) {
 	return settings, err
 }
 
+// SetProxy задаёт прокси для yt-dlp (загрузки и проверка аккаунтов);
+// пустая строка — без прокси. Поддерживаются http, https, socks4 и socks5.
+func (a *App) SetProxy(proxy string) (Settings, error) {
+	if err := a.ensureReady(); err != nil {
+		return a.currentSettings(), err
+	}
+
+	proxy, err := normalizeProxy(proxy)
+	if err != nil {
+		return a.currentSettings(), err
+	}
+	proxy = keepMaskedPassword(proxy, a.proxy())
+	return a.updateSettings(func(s *Settings) {
+		s.Proxy = proxy
+	}, settingProxy, proxy)
+}
+
+// proxySchemes are the proxy kinds yt-dlp understands.
+var proxySchemes = []string{"http", "https", "socks4", "socks4a", "socks5", "socks5h"}
+
+// normalizeProxy checks proxy is a URL yt-dlp accepts as --proxy.
+func normalizeProxy(proxy string) (string, error) {
+	proxy = strings.TrimSpace(proxy)
+	if proxy == "" {
+		return "", nil
+	}
+	u, err := url.Parse(proxy)
+	if err != nil || u.Host == "" || u.Hostname() == "" {
+		return "", errors.New("прокси указывается адресом вида socks5://host:1080 или http://user:pass@host:3128")
+	}
+	u.Scheme = strings.ToLower(u.Scheme)
+	if !slices.Contains(proxySchemes, u.Scheme) {
+		return "", fmt.Errorf("неподдерживаемый тип прокси %q: доступны %s", u.Scheme, strings.Join(proxySchemes, ", "))
+	}
+	if (u.Path != "" && u.Path != "/") || u.RawQuery != "" || u.Fragment != "" {
+		return "", errors.New("в адресе прокси не должно быть пути и параметров")
+	}
+	u.Path = ""
+	return u.String(), nil
+}
+
+// keepMaskedPassword puts back the stored password when proxy came from
+// the settings screen with it still masked (see Settings.public), so the
+// admin can change the host without retyping it.
+func keepMaskedPassword(proxy string, current string) string {
+	next, nextErr := url.Parse(proxy)
+	prev, prevErr := url.Parse(current)
+	if nextErr != nil || prevErr != nil || next.User == nil || prev.User == nil ||
+		next.User.Username() != prev.User.Username() {
+		return proxy
+	}
+	password, hasPassword := next.User.Password()
+	stored, hasStored := prev.User.Password()
+	if !hasPassword || !hasStored || password != maskedPassword(prev) {
+		return proxy
+	}
+	next.User = url.UserPassword(next.User.Username(), stored)
+	return next.String()
+}
+
+// maskedPassword is what url.Redacted puts in place of a password.
+func maskedPassword(u *url.URL) string {
+	redacted, err := url.Parse(u.Redacted())
+	if err != nil || redacted.User == nil {
+		return ""
+	}
+	password, _ := redacted.User.Password()
+	return password
+}
+
 // OpenDownloadsDir открывает папку загрузок в файловом менеджере.
 func (a *App) OpenDownloadsDir(user UserID) error {
 	dir := a.GetSettings(user).DownloadsDir
@@ -229,7 +324,7 @@ func (a *App) updateSettings(apply func(*Settings), key string, value string) (S
 	a.mu.Lock()
 	apply(&a.settings)
 	a.tools = a.resolveTools(a.settings)
-	settings := a.settings
+	settings := a.settings.public()
 	a.mu.Unlock()
 	return settings, nil
 }

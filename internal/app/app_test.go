@@ -18,7 +18,7 @@ func TestBindings(t *testing.T) {
 		"InstallTools", "InstallUpdate", "OpenDownloadsDir", "OpenReleasePage",
 		"ReconnectServer", "RefreshAccount", "RemoveAccount", "RemoveJob", "ResetAllData", "ResetToolPath",
 		"RetryJob", "RevealVideo", "RollbackYtDlp", "SaveMediaFile", "SavePlaybackPosition", "ScanBrowsers",
-		"SendAccountToServer", "SetMaxConcurrentDownloads", "SetUpdateSettings", "UpdateYtDlp", "UseLocal",
+		"SendAccountToServer", "SetMaxConcurrentDownloads", "SetProxy", "SetUpdateSettings", "UpdateYtDlp", "UseLocal",
 	}
 
 	typ := reflect.TypeOf(&App{})

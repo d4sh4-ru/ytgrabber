@@ -58,6 +58,12 @@ type intValueRequest struct {
 	Value int `json:"value"`
 }
 
+type proxyRequest struct {
+	// Proxy is like socks5://host:1080 or http://user:pass@host:3128;
+	// empty turns the proxy off.
+	Proxy string `json:"proxy"`
+}
+
 type installRequest struct {
 	// Names lists tools to install; empty installs every missing one.
 	Names []string `json:"names"`
@@ -320,6 +326,13 @@ func (s *Server) routes() []route {
 			request: &intValueRequest{}, response: core.Settings{},
 			handle: jsonBody(func(_ *http.Request, body *intValueRequest) (any, error) {
 				return s.app.SetMaxConcurrentDownloads(body.Value)
+			}),
+		},
+		{
+			method: "PUT", path: "/settings/proxy", summary: "Прокси для yt-dlp (пароль в ответах скрыт)", admin: true,
+			request: &proxyRequest{}, response: core.Settings{},
+			handle: jsonBody(func(_ *http.Request, body *proxyRequest) (any, error) {
+				return s.app.SetProxy(body.Proxy)
 			}),
 		},
 

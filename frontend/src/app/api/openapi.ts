@@ -378,6 +378,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    '/settings/proxy': {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Прокси для yt-dlp (пароль в ответах скрыт) */
+        put: operations['putSettingsProxy'];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     '/tools': {
         parameters: {
             query?: never;
@@ -548,6 +565,7 @@ export interface components {
             ffmpegPath: string;
             maxConcurrentDownloads: number;
             prereleaseUpdates: boolean;
+            proxy: string;
             ytDlpPath: string;
         };
         'model.Account': {
@@ -1764,6 +1782,65 @@ export interface operations {
             content: {
                 'application/json': {
                     value: number;
+                };
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['core.Settings'];
+                };
+            };
+            /** @description Ошибка; текст для пользователя */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': {
+                        error: string;
+                    };
+                };
+            };
+            /** @description Нужен вход */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': {
+                        error: string;
+                    };
+                };
+            };
+            /** @description Только для администратора */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': {
+                        error: string;
+                    };
+                };
+            };
+        };
+    };
+    putSettingsProxy: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                'application/json': {
+                    proxy: string;
                 };
             };
         };

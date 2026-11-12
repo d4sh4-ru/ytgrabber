@@ -47,6 +47,40 @@
                 }
             </select>
         </div>
+        <form class="settings__proxy" (submit)="onSaveProxy($event)">
+            <label class="settings__label" for="proxy">
+                <span>Прокси</span>
+                <span class="settings__muted">
+                    Для загрузок и проверки аккаунтов, например socks5://host:1080 или
+                    http://user:pass&#64;host:3128. Пустое поле — без прокси.
+                </span>
+            </label>
+            <div class="settings__proxy-field">
+                <input
+                    id="proxy"
+                    class="settings__input"
+                    type="text"
+                    inputmode="url"
+                    autocomplete="off"
+                    autocapitalize="off"
+                    spellcheck="false"
+                    placeholder="Без прокси"
+                    [disabled]="!isAdmin || isSavingProxy"
+                    [title]="isAdmin ? '' : 'Меняет администратор сервера'"
+                    [value]="proxyDraft"
+                    (input)="onProxyInput($event)"
+                />
+                @if (isAdmin) {
+                    <button
+                        type="submit"
+                        class="btn btn--primary"
+                        [disabled]="!isProxyChanged || isSavingProxy"
+                    >
+                        {{ isSavingProxy ? 'Сохранение…' : 'Сохранить' }}
+                    </button>
+                }
+            </div>
+        </form>
     }
 </section>
 

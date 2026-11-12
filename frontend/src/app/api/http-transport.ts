@@ -45,6 +45,7 @@ const CALLS: Readonly<Record<string, Call>> = {
     GetSettings: (api) => api.GET('/settings'),
     SetMaxConcurrentDownloads: (api, [value]) =>
         api.PUT('/settings/max-concurrent-downloads', { body: { value: Number(value) } }),
+    SetProxy: (api, [proxy]) => api.PUT('/settings/proxy', { body: { proxy: String(proxy) } }),
 
     GetDependencies: (api) => api.GET('/tools'),
     InstallTools: (api, [names]) =>
