@@ -11,11 +11,12 @@
         <link rel="icon" type="image/x-icon" href="favicon.ico" />
         <link rel="manifest" href="manifest.webmanifest" />
         <link rel="apple-touch-icon" href="icons/apple-touch-icon.png" />
-        <!-- Installed on an iPhone home screen: no Safari bars, and the
-             page draws under the status bar (the layout keeps clear of it). -->
+        <!-- Installed on an iPhone home screen: no Safari bars. The status
+             bar stays opaque, the page starts below it: iOS 26 blurs what's
+             under a translucent one well past the inset it reports. -->
         <meta name="mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-title" content="YT Grabber" />
-        <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+        <meta name="apple-mobile-web-app-status-bar-style" content="black" />
     </head>
     <body>
         <app-root></app-root>

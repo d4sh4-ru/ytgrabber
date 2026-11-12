@@ -25,6 +25,12 @@ button {
     font-family: inherit;
 }
 
+// Installed on an iPhone (main.ts marks it), iOS 26 blurs the top edge of
+// the page well below the status bar: the title starts past the blur.
+html.ios-standalone {
+    --app-top-gap: 32px;
+}
+
 // Installed on an iPhone the page draws under the status bar, which is
 // see-through: an opaque strip there keeps scrolled content from showing
 // under the clock.

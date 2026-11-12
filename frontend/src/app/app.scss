@@ -11,9 +11,10 @@
     flex-direction: column;
     gap: 20px;
 
-    // Under a status bar the title keeps a gap from it, not just clear of it.
+    // Under a status bar the title keeps a gap from it, not just clear of
+    // it; --app-top-gap is wider where iOS blurs past the bar (styles.scss).
     @include v.narrow {
-        padding: max(12px, calc(env(safe-area-inset-top) + 8px))
+        padding: max(12px, calc(env(safe-area-inset-top) + var(--app-top-gap, 8px)))
             max(12px, env(safe-area-inset-right)) 0 max(12px, env(safe-area-inset-left));
         gap: 16px;
     }
