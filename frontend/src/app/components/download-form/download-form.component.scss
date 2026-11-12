@@ -67,9 +67,7 @@
         border: 1px solid v.$accent;
         border-radius: v.$radius-sm;
         background: v.$accent;
-        // Dark text, not $text-primary: white-on-$accent only hits ~3.7:1
-        // contrast, below the WCAG AA 4.5:1 floor for normal-size text.
-        color: v.$bg-primary;
+        color: v.$on-accent;
         font-size: 14px;
         font-weight: 600;
         cursor: pointer;

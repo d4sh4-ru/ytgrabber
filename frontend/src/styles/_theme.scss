@@ -1,0 +1,92 @@
+// Colour tokens for both themes; styles/_variables.scss gives them Sass
+// names. Values match the "Система" sheet of the 2.1.0 mock-up.
+//
+// Dark is the default; light follows the OS (prefers-color-scheme). Any
+// pair a user reads — text on its background, $on-accent on $accent —
+// keeps at least 4.5:1 contrast in both.
+
+@mixin dark {
+    color-scheme: dark;
+
+    --bg: #0e0f11;
+    --surface: #16171a;
+    --raised: #1f2125;
+    --border: #26282d;
+    --border-strong: #34363c;
+
+    --text: #ececee;
+    --text-muted: #a3a5ad;
+    --text-faint: #878a94;
+
+    --accent: #2f6fec;
+    --accent-hover: #3b7bff;
+    --accent-text: #7eabff;
+    --accent-soft: rgba(76, 141, 255, 0.13);
+    --accent-border: rgba(76, 141, 255, 0.35);
+    --on-accent: #ffffff;
+
+    --danger: #ff7b7b;
+    --danger-fill: #d03535;
+    --danger-soft: rgba(255, 107, 107, 0.09);
+    --danger-border: rgba(255, 107, 107, 0.38);
+
+    --success: #4fd88a;
+    --success-soft: rgba(79, 216, 138, 0.12);
+
+    --warning: #f5b83d;
+    --warning-soft: rgba(245, 184, 61, 0.1);
+    --warning-border: rgba(245, 184, 61, 0.35);
+    --warning-fill: #f5b83d;
+    --on-warning: #1d1400;
+
+    --overlay: rgba(0, 0, 0, 0.64);
+    --shadow: 0 12px 32px rgba(0, 0, 0, 0.45);
+}
+
+@mixin light {
+    color-scheme: light;
+
+    --bg: #f4f4f1;
+    --surface: #ffffff;
+    --raised: #eeeeeb;
+    --border: #e4e4e0;
+    --border-strong: #d2d2cd;
+
+    --text: #16171a;
+    --text-muted: #585b62;
+    --text-faint: #686b73;
+
+    --accent: #2563eb;
+    --accent-hover: #1d4fd7;
+    --accent-text: #1b55cf;
+    --accent-soft: rgba(37, 99, 235, 0.08);
+    --accent-border: rgba(37, 99, 235, 0.3);
+    --on-accent: #ffffff;
+
+    --danger: #c02626;
+    --danger-fill: #c42b2b;
+    --danger-soft: rgba(196, 43, 43, 0.06);
+    --danger-border: rgba(196, 43, 43, 0.35);
+
+    --success: #147a43;
+    --success-soft: rgba(20, 122, 67, 0.09);
+
+    --warning: #8a5300;
+    --warning-soft: rgba(230, 150, 0, 0.11);
+    --warning-border: rgba(200, 130, 0, 0.4);
+    --warning-fill: #f5b83d;
+    --on-warning: #1d1400;
+
+    --overlay: rgba(18, 18, 22, 0.4);
+    --shadow: 0 12px 32px rgba(20, 20, 30, 0.16);
+}
+
+:root {
+    @include dark;
+}
+
+@media (prefers-color-scheme: light) {
+    :root {
+        @include light;
+    }
+}

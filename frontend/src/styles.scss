@@ -1,4 +1,5 @@
 @use 'variables' as v;
+@use 'theme';
 
 * {
     box-sizing: border-box;
@@ -74,9 +75,7 @@ body::before {
     &--primary {
         border-color: v.$accent;
         background: v.$accent;
-        // Dark text, not $text-primary: white-on-$accent only hits ~3.7:1
-        // contrast, below the WCAG AA 4.5:1 floor for normal-size text.
-        color: v.$bg-primary;
+        color: v.$on-accent;
         font-weight: 600;
 
         &:hover:not(:disabled) {
@@ -86,13 +85,13 @@ body::before {
     }
 
     &--destructive {
-        border-color: v.$error;
-        background: v.$error;
-        color: v.$bg-primary;
+        border-color: v.$danger-fill;
+        background: v.$danger-fill;
+        color: v.$on-accent;
         font-weight: 600;
 
         &:hover:not(:disabled) {
-            border-color: v.$error;
+            border-color: v.$danger-fill;
             filter: brightness(0.9);
         }
     }
@@ -182,5 +181,5 @@ body::before {
     justify-content: center;
     padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom)
         env(safe-area-inset-left);
-    background: rgba(v.$bg-primary, 0.75);
+    background: v.$overlay;
 }

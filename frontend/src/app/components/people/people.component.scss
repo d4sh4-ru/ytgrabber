@@ -75,8 +75,8 @@
         margin-left: 6px;
         padding: 1px 6px;
         border-radius: v.$radius-sm;
-        background: rgba(v.$accent, 0.2);
-        color: v.$accent;
+        background: v.$accent-soft;
+        color: v.$accent-text;
         font-size: 11px;
     }
 

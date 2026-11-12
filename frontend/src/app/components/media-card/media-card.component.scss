@@ -53,7 +53,8 @@
         bottom: 0;
         left: 0;
         height: 3px;
-        background: rgba(v.$text-primary, 0.25);
+        // On the cover image, whatever the theme.
+        background: rgba(255, 255, 255, 0.25);
     }
 
     &__watched-bar {
@@ -67,8 +68,8 @@
         bottom: 6px;
         padding: 1px 6px;
         border-radius: v.$radius-sm;
-        background: v.$error;
-        color: v.$bg-primary;
+        background: v.$danger-fill;
+        color: v.$on-accent;
         font-size: 11px;
         font-weight: 600;
     }
@@ -87,10 +88,14 @@
             opacity: 1;
         }
 
+        // On the cover image: a dark plate in either theme.
         .btn {
             display: inline-flex;
             text-decoration: none;
             padding: 4px 6px;
+            border-color: transparent;
+            background: rgba(10, 10, 12, 0.62);
+            color: #fff;
 
             // 36px to look at, 44px to hit: the ::after reaches 4px around.
             @include v.touch {
@@ -98,7 +103,6 @@
                 min-width: 36px;
                 min-height: 36px;
                 padding: 6px;
-                background: rgba(v.$bg-elevated, 0.85);
 
                 &::after {
                     content: '';
@@ -109,7 +113,7 @@
         }
 
         .btn--danger {
-            color: v.$error;
+            color: #ffb0b0;
         }
     }
 

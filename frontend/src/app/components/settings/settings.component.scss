@@ -18,7 +18,7 @@
     }
 
     &__section--danger {
-        border-color: rgba(v.$error, 0.5);
+        border-color: v.$danger-border;
     }
 
     &__reset-list {

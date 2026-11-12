@@ -98,7 +98,7 @@
             font-size: 11px;
 
             &--active {
-                color: v.$accent;
+                color: v.$accent-text;
             }
         }
     }
@@ -115,9 +115,7 @@
         padding: 0 6px;
         border-radius: v.$radius-sm;
         background: v.$accent;
-        // Dark text, not $text-primary: white-on-$accent only hits ~3.7:1
-        // contrast, below the WCAG AA 4.5:1 floor for normal-size text.
-        color: v.$bg-primary;
+        color: v.$on-accent;
         font-size: 11px;
         font-weight: 600;
         line-height: 1.6;
@@ -133,7 +131,8 @@
 }
 
 .app__tab-badge--warning {
-    background: v.$warning;
+    background: v.$warning-fill;
+    color: v.$on-warning;
 }
 
 .app__section {

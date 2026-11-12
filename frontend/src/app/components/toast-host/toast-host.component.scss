@@ -20,7 +20,7 @@
     border-radius: v.$radius-md;
     background: v.$bg-elevated;
     font-size: 13px;
-    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+    box-shadow: v.$shadow;
 
     &--error {
         border-color: v.$error;

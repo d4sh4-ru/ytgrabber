@@ -51,7 +51,9 @@ func main() {
 			Assets:  assets,
 			Handler: app.Handler(backend),
 		},
-		BackgroundColour: &options.RGBA{R: 18, G: 18, B: 18, A: 1},
+		// The dark theme's --bg (frontend/src/styles/_theme.scss): shown for
+		// a moment before the page paints, in either theme.
+		BackgroundColour: &options.RGBA{R: 14, G: 15, B: 17, A: 1},
 		OnStartup:        onStartup,
 		OnShutdown:       onShutdown,
 		Bind: []interface{}{
@@ -65,7 +67,8 @@ func main() {
 			},
 		},
 		Windows: &windows.Options{
-			Theme: windows.Dark,
+			// The title bar follows the OS, like the page does.
+			Theme: windows.SystemDefault,
 			// Inside the data dir rather than WebView2's default
 			// %AppData%\ytgrabber.exe, so "delete all data" has one place to wipe.
 			WebviewUserDataPath: paths.WebviewDataDir(),
