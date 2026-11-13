@@ -1,164 +1,202 @@
-@if (isDesktopApp) {
-    <app-server-connection />
-}
+<nav class="settings__nav" aria-label="Разделы настроек">
+    @for (section of navSections; track section.id) {
+        <button
+            type="button"
+            class="settings__nav-item"
+            [class.settings__nav-item--warning]="section.warning"
+            (click)="scrollToSection(section.id)"
+        >
+            {{ section.label }}
+        </button>
+    }
+</nav>
 
-@if (!isDesktop) {
-    <app-people />
-}
+<div class="settings__body">
+    <h1 class="page-title settings__title">Настройки</h1>
 
-<section class="settings__section">
-    <h2 class="settings__heading">Загрузки</h2>
-    @if (settings) {
-        <div class="settings__row">
-            <div class="settings__label">
-                <span>Папка</span>
-                <code class="settings__path" [title]="settings.downloadsDir">{{
-                    settings.downloadsDir
-                }}</code>
+    @if (isDesktopApp) {
+        <app-server-connection />
+    }
+
+    @if (!isDesktop) {
+        <app-people />
+    }
+
+    <section id="s-downloads" class="section">
+        <div class="section__head"><h2 class="section__title">Загрузки</h2></div>
+        @if (settings) {
+            <div class="section__row">
+                <div class="section__label">
+                    <span>Папка</span>
+                    <code class="section__path" [title]="settings.downloadsDir">{{
+                        settings.downloadsDir
+                    }}</code>
+                </div>
+                @if (isDesktop) {
+                    <div class="section__actions">
+                        <button type="button" class="btn btn--ghost" (click)="onOpenDownloadsDir()">
+                            Открыть
+                        </button>
+                        <button type="button" class="btn" (click)="onChooseDownloadsDir()">
+                            Изменить…
+                        </button>
+                    </div>
+                }
             </div>
-            @if (isDesktop) {
-                <div class="settings__buttons">
-                    <button type="button" class="btn" (click)="onOpenDownloadsDir()">
-                        Открыть
+            <div class="section__row">
+                <label class="section__label" for="concurrency">Одновременных загрузок</label>
+                <select
+                    id="concurrency"
+                    class="input settings__concurrency"
+                    [disabled]="!isAdmin"
+                    [title]="isAdmin ? '' : 'Меняет администратор сервера'"
+                    [value]="settings.maxConcurrentDownloads"
+                    (change)="onConcurrencyChange($event)"
+                >
+                    @for (option of concurrencyOptions; track option) {
+                        <option
+                            [value]="option"
+                            [selected]="option === settings.maxConcurrentDownloads"
+                        >
+                            {{ option }}
+                        </option>
+                    }
+                </select>
+            </div>
+            <form
+                class="section__row section__row--stack settings__proxy"
+                (submit)="onSaveProxy($event)"
+            >
+                <label class="section__label" for="proxy">
+                    <span>Прокси</span>
+                    <span class="section__muted">
+                        Для загрузок и проверки аккаунтов, например
+                        <span class="mono">socks5://host:1080</span> или
+                        <span class="mono">http://user:pass&#64;host:3128</span>. Пустое поле — без
+                        прокси.
+                    </span>
+                </label>
+                <div class="settings__field">
+                    <input
+                        id="proxy"
+                        class="input input--mono"
+                        type="text"
+                        inputmode="url"
+                        autocomplete="off"
+                        autocapitalize="off"
+                        spellcheck="false"
+                        placeholder="Без прокси"
+                        [disabled]="!isAdmin || isSavingProxy"
+                        [title]="isAdmin ? '' : 'Меняет администратор сервера'"
+                        [value]="proxyDraft"
+                        (input)="onProxyInput($event)"
+                    />
+                    @if (isAdmin) {
+                        <button
+                            type="submit"
+                            class="btn btn--primary"
+                            [disabled]="!isProxyChanged || isSavingProxy"
+                        >
+                            {{ isSavingProxy ? 'Сохранение…' : 'Сохранить' }}
+                        </button>
+                    }
+                </div>
+            </form>
+        }
+    </section>
+
+    <section id="s-accounts" class="section">
+        <div class="section__head">
+            <h2 class="section__title">Аккаунты</h2>
+            <button type="button" class="btn" (click)="onAddAccount()">
+                <app-icon name="plus" [size]="16" />
+                Добавить сайт
+            </button>
+        </div>
+        <p class="section__desc">
+            Для видео, которые открываются только после входа (приватные, 18+, проверка «я не
+            робот»). Загрузки с подключённого сайта идут с вашими cookies. Они хранятся
+            зашифрованными: это защищает от копирования папки и резервных копий, но не от программ
+            на этом компьютере.
+        </p>
+        @for (account of accounts; track account.id) {
+            <div class="section__row">
+                <div class="section__label">
+                    <span>
+                        <span class="section__name">{{ account.domain }}</span>
+                        <span class="section__muted settings__inline">{{
+                            accountSourceLabel(account)
+                        }}</span>
+                    </span>
+                    <span>
+                        <span
+                            class="section__state"
+                            [class.section__state--ok]="account.status === 'ok'"
+                            [class.section__state--problem]="account.status !== 'ok'"
+                        >
+                            <span class="dot"></span>{{ accountStateLabel(account) }}
+                        </span>
+                        @if (accountRefreshedLabel(account); as refreshed) {
+                            <span class="section__faint"> · {{ refreshed }}</span>
+                        }
+                    </span>
+                </div>
+                <div class="section__actions">
+                    <button
+                        type="button"
+                        class="btn btn--ghost"
+                        [disabled]="checkingAccountId === account.id"
+                        (click)="onCheckAccount(account)"
+                    >
+                        {{ checkingAccountId === account.id ? 'Проверка…' : 'Проверить' }}
                     </button>
-                    <button type="button" class="btn" (click)="onChooseDownloadsDir()">
-                        Изменить…
+                    <button
+                        type="button"
+                        class="btn"
+                        [class.btn--ghost]="account.status === 'ok'"
+                        [disabled]="refreshingAccountId === account.id"
+                        (click)="onRefreshAccount(account)"
+                    >
+                        {{
+                            refreshingAccountId === account.id
+                                ? 'Обновление…'
+                                : accountRefreshLabel(account)
+                        }}
+                    </button>
+                    <button
+                        type="button"
+                        class="btn btn--danger"
+                        (click)="onRemoveAccountRequested(account)"
+                    >
+                        Отключить
                     </button>
                 </div>
-            }
-        </div>
-        <div class="settings__row">
-            <label class="settings__label" for="concurrency">Одновременных загрузок</label>
-            <select
-                id="concurrency"
-                class="settings__select"
-                [disabled]="!isAdmin"
-                [title]="isAdmin ? '' : 'Меняет администратор сервера'"
-                [value]="settings.maxConcurrentDownloads"
-                (change)="onConcurrencyChange($event)"
+            </div>
+        } @empty {
+            <div class="section__row">
+                <span class="section__muted">Нет подключённых сайтов.</span>
+            </div>
+        }
+        @if (isDesktopApp && !isDesktop) {
+            <app-local-accounts />
+        }
+    </section>
+
+    <section id="s-tools" class="section">
+        <div class="section__head">
+            <h2 class="section__title">Внешние программы</h2>
+            <button
+                type="button"
+                class="btn btn--ghost"
+                [disabled]="isCheckingDependencies || installState.isRunning"
+                (click)="onRecheck()"
             >
-                @for (option of concurrencyOptions; track option) {
-                    <option
-                        [value]="option"
-                        [selected]="option === settings.maxConcurrentDownloads"
-                    >
-                        {{ option }}
-                    </option>
-                }
-            </select>
-        </div>
-        <form class="settings__proxy" (submit)="onSaveProxy($event)">
-            <label class="settings__label" for="proxy">
-                <span>Прокси</span>
-                <span class="settings__muted">
-                    Для загрузок и проверки аккаунтов, например socks5://host:1080 или
-                    http://user:pass&#64;host:3128. Пустое поле — без прокси.
-                </span>
-            </label>
-            <div class="settings__proxy-field">
-                <input
-                    id="proxy"
-                    class="settings__input"
-                    type="text"
-                    inputmode="url"
-                    autocomplete="off"
-                    autocapitalize="off"
-                    spellcheck="false"
-                    placeholder="Без прокси"
-                    [disabled]="!isAdmin || isSavingProxy"
-                    [title]="isAdmin ? '' : 'Меняет администратор сервера'"
-                    [value]="proxyDraft"
-                    (input)="onProxyInput($event)"
-                />
-                @if (isAdmin) {
-                    <button
-                        type="submit"
-                        class="btn btn--primary"
-                        [disabled]="!isProxyChanged || isSavingProxy"
-                    >
-                        {{ isSavingProxy ? 'Сохранение…' : 'Сохранить' }}
-                    </button>
-                }
-            </div>
-        </form>
-    }
-</section>
-
-<section class="settings__section">
-    <div class="settings__heading-row">
-        <h2 class="settings__heading">Аккаунты</h2>
-        <button type="button" class="btn" (click)="onAddAccount()">+ Добавить сайт</button>
-    </div>
-    <p class="settings__muted settings__hint">
-        Для видео, которые открываются только после входа (приватные, 18+, проверка «я не робот»).
-        Загрузки с подключённого сайта идут с вашими cookies. Они хранятся зашифрованными: это
-        защищает от копирования папки и резервных копий, но не от программ на этом компьютере.
-    </p>
-    @for (account of accounts; track account.id) {
-        <div class="settings__tool" [class.settings__tool--missing]="account.status !== 'ok'">
-            <div class="settings__label">
-                <span>
-                    <strong>{{ account.domain }}</strong>
-                    <span class="settings__muted settings__inline">{{
-                        accountSourceLabel(account)
-                    }}</span>
-                </span>
-                <span
-                    [class.settings__problem]="account.status !== 'ok'"
-                    [class.settings__ok]="account.status === 'ok'"
-                >
-                    {{ accountStateLabel(account) }}
-                    @if (accountRefreshedLabel(account); as refreshed) {
-                        <span class="settings__muted">· {{ refreshed }}</span>
-                    }
-                </span>
-            </div>
-            <div class="settings__buttons">
-                <button
-                    type="button"
-                    class="btn"
-                    [disabled]="checkingAccountId === account.id"
-                    (click)="onCheckAccount(account)"
-                >
-                    {{ checkingAccountId === account.id ? 'Проверка…' : 'Проверить' }}
-                </button>
-                <button
-                    type="button"
-                    class="btn"
-                    [disabled]="refreshingAccountId === account.id"
-                    (click)="onRefreshAccount(account)"
-                >
-                    {{
-                        refreshingAccountId === account.id
-                            ? 'Обновление…'
-                            : accountRefreshLabel(account)
-                    }}
-                </button>
-                <button
-                    type="button"
-                    class="btn btn--danger"
-                    (click)="onRemoveAccountRequested(account)"
-                >
-                    Отключить
-                </button>
-            </div>
-        </div>
-    } @empty {
-        <p class="settings__muted">Нет подключённых сайтов.</p>
-    }
-    @if (isDesktopApp && !isDesktop) {
-        <app-local-accounts />
-    }
-</section>
-
-<section class="settings__section">
-    <div class="settings__heading-row">
-        <h2 class="settings__heading">Внешние программы</h2>
-        <div class="settings__buttons">
+                {{ isCheckingDependencies ? 'Проверка…' : 'Проверить снова' }}
+            </button>
             @if (!isAdmin) {
                 <!-- Installing and updating is the admin's. -->
             } @else if (installState.isRunning) {
-                <button type="button" class="btn" (click)="onCancelInstall()">
+                <button type="button" class="btn btn--danger" (click)="onCancelInstall()">
                     Отменить установку
                 </button>
             } @else if (installableMissingCount > 0) {
@@ -166,251 +204,290 @@
                     Установить недостающие ({{ installableMissingCount }})
                 </button>
             }
-            <button
-                type="button"
-                class="btn"
-                [disabled]="isCheckingDependencies || installState.isRunning"
-                (click)="onRecheck()"
-            >
-                {{ isCheckingDependencies ? 'Проверка…' : 'Проверить снова' }}
-            </button>
         </div>
-    </div>
 
-    @for (tool of dependencies?.tools ?? []; track tool.name) {
-        <div class="settings__tool" [class.settings__tool--missing]="!tool.found && tool.required">
-            <div class="settings__label">
-                <span>
-                    <strong>{{ tool.name }}</strong>
-                    @if (tool.version) {
-                        <span class="settings__muted settings__inline">{{ tool.version }}</span>
-                    }
-                    @if (!tool.required) {
-                        <span class="settings__muted settings__inline">· необязательно</span>
-                    }
-                    @if (tool.managed) {
-                        <span class="settings__muted settings__inline"
-                            >· установлено приложением</span
+        @for (tool of dependencies?.tools ?? []; track tool.name) {
+            <div class="section__row section__row--top">
+                <div class="section__label settings__tool">
+                    <span>
+                        <span
+                            class="section__name"
+                            [class.settings__missing]="!tool.found && tool.required"
+                            >{{ tool.name }}</span
                         >
-                    }
-                </span>
-                <span class="settings__muted">{{ tool.purpose }}</span>
-                @if (tool.found) {
-                    <code class="settings__path" [title]="tool.path">{{ tool.path }}</code>
-                } @else if (tool.custom) {
-                    <span class="settings__problem">Указанный файл не найден: {{ tool.path }}</span>
-                } @else {
-                    <span class="settings__problem">Не найден.</span>
-                    @if (tool.installable) {
-                        <span class="settings__muted">
-                            Можно установить отсюда (источник: {{ tool.installSource }})
-                            @if (tool.hint) {
-                                или вручную: <code>{{ tool.hint }}</code>
-                            }
-                        </span>
-                    } @else if (tool.hint) {
-                        <span class="settings__muted"
-                            >Установка: <code>{{ tool.hint }}</code></span
-                        >
-                    }
-                }
-                @if (installProgress(tool); as progress) {
-                    <span
-                        class="settings__install"
-                        [class.settings__problem]="progress.stage === 'failed'"
-                    >
-                        {{ installProgressLabel(progress) }}
-                    </span>
-                    @if (installPercent(progress); as percent) {
-                        <progress class="settings__progress" [value]="percent" max="100"></progress>
-                    }
-                }
-            </div>
-            <div class="settings__buttons">
-                @if (isAdmin && tool.name === 'yt-dlp' && tool.found) {
-                    <button
-                        type="button"
-                        class="btn"
-                        [disabled]="isUpdatingYtDlp"
-                        (click)="onUpdateYtDlp()"
-                    >
-                        {{ isUpdatingYtDlp ? 'Обновление…' : 'Обновить' }}
-                    </button>
-                    @if (tool.managed && tool.previousVersion) {
-                        <button
-                            type="button"
-                            class="btn"
-                            [disabled]="isUpdatingYtDlp"
-                            [title]="'Если новая версия сломала какой-то сайт'"
-                            (click)="onRollbackYtDlp(tool)"
-                        >
-                            Вернуть {{ tool.previousVersion }}
-                        </button>
-                    }
-                }
-                @if (
-                    isAdmin &&
-                    !tool.found &&
-                    !tool.custom &&
-                    tool.installable &&
-                    !installState.isRunning
-                ) {
-                    <button type="button" class="btn" (click)="onInstall([tool.name])">
-                        Установить
-                    </button>
-                }
-                @if (isDesktop && isConfigurable(tool)) {
-                    <button type="button" class="btn" (click)="onChooseTool(tool)">Указать…</button>
-                    @if (tool.custom) {
-                        <button type="button" class="btn" (click)="onResetTool(tool)">Авто</button>
-                    }
-                }
-            </div>
-        </div>
-    } @empty {
-        <p class="settings__muted">Проверка…</p>
-    }
-
-    @if (updateOutput) {
-        <pre class="settings__output">{{ updateOutput }}</pre>
-    }
-</section>
-
-@if (!isDesktop) {
-    <section class="settings__section">
-        <div class="settings__row">
-            <div class="settings__label">
-                <span>Выйти на этом устройстве</span>
-                <span class="settings__muted"
-                    >Чтобы вернуться, понадобится код входа с другого устройства.</span
-                >
-            </div>
-            <button
-                type="button"
-                class="btn btn--danger-outline"
-                [disabled]="isSigningOut"
-                (click)="onSignOut()"
-            >
-                {{ isSigningOut ? 'Выход…' : 'Выйти' }}
-            </button>
-        </div>
-    </section>
-}
-
-@if (appInfo) {
-    <section class="settings__section">
-        <h2 class="settings__heading">О программе</h2>
-        <dl class="settings__info">
-            <dt>Версия</dt>
-            <dd>{{ appInfo.version }} ({{ appInfo.platform }})</dd>
-            <dt>Данные</dt>
-            <dd>
-                <code class="settings__path">{{ appInfo.dataDir }}</code>
-            </dd>
-            <dt>Журнал</dt>
-            <dd>
-                <code class="settings__path">{{ appInfo.logPath }}</code>
-            </dd>
-        </dl>
-
-        @if (isDesktopApp) {
-            <div class="settings__update">
-                <div class="settings__row">
-                    <div class="settings__label">
-                        @if (update?.available) {
-                            <strong>
-                                Доступна версия {{ update?.version }}
-                                @if (update?.prerelease) {
-                                    (тестовая)
-                                }
-                            </strong>
-                            @if (!update?.canInstall) {
-                                <span class="settings__muted"
-                                    >Установите вручную: {{ update?.installNote }}</span
-                                >
-                            }
-                        } @else if (hasCheckedUpdate) {
-                            <span class="settings__ok">Установлена последняя версия</span>
-                        } @else {
-                            <span>Обновления</span>
+                        @if (tool.version) {
+                            <span class="section__muted settings__inline">{{ tool.version }}</span>
                         }
-                    </div>
-                    <div class="settings__buttons">
-                        @if (update?.available) {
-                            @if (update?.canInstall) {
-                                <button
-                                    type="button"
-                                    class="btn btn--primary"
-                                    [disabled]="isInstallingUpdate"
-                                    (click)="onInstallUpdate()"
+                        @if (!tool.required) {
+                            <span class="section__muted settings__inline">· необязательно</span>
+                        }
+                        @if (tool.managed) {
+                            <span class="section__muted settings__inline"
+                                >· установлено приложением</span
+                            >
+                        }
+                    </span>
+                    <span class="section__muted settings__purpose">{{ tool.purpose }}</span>
+                    @if (tool.found) {
+                        <code class="section__path" [title]="tool.path">{{ tool.path }}</code>
+                    } @else if (tool.custom) {
+                        <span class="section__state section__state--problem"
+                            >Указанный файл не найден: {{ tool.path }}</span
+                        >
+                    } @else {
+                        <span class="section__state section__state--problem">Не найден.</span>
+                        @if (tool.installable) {
+                            <span class="section__faint">
+                                Можно установить отсюда (источник: {{ tool.installSource }})
+                                @if (tool.hint) {
+                                    или вручную: <code class="mono">{{ tool.hint }}</code>
+                                }
+                            </span>
+                        } @else if (tool.hint) {
+                            <span class="section__faint"
+                                >Установка: <code class="mono">{{ tool.hint }}</code></span
+                            >
+                        }
+                    }
+                    @if (installProgress(tool); as progress) {
+                        <div class="settings__install">
+                            <div class="settings__install-head">
+                                <span
+                                    [class.section__state--problem]="progress.stage === 'failed'"
+                                    >{{ installProgressLabel(progress) }}</span
                                 >
-                                    Обновить и перезапустить
-                                </button>
+                                @if (installPercent(progress); as percent) {
+                                    <span class="section__faint">{{ percent }}%</span>
+                                }
+                            </div>
+                            @if (installPercent(progress); as percent) {
+                                <div class="progress">
+                                    <div class="progress__bar" [style.width.%]="percent"></div>
+                                </div>
                             }
-                            <button type="button" class="btn" (click)="onOpenReleasePage()">
-                                Страница релиза
+                        </div>
+                    }
+                </div>
+                <div class="section__actions">
+                    @if (isAdmin && tool.name === 'yt-dlp' && tool.found) {
+                        @if (tool.managed && tool.previousVersion) {
+                            <button
+                                type="button"
+                                class="btn btn--ghost"
+                                [disabled]="isUpdatingYtDlp"
+                                [title]="'Если новая версия сломала какой-то сайт'"
+                                (click)="onRollbackYtDlp(tool)"
+                            >
+                                Вернуть {{ tool.previousVersion }}
                             </button>
                         }
                         <button
                             type="button"
                             class="btn"
-                            [disabled]="isCheckingUpdate || isInstallingUpdate"
-                            (click)="onCheckUpdates()"
+                            [disabled]="isUpdatingYtDlp"
+                            (click)="onUpdateYtDlp()"
                         >
-                            {{ isCheckingUpdate ? 'Проверка…' : 'Проверить обновления' }}
+                            {{ isUpdatingYtDlp ? 'Обновление…' : 'Обновить' }}
                         </button>
-                    </div>
-                </div>
-                @if (isInstallingUpdate) {
-                    <span class="settings__install">{{ updateProgressLabel }}</span>
-                    @if (updatePercent; as percent) {
-                        <progress class="settings__progress" [value]="percent" max="100"></progress>
                     }
-                }
-                @if (update?.available && update?.notes) {
-                    <pre class="settings__output settings__notes">{{ update?.notes }}</pre>
-                }
-                <!-- Connected to a server, settings are the server's, not the app's. -->
-                @if (settings && isDesktop) {
-                    <label class="settings__check">
-                        <input
-                            type="checkbox"
-                            [checked]="settings.autoCheckUpdates"
-                            (change)="onAutoCheckChange($event)"
-                        />
-                        Проверять обновления при запуске и раз в день
-                    </label>
-                    <label class="settings__check">
-                        <input
-                            type="checkbox"
-                            [checked]="settings.prereleaseUpdates"
-                            (change)="onPrereleaseChange($event)"
-                        />
-                        Предлагать тестовые версии
-                    </label>
-                }
+                    @if (
+                        isAdmin &&
+                        !tool.found &&
+                        !tool.custom &&
+                        tool.installable &&
+                        !installState.isRunning
+                    ) {
+                        <button type="button" class="btn" (click)="onInstall([tool.name])">
+                            Установить
+                        </button>
+                    }
+                    @if (isDesktop && isConfigurable(tool)) {
+                        @if (tool.custom) {
+                            <button
+                                type="button"
+                                class="btn btn--ghost"
+                                (click)="onResetTool(tool)"
+                            >
+                                Авто
+                            </button>
+                        }
+                        <button type="button" class="btn" (click)="onChooseTool(tool)">
+                            Указать…
+                        </button>
+                    }
+                </div>
+            </div>
+        } @empty {
+            <div class="section__row">
+                <span class="section__muted">Проверка…</span>
             </div>
         }
-    </section>
-}
 
-@if (isDesktop) {
-    <section class="settings__section settings__section--danger">
-        <h2 class="settings__heading">Удаление данных</h2>
-        <div class="settings__row">
-            <div class="settings__label">
-                <span>Удалить все данные приложения и закрыть его</span>
-                <span class="settings__muted">
-                    База, настройки, журнал и кэш: {{ dataSizeLabel }}. Скачанные файлы:
-                    {{ storage?.mediaFiles ?? 0 }} шт., {{ mediaSizeLabel }}.
-                </span>
-            </div>
-            <button type="button" class="btn btn--destructive" (click)="onResetRequested()">
-                Удалить всё…
-            </button>
-        </div>
+        @if (updateOutput) {
+            <pre class="settings__output">{{ updateOutput }}</pre>
+        }
     </section>
-}
+
+    @if (!isDesktop) {
+        <section class="section">
+            <div class="section__row">
+                <div class="section__label">
+                    <span class="section__name">Выйти на этом устройстве</span>
+                    <span class="section__muted"
+                        >Чтобы вернуться, понадобится код входа с другого устройства.</span
+                    >
+                </div>
+                <div class="section__actions">
+                    <button
+                        type="button"
+                        class="btn btn--danger-outline"
+                        [disabled]="isSigningOut"
+                        (click)="onSignOut()"
+                    >
+                        {{ isSigningOut ? 'Выход…' : 'Выйти' }}
+                    </button>
+                </div>
+            </div>
+        </section>
+    }
+
+    @if (appInfo) {
+        <section id="s-about" class="section">
+            <div class="section__head"><h2 class="section__title">О программе</h2></div>
+            <dl class="settings__info">
+                <dt>Версия</dt>
+                <dd>{{ appInfo.version }} ({{ appInfo.platform }})</dd>
+                <dt>Данные</dt>
+                <dd>
+                    <code class="section__path" [title]="appInfo.dataDir">{{
+                        appInfo.dataDir
+                    }}</code>
+                </dd>
+                <dt>Журнал</dt>
+                <dd>
+                    <code class="section__path" [title]="appInfo.logPath">{{
+                        appInfo.logPath
+                    }}</code>
+                </dd>
+            </dl>
+
+            @if (isDesktopApp) {
+                <div class="section__sub">Обновления</div>
+                <div class="settings__update">
+                    <div class="settings__update-row">
+                        <div class="section__label">
+                            @if (update?.available) {
+                                <span class="section__name">
+                                    Доступна версия {{ update?.version }}
+                                    @if (update?.prerelease) {
+                                        (тестовая)
+                                    }
+                                </span>
+                                @if (!update?.canInstall) {
+                                    <span class="section__muted"
+                                        >Установите вручную: {{ update?.installNote }}</span
+                                    >
+                                }
+                            } @else if (hasCheckedUpdate) {
+                                <span class="section__state section__state--ok"
+                                    ><span class="dot"></span>Установлена последняя версия</span
+                                >
+                            } @else {
+                                <span class="section__muted">Обновления не проверялись</span>
+                            }
+                        </div>
+                        <div class="section__actions">
+                            <button
+                                type="button"
+                                class="btn btn--ghost"
+                                [disabled]="isCheckingUpdate || isInstallingUpdate"
+                                (click)="onCheckUpdates()"
+                            >
+                                {{ isCheckingUpdate ? 'Проверка…' : 'Проверить обновления' }}
+                            </button>
+                            @if (update?.available) {
+                                <button
+                                    type="button"
+                                    class="btn btn--ghost settings__link"
+                                    (click)="onOpenReleasePage()"
+                                >
+                                    Страница релиза
+                                    <app-icon name="link" [size]="14" />
+                                </button>
+                                @if (update?.canInstall) {
+                                    <button
+                                        type="button"
+                                        class="btn btn--primary"
+                                        [disabled]="isInstallingUpdate"
+                                        (click)="onInstallUpdate()"
+                                    >
+                                        Обновить и перезапустить
+                                    </button>
+                                }
+                            }
+                        </div>
+                    </div>
+                    @if (isInstallingUpdate) {
+                        <div class="settings__install">
+                            <div class="settings__install-head">
+                                <span>{{ updateProgressLabel }}</span>
+                                @if (updatePercent; as percent) {
+                                    <span class="section__faint">{{ percent }}%</span>
+                                }
+                            </div>
+                            @if (updatePercent; as percent) {
+                                <div class="progress">
+                                    <div class="progress__bar" [style.width.%]="percent"></div>
+                                </div>
+                            }
+                        </div>
+                    }
+                    @if (update?.available && update?.notes) {
+                        <pre class="settings__output settings__notes">{{ update?.notes }}</pre>
+                    }
+                    <!-- Connected to a server, settings are the server's, not the app's. -->
+                    @if (settings && isDesktop) {
+                        <label class="check settings__check">
+                            <input
+                                type="checkbox"
+                                [checked]="settings.autoCheckUpdates"
+                                (change)="onAutoCheckChange($event)"
+                            />
+                            Проверять обновления при запуске и раз в день
+                        </label>
+                        <label class="check settings__check">
+                            <input
+                                type="checkbox"
+                                [checked]="settings.prereleaseUpdates"
+                                (change)="onPrereleaseChange($event)"
+                            />
+                            Предлагать тестовые версии
+                        </label>
+                    }
+                </div>
+            }
+        </section>
+    }
+
+    @if (isDesktop) {
+        <section class="section section--danger">
+            <div class="section__row">
+                <div class="section__label">
+                    <span class="section__name">Удалить все данные приложения и закрыть его</span>
+                    <span class="section__muted">
+                        База, настройки, журнал и кэш: {{ dataSizeLabel }}. Скачанные файлы:
+                        {{ storage?.mediaFiles ?? 0 }} шт., {{ mediaSizeLabel }}.
+                    </span>
+                </div>
+                <div class="section__actions">
+                    <button type="button" class="btn btn--destructive" (click)="onResetRequested()">
+                        Удалить всё…
+                    </button>
+                </div>
+            </div>
+        </section>
+    }
+</div>
 
 @switch (resetStep) {
     @case ('choose') {

@@ -12,6 +12,7 @@ import { NotificationService } from '../../services/notification.service';
 import { PeopleService } from '../../services/people.service';
 import { SessionService } from '../../services/session.service';
 import { formatRelativeTime, pluralRu } from '../../shared/format-relative-time';
+import { CoverTone, coverTone } from '../../shared/cover-tone';
 import { IconComponent } from '../icon/icon.component';
 import { ConfirmDialogComponent } from '../confirm-dialog/confirm-dialog.component';
 
@@ -101,6 +102,15 @@ export class PeopleComponent implements OnInit, OnDestroy {
             hour: '2-digit',
             minute: '2-digit',
         });
+    }
+
+    /** A user's avatar colour: the same name, the same colour. */
+    protected avatarTone(name: string): CoverTone {
+        return coverTone(name);
+    }
+
+    protected initial(name: string): string {
+        return Array.from(name.trim())[0]?.toUpperCase() ?? '?';
     }
 
     protected roleLabel(role: UserRole): string {

@@ -30,6 +30,15 @@ import { SessionService } from '../../services/session.service';
 import { LocalAccountsComponent } from '../local-accounts/local-accounts.component';
 import { ServerConnectionComponent } from '../server-connection/server-connection.component';
 import { PeopleComponent } from '../people/people.component';
+import { IconComponent } from '../icon/icon.component';
+
+/** A link in the section list beside the settings (wide windows only). */
+interface NavSection {
+    readonly id: string;
+    readonly label: string;
+    /** Something there needs attention: required tools are missing. */
+    readonly warning?: boolean;
+}
 
 const CONFIGURABLE_TOOLS: ReadonlySet<string> = new Set<ConfigurableTool>(['yt-dlp', 'ffmpeg']);
 const CONCURRENCY_OPTIONS: readonly number[] = [1, 2, 3, 4, 5];
@@ -41,6 +50,7 @@ type ResetStep = 'idle' | 'choose' | 'confirm';
     selector: 'app-settings',
     standalone: true,
     imports: [
+        IconComponent,
         ConfirmDialogComponent,
         AccountConnectDialogComponent,
         PeopleComponent,
@@ -107,6 +117,10 @@ export class SettingsComponent implements OnInit, OnDestroy {
     protected isSigningOut = false;
 
     // --- Session ---
+    protected scrollToSection(id: string): void {
+        document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+
     protected async onSignOut(): Promise<void> {
         this.isSigningOut = true;
         this.changeDetectorRef.markForCheck();
@@ -128,6 +142,34 @@ export class SettingsComponent implements OnInit, OnDestroy {
 
     protected get isProxyChanged(): boolean {
         return this.proxyDraft.trim() !== (this.settings?.proxy ?? '');
+    }
+
+    protected get navSections(): NavSection[] {
+        const sections: NavSection[] = [];
+        if (this.isDesktopApp) {
+            sections.push({ id: 's-server', label: 'Сервер' });
+        }
+        if (!this.isDesktop) {
+            sections.push({ id: 's-devices', label: 'Устройства' });
+            if (this.isAdmin) {
+                sections.push({ id: 's-users', label: 'Пользователи' });
+            }
+        }
+        sections.push(
+            { id: 's-downloads', label: 'Загрузки' },
+            { id: 's-accounts', label: 'Аккаунты' },
+            {
+                id: 's-tools',
+                label: 'Внешние программы',
+                warning: (this.dependencies?.tools ?? []).some(
+                    (tool) => tool.required && !tool.found,
+                ),
+            },
+        );
+        if (this.appInfo) {
+            sections.push({ id: 's-about', label: 'О программе' });
+        }
+        return sections;
     }
 
     protected get installableMissingCount(): number {

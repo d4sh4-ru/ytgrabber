@@ -104,7 +104,7 @@ describe('PeopleComponent', () => {
         expect(text(fixture)).toContain('iPhone · Safari');
         expect(text(fixture)).toContain('Борис');
 
-        button(fixture, '+ Пригласить').click();
+        button(fixture, 'Пригласить').click();
         await settle(fixture);
         const element = fixture.nativeElement as HTMLElement;
         expect(element.querySelector('.people__code')?.textContent).toContain('ABCDE-FGHJK');

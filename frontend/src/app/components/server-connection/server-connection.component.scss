@@ -5,91 +5,25 @@
 }
 
 .server {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-    padding: 12px;
-    border: 1px solid v.$border-subtle;
-    border-radius: v.$radius-md;
-    background: v.$bg-surface;
-
-    &__heading {
-        margin: 0;
-        font-size: 14px;
-        font-weight: 600;
-    }
-
-    &__row {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        gap: 12px;
-
-        @include v.narrow {
-            flex-wrap: wrap;
-            gap: 8px;
-        }
-    }
-
-    &__label {
-        display: flex;
-        flex-direction: column;
-        gap: 2px;
-        min-width: 0;
-        font-size: 13px;
-    }
-
     &__address {
         overflow-wrap: anywhere;
     }
 
-    &__muted {
-        margin: 0;
-        color: v.$text-secondary;
-        font-size: 12px;
-        line-height: 1.5;
-    }
-
-    &__ok {
-        color: v.$success;
-        font-size: 12px;
-    }
-
-    &__error {
-        color: v.$error;
-        font-size: 12px;
-        line-height: 1.5;
-    }
-
-    &__buttons {
-        display: flex;
-        flex-shrink: 0;
-        flex-wrap: wrap;
-        gap: 6px;
-
-        @include v.narrow {
-            margin-left: auto;
-        }
-    }
-
     &__form {
         display: flex;
-        flex-wrap: wrap;
         gap: 6px;
-    }
 
-    &__input {
-        flex: 1 1 220px;
-        min-width: 0;
-        padding: 6px 8px;
-        border: 1px solid v.$border-subtle;
-        border-radius: v.$radius-sm;
-        background: v.$bg-primary;
-        color: v.$text-primary;
-        font-size: 13px;
+        .input {
+            flex: 1;
+            min-width: 0;
+        }
 
-        @include v.touch {
-            min-height: v.$touch-target;
+        @include v.narrow {
+            flex-wrap: wrap;
+
+            .btn {
+                margin-left: auto;
+            }
         }
     }
 }

@@ -5,202 +5,164 @@
 }
 
 .people {
-    &__section {
-        display: flex;
-        flex-direction: column;
-        gap: 8px;
-        padding: 12px;
-        border: 1px solid v.$border-subtle;
-        border-radius: v.$radius-md;
-        background: v.$bg-surface;
-    }
-
-    &__heading-row {
-        display: flex;
-        flex-wrap: wrap;
-        align-items: center;
-        justify-content: space-between;
-        gap: 8px;
-
-        // Phones: the role picker and its button take a row of their own.
-        @include v.narrow {
-            .people__buttons {
-                flex: 1 1 100%;
-                flex-wrap: nowrap;
-                margin-left: 0;
-            }
-
-            .people__select {
-                flex: 1 1 auto;
-            }
-        }
-    }
-
-    &__heading {
-        margin: 0;
-        font-size: 14px;
+    &__me {
+        color: v.$text-primary;
         font-weight: 600;
     }
 
-    &__row {
+    &__invite {
         display: flex;
+        gap: 6px;
+
+        // Phones: the role picker and its button take a row of their own.
+        @include v.narrow {
+            flex: 1 1 100%;
+        }
+    }
+
+    &__role {
+        width: 168px;
+        height: 34px;
+
+        @include v.narrow {
+            flex: 1;
+            width: auto;
+        }
+
+        @include v.touch {
+            height: v.$touch-target;
+        }
+    }
+
+    &__avatar {
+        display: flex;
+        flex: none;
         align-items: center;
-        justify-content: space-between;
-        gap: 12px;
-        padding: 8px 0;
-        border-top: 1px solid v.$border-subtle;
-
-        @include v.narrow {
-            flex-wrap: wrap;
-            gap: 8px;
-        }
-    }
-
-    &__label {
-        display: flex;
-        flex-direction: column;
-        gap: 2px;
-        min-width: 0;
+        justify-content: center;
+        width: 32px;
+        height: 32px;
+        border-radius: 50%;
         font-size: 13px;
+        font-weight: 600;
     }
 
-    &__muted {
-        margin: 0;
-        color: v.$text-secondary;
-        font-size: 12px;
-        line-height: 1.5;
-    }
-
-    &__tag {
-        margin-left: 6px;
-        padding: 1px 6px;
-        border-radius: v.$radius-sm;
-        background: v.$accent-soft;
-        color: v.$accent-text;
-        font-size: 11px;
-    }
-
-    &__buttons {
-        display: flex;
-        flex-shrink: 0;
-        flex-wrap: wrap;
-        gap: 6px;
-
-        &--end {
-            justify-content: flex-end;
-        }
-
-        @include v.narrow {
-            margin-left: auto;
-        }
-    }
-
-    &__token {
-        display: flex;
-        flex-wrap: nowrap;
-        gap: 6px;
-        padding-top: 8px;
-        border-top: 1px solid v.$border-subtle;
-    }
-
-    &__input,
-    &__select {
-        min-width: 0;
-        padding: 6px 8px;
-        border: 1px solid v.$border-subtle;
-        border-radius: v.$radius-sm;
-        background: v.$bg-primary;
-        color: v.$text-primary;
-        font-size: 13px;
-    }
-
-    &__input {
-        flex: 1 1 180px;
-    }
-
-    // An input with an icon button at its end: the token name, a link.
+    // An input with buttons at its end: the token name, a token, a link.
     &__field {
         display: flex;
         gap: 6px;
 
-        .people__input {
-            flex: 1 1 auto;
+        .input {
+            flex: 1;
+            min-width: 0;
         }
-    }
-
-    &__icon-btn {
-        flex-shrink: 0;
-        padding: 6px 8px;
 
         @include v.touch {
-            min-width: v.$touch-target;
+            .input {
+                height: v.$touch-target;
+            }
         }
     }
 
-    &__close {
-        margin-left: auto;
-    }
-
-    &__dialog-footer {
-        @include v.narrow {
-            display: none;
-        }
-    }
-
-    &__input,
-    &__select {
-        @include v.touch {
-            min-height: v.$touch-target;
-        }
-    }
-
-    &__mono {
-        font-family: ui-monospace, monospace;
-    }
-
+    // The new token, shown once.
     &__secret {
         display: flex;
         flex-direction: column;
-        gap: 6px;
+        gap: 10px;
+        padding: 14px;
+        border: 1px solid v.$accent-border;
+        border-radius: 10px;
+        background: v.$accent-soft;
+        font-size: 13px;
+
+        .mono {
+            font-size: 12px;
+        }
     }
 
     &__backdrop {
-        position: fixed;
-        inset: 0;
         z-index: 100;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        padding: max(16px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right))
-            max(16px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left));
-        background: rgba(0, 0, 0, 0.6);
+
+        @include v.narrow {
+            align-items: flex-end;
+        }
     }
 
     &__dialog {
         display: flex;
         flex-direction: column;
-        gap: 10px;
-        width: 100%;
-        max-width: 360px;
-        max-height: 100%;
+        gap: 12px;
+        width: calc(100% - 32px);
+        max-width: 400px;
+        max-height: calc(100% - 32px);
         overflow-y: auto;
-        padding: 16px;
-        border-radius: v.$radius-md;
-        background: v.$bg-elevated;
+        padding: 20px 24px 24px;
+        border: 1px solid v.$border-subtle;
+        border-radius: 16px;
+        background: v.$bg-surface;
+        box-shadow: v.$shadow;
+
+        // Phones: a sheet from the bottom edge.
+        @include v.narrow {
+            width: 100%;
+            max-width: none;
+            padding: 18px 16px max(20px, env(safe-area-inset-bottom));
+            border-radius: 20px 20px 0 0;
+        }
+    }
+
+    &__dialog-head {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-right: -10px;
+    }
+
+    &__hint {
+        margin: -4px 0 0;
+    }
+
+    // The QR code on white, as scanners expect, in either theme.
+    &__qr-frame {
+        align-self: center;
+        padding: 12px;
+        border-radius: 12px;
+        background: #fff;
     }
 
     &__qr {
-        align-self: center;
-        width: 200px;
-        height: 200px;
-        border-radius: v.$radius-sm;
+        display: block;
+        width: 184px;
+        height: 184px;
         image-rendering: pixelated;
     }
 
+    &__code-row {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+    }
+
     &__code {
-        font-family: ui-monospace, monospace;
-        font-size: 22px;
+        font-family: v.$font-mono;
+        font-size: 26px;
+        font-weight: 500;
         letter-spacing: 2px;
+    }
+
+    &__expires {
+        margin: -4px 0 0;
         text-align: center;
+    }
+
+    &__dialog-footer {
+        display: flex;
+        justify-content: flex-end;
+        gap: 8px;
+        margin-top: 4px;
+
+        @include v.narrow {
+            display: none;
+        }
     }
 }

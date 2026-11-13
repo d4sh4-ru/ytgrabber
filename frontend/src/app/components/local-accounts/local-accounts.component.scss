@@ -1,45 +1,9 @@
-@use '../../../styles/variables' as v;
-
 :host {
     display: contents;
 }
 
 .local {
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
-    padding-top: 8px;
-    border-top: 1px solid v.$border-subtle;
-
-    &__title {
-        font-size: 13px;
-        font-weight: 600;
-    }
-
-    &__muted {
-        margin: 0;
-        color: v.$text-secondary;
-        font-size: 12px;
-        line-height: 1.5;
-    }
-
-    &__row {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        gap: 12px;
-
-        @include v.narrow {
-            flex-wrap: wrap;
-            gap: 8px;
-        }
-    }
-
-    &__label {
-        display: flex;
-        flex-direction: column;
-        gap: 2px;
-        min-width: 0;
-        font-size: 13px;
+    &__source {
+        margin-left: 6px;
     }
 }

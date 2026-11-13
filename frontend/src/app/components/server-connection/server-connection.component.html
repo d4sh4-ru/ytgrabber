@@ -1,23 +1,42 @@
-<section class="server">
-    <h2 class="server__heading">Сервер</h2>
+<section id="s-server" class="section">
+    <div class="section__head"><h2 class="section__title">Сервер</h2></div>
     @if (server) {
-        <div class="server__row">
-            <div class="server__label">
+        <p class="section__desc">
+            Загрузки, библиотека и настройки — на сервере. Локальная библиотека не пропадает: она
+            вернётся, если работать локально. Выйти с этого компьютера можно в списке устройств
+            ниже.
+        </p>
+        <div class="section__row">
+            <div class="section__label">
                 <span
-                    >Подключено к <code class="server__address">{{ server }}</code></span
+                    >Подключено к <span class="mono server__address">{{ server }}</span></span
                 >
                 @if (status.connected) {
-                    <span class="server__ok">На связи</span>
+                    <span class="section__state section__state--ok"
+                        ><span class="dot"></span>На связи</span
+                    >
                 } @else if (status.error) {
-                    <span class="server__error">{{ status.error }}</span>
+                    <span class="section__state section__state--problem"
+                        ><span class="dot"></span>{{ status.error }}</span
+                    >
                 } @else {
-                    <span class="server__muted">Подключение…</span>
+                    <span class="section__state section__faint"
+                        ><span class="dot"></span>Подключение…</span
+                    >
                 }
                 @if (status.warning) {
-                    <span class="server__muted">{{ status.warning }}</span>
+                    <span class="section__muted">{{ status.warning }}</span>
                 }
             </div>
-            <div class="server__buttons">
+            <div class="section__actions">
+                <button
+                    type="button"
+                    class="btn btn--ghost"
+                    [disabled]="isSwitching"
+                    (click)="onUseLocal()"
+                >
+                    Работать локально
+                </button>
                 @if (!status.connected) {
                     <button
                         type="button"
@@ -28,44 +47,40 @@
                         Повторить
                     </button>
                 }
-                <button type="button" class="btn" [disabled]="isSwitching" (click)="onUseLocal()">
-                    Работать локально
-                </button>
             </div>
         </div>
-        <p class="server__muted">
-            Загрузки, библиотека и настройки — на сервере. Локальная библиотека не пропадает: она
-            вернётся, если работать локально. Выйти с этого компьютера можно в списке устройств
-            ниже.
-        </p>
     } @else {
-        <p class="server__muted">
+        <p class="section__desc">
             Приложение может работать с ytgrabber-server: загрузки идут на сервере, а библиотека
             общая для всех устройств. Для сервера в домашней сети или за VPN он должен быть доступен
             с этого компьютера.
         </p>
-        <form class="server__form" (submit)="onConnect($event)">
-            <input
-                class="server__input"
-                type="text"
-                inputmode="url"
-                autocomplete="url"
-                spellcheck="false"
-                placeholder="Адрес сервера, например ytgrabber.example.com"
-                [value]="address"
-                [disabled]="isSwitching"
-                (input)="onAddressInput($event)"
-            />
-            <button
-                type="submit"
-                class="btn btn--primary"
-                [disabled]="!address.trim() || isSwitching"
-            >
-                {{ isSwitching ? 'Подключение…' : 'Подключиться' }}
-            </button>
+        <form class="section__row section__row--stack" (submit)="onConnect($event)">
+            <div class="server__form">
+                <input
+                    class="input"
+                    type="text"
+                    inputmode="url"
+                    autocomplete="url"
+                    spellcheck="false"
+                    aria-label="Адрес сервера"
+                    placeholder="Адрес сервера, например ytgrabber.example.com"
+                    [class.input--error]="!!connectError"
+                    [value]="address"
+                    [disabled]="isSwitching"
+                    (input)="onAddressInput($event)"
+                />
+                <button
+                    type="submit"
+                    class="btn btn--primary"
+                    [disabled]="!address.trim() || isSwitching"
+                >
+                    {{ isSwitching ? 'Подключение…' : 'Подключиться' }}
+                </button>
+            </div>
+            @if (connectError) {
+                <span class="section__state section__state--problem">{{ connectError }}</span>
+            }
         </form>
-        @if (connectError) {
-            <span class="server__error">{{ connectError }}</span>
-        }
     }
 </section>

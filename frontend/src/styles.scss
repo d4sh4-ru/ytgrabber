@@ -177,6 +177,201 @@ body::before {
     }
 }
 
+// ---- Settings sections ----
+//
+// A card with a heading row, an optional description and rows split by
+// lines: the label on the left, its buttons on the right. Shared by the
+// settings page and the components it holds (people, server, accounts).
+
+.section {
+    display: flex;
+    flex-direction: column;
+    padding: 20px 22px 8px;
+    border: 1px solid v.$border-subtle;
+    border-radius: v.$radius-md;
+    background: v.$bg-surface;
+    // Clear of the sticky top bar when the section nav scrolls here.
+    scroll-margin-top: 76px;
+
+    @include v.narrow {
+        padding: 16px 16px 4px;
+    }
+
+    &--danger {
+        border-color: v.$danger-border;
+    }
+
+    // No line above a lone row.
+    & > .section__row:first-child {
+        padding: 6px 0 14px;
+        border-top: 0;
+    }
+
+    &__head {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 8px;
+        min-height: 34px;
+        margin-bottom: 6px;
+    }
+
+    &__title {
+        flex: 1;
+        margin: 0;
+        font-size: 15px;
+        font-weight: 600;
+    }
+
+    &__desc {
+        max-width: 600px;
+        margin: 0 0 10px;
+        color: v.$text-secondary;
+        font-size: 13px;
+    }
+
+    &__row {
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        padding: 13px 0;
+        border-top: 1px solid v.$border-subtle;
+
+        // Phones: the buttons go under the label instead of squeezing it.
+        @include v.narrow {
+            flex-wrap: wrap;
+            gap: 10px 12px;
+        }
+
+        &--top {
+            align-items: flex-start;
+        }
+
+        &--stack {
+            flex-direction: column;
+            align-items: stretch;
+            gap: 10px;
+        }
+    }
+
+    // No line right under the heading, nor above a lone row.
+    &__head + &__row {
+        border-top: 0;
+    }
+
+    &__label {
+        display: flex;
+        flex: 1 1 220px;
+        flex-direction: column;
+        gap: 2px;
+        min-width: 0;
+    }
+
+    &__name {
+        font-weight: 600;
+    }
+
+    &__actions {
+        display: flex;
+        flex: none;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 6px;
+
+        @include v.narrow {
+            margin-left: auto;
+        }
+    }
+
+    // A group inside a section: "На этом компьютере", "Обновления".
+    &__sub {
+        padding: 16px 0 8px;
+        border-top: 1px solid v.$border-subtle;
+        color: v.$text-faint;
+        font-size: 12px;
+        font-weight: 600;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+    }
+
+    &__muted {
+        color: v.$text-secondary;
+        font-size: 13px;
+    }
+
+    &__faint {
+        color: v.$text-faint;
+        font-size: 12px;
+    }
+
+    &__path {
+        display: block;
+        overflow: hidden;
+        color: v.$text-faint;
+        font-family: v.$font-mono;
+        font-size: 12.5px;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+
+        // Phones have no tooltip to show the rest: the whole path, wrapped.
+        @include v.narrow {
+            overflow: visible;
+            white-space: normal;
+            overflow-wrap: anywhere;
+        }
+    }
+
+    // A state with its dot: "вход есть", "На связи", "Не найден".
+    &__state {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 12px;
+
+        &--ok {
+            color: v.$success;
+        }
+
+        &--problem {
+            color: v.$error;
+        }
+    }
+}
+
+// "это устройство", "вы".
+.tag {
+    margin-left: 6px;
+    padding: 1px 7px;
+    border-radius: 999px;
+    background: v.$accent-soft;
+    color: v.$accent-text;
+    font-size: 11px;
+    font-weight: 500;
+    white-space: nowrap;
+}
+
+// A checkbox with its label.
+.check {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    cursor: pointer;
+
+    input {
+        flex: none;
+        width: 16px;
+        height: 16px;
+        margin: 0;
+        accent-color: v.$accent;
+    }
+
+    @include v.touch {
+        min-height: v.$touch-target;
+        font-size: 14px;
+    }
+}
+
 .card {
     border: 1px solid v.$border-subtle;
     border-radius: v.$radius-md;
