@@ -1,200 +1,203 @@
 @use '../../../styles/variables' as v;
 
 .job-card {
-    padding: 10px 12px;
-    border: 1px solid v.$border-subtle;
-    border-radius: v.$radius-md;
-    background: v.$bg-surface;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    padding: 14px 16px;
+
+    &--warning {
+        border-color: v.$warning-border;
+    }
 
     &--error {
-        border-color: v.$error;
+        border-color: v.$danger-border;
+    }
+
+    @include v.narrow {
+        gap: 12px;
+        padding: 14px;
     }
 
     &__header {
         display: flex;
         align-items: center;
-        justify-content: space-between;
-        gap: 8px;
-        margin-bottom: 8px;
+        gap: 12px;
 
         @include v.narrow {
+            align-items: flex-start;
             flex-wrap: wrap;
         }
     }
 
-    &__title {
+    // What the job is: video, audio, a lock or an alert, toned by status.
+    &__kind {
+        display: flex;
+        flex: none;
+        align-items: center;
+        justify-content: center;
+        width: 36px;
+        height: 36px;
+        border-radius: 9px;
+        background: v.$bg-elevated;
+        color: v.$text-secondary;
+
+        &[data-tone='accent'] {
+            background: v.$accent-soft;
+            color: v.$accent-text;
+        }
+
+        &[data-tone='success'] {
+            background: v.$success-soft;
+            color: v.$success;
+        }
+
+        &[data-tone='warning'] {
+            background: v.$warning-soft;
+            color: v.$warning;
+        }
+
+        &[data-tone='danger'] {
+            background: v.$danger-soft;
+            color: v.$error;
+        }
+
+        // The chips below say the same; a phone needs the width.
+        @include v.narrow {
+            display: none;
+        }
+    }
+
+    &__heading {
+        flex: 1;
         min-width: 0;
+
+        // Two buttons don't leave a phone room for the title: they wrap
+        // under it.
+        @include v.narrow {
+            flex: 1 1 180px;
+        }
+    }
+
+    &__title,
+    &__url {
         margin: 0;
-        font-size: 14px;
-        font-weight: 600;
-        white-space: nowrap;
         overflow: hidden;
         text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    &__title {
+        font-weight: 600;
+    }
+
+    &__url {
+        color: v.$text-faint;
+        font-size: 12px;
     }
 
     &__actions {
         display: flex;
-        flex-shrink: 0;
+        flex: none;
         gap: 6px;
 
         @include v.narrow {
-            flex-wrap: wrap;
             margin-left: auto;
         }
     }
 
-    &__track {
-        margin-bottom: 6px;
+    &__tracks {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 20px;
 
-        &:last-child {
-            margin-bottom: 0;
+        @include v.narrow {
+            grid-template-columns: minmax(0, 1fr);
+            gap: 10px;
         }
+    }
+
+    &__track {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
     }
 
     &__track-header {
         display: flex;
         justify-content: space-between;
-        margin-bottom: 2px;
-        font-size: 12px;
         color: v.$text-secondary;
+        font-size: 12px;
     }
 
-    &__progress {
-        width: 100%;
-        height: 6px;
-        appearance: none;
-        border: none;
-        border-radius: v.$radius-sm;
-        overflow: hidden;
-
-        &::-webkit-progress-bar {
-            background: v.$bg-primary;
-            border-radius: v.$radius-sm;
-        }
-
-        &::-webkit-progress-value {
-            background: v.$accent;
-        }
-
-        &::-moz-progress-bar {
-            background: v.$accent;
-        }
+    &__percent {
+        color: v.$text-primary;
+        font-variant-numeric: tabular-nums;
     }
 
     &__processing {
         display: flex;
         align-items: center;
-        gap: 8px;
-        font-size: 12px;
+        gap: 10px;
         color: v.$text-secondary;
+        font-size: 13px;
     }
 
-    &__spinner {
-        width: 12px;
-        height: 12px;
-        border: 2px solid v.$border-subtle;
-        border-top-color: v.$accent;
-        border-radius: 50%;
-        animation: job-card-spin 0.6s linear infinite;
-    }
-
-    &__footer {
-        display: flex;
-        justify-content: space-between;
-        gap: 12px;
-        margin-top: 6px;
-        font-size: 12px;
-        color: v.$text-secondary;
-
-        @include v.narrow {
-            flex-direction: column;
-            gap: 4px;
-        }
-    }
-
-    &__url {
-        min-width: 0;
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
-    }
-
-    &__meta {
+    // The site wants a login: what to do and the button that does it.
+    &__login {
         display: flex;
         flex-wrap: wrap;
-        flex-shrink: 0;
         align-items: center;
-        gap: 8px;
+        gap: 8px 12px;
+        padding: 10px 10px 10px 14px;
+        border-radius: 10px;
+        background: v.$warning-soft;
     }
 
-    &__quality {
-        display: inline-flex;
-        align-items: center;
-        gap: 4px;
-        padding: 1px 6px;
-        border: 1px solid v.$border-subtle;
-        border-radius: v.$radius-sm;
-        background: v.$bg-elevated;
-        color: v.$text-primary;
-        white-space: nowrap;
-    }
-
-    &__status {
-        flex-shrink: 0;
-    }
-
-    &__login {
-        margin: 6px 0 0;
-        color: v.$warning;
-        font-size: 12px;
+    &__login-text {
+        flex: 1 1 220px;
+        margin: 0;
+        font-size: 13px;
     }
 
     &__error {
-        margin: 6px 0 0;
-        padding: 6px 8px;
-        border-radius: v.$radius-sm;
-        background: v.$bg-elevated;
-        color: v.$error;
-        font-size: 12px;
+        overflow: hidden;
+        border-radius: 10px;
+        background: v.$danger-soft;
     }
 
     &__error-summary {
         display: flex;
         align-items: flex-start;
-        gap: 6px;
+        gap: 10px;
+        padding: 8px 6px 8px 12px;
     }
 
-    &__error-icon,
-    &__error-toggle {
+    &__error-icon {
         display: inline-flex;
-        flex-shrink: 0;
-        align-items: center;
-        gap: 2px;
-        padding: 1px 2px;
-        color: inherit;
+        flex: none;
+        margin-top: 8px;
+        color: v.$error;
+    }
+
+    &__error-text,
+    &__error-details {
+        min-width: 0;
+        margin: 0;
+        font-family: v.$font-mono;
+        white-space: pre-wrap;
+        word-break: break-word;
+    }
+
+    &__error-text {
+        flex: 1;
+        padding: 8px 0;
+        color: v.$error;
+        font-size: 12.5px;
     }
 
     &__error-toggle {
-        border: none;
-        border-radius: v.$radius-sm;
-        background: transparent;
-        cursor: pointer;
-
-        @include v.touch {
-            min-width: v.$touch-target;
-            min-height: v.$touch-target;
-            justify-content: center;
-            margin: -12px 0 -12px -12px;
-        }
-
-        &:hover {
-            background: v.$bg-primary;
-        }
-
-        &:focus-visible {
-            outline: 2px solid v.$accent;
-            outline-offset: 1px;
-        }
+        margin-left: auto;
     }
 
     &__error-chevron {
@@ -206,31 +209,25 @@
         }
     }
 
-    &__error-text,
-    &__error-details {
-        margin: 0;
-        min-width: 0;
-        font-family: monospace;
-        font-size: 12px;
-        white-space: pre-wrap;
-        word-break: break-word;
-    }
-
     &__error-details {
         max-height: 240px;
-        margin-top: 6px;
-        padding-top: 6px;
-        border-top: 1px solid v.$border-subtle;
+        padding: 12px 14px;
         overflow: auto;
+        border-top: 1px solid v.$danger-border;
         color: v.$text-secondary;
+        font-size: 11.5px;
+        line-height: 1.6;
     }
-}
 
-@keyframes job-card-spin {
-    from {
-        transform: rotate(0deg);
+    &__footer {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 8px;
     }
-    to {
-        transform: rotate(360deg);
+
+    &__account {
+        color: v.$text-faint;
+        font-size: 12px;
     }
 }

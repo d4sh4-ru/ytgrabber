@@ -244,7 +244,11 @@
                 <section class="app__section">
                     @switch (activeTab) {
                         @case ('add') {
-                            <app-download-form [jobs]="jobs" [sharedUrl]="sharedUrl" />
+                            <app-download-form
+                                [jobs]="jobs"
+                                [sharedUrl]="sharedUrl"
+                                (settingsRequested)="setTab('settings')"
+                            />
                         }
                         @case ('library') {
                             <app-library

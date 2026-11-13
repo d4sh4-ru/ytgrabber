@@ -1,6 +1,4 @@
-@if (jobs.length === 0) {
-    <p class="job-list__empty">Нет активных загрузок</p>
-} @else {
+@if (jobs.length > 0) {
     <div class="job-list">
         @for (job of jobs; track job.id) {
             <app-job-card

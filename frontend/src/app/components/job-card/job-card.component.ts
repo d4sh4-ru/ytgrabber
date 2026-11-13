@@ -16,6 +16,9 @@ const VIDEO_QUALITY_LABELS: Record<string, string> = {
     '720p': '720p',
 };
 
+/** Tone of the square icon and the status chip. */
+type JobTone = 'neutral' | 'accent' | 'success' | 'warning' | 'danger';
+
 const TRACK_LABELS: Record<string, string> = {
     video: 'Видео',
     audio: 'Аудио',
@@ -56,6 +59,43 @@ export class JobCardComponent {
             return `ожидает установки ${this.job.waitingFor}`;
         }
         return STATUS_LABELS[this.job.status] ?? this.job.status;
+    }
+
+    protected get tone(): JobTone {
+        if (this.isLoginRequired) {
+            return 'warning';
+        }
+        switch (this.job.status) {
+            case 'downloading':
+            case 'processing':
+                return 'accent';
+            case 'done':
+                return 'success';
+            case 'error':
+                return 'danger';
+            default:
+                return 'neutral';
+        }
+    }
+
+    protected get statusChipClass(): string {
+        return this.tone === 'neutral' ? '' : `chip--${this.tone}`;
+    }
+
+    /** What the job is, or what went wrong with it. */
+    protected get kindIcon(): IconName {
+        if (this.isLoginRequired) {
+            return 'lock';
+        }
+        if (this.isError) {
+            return 'alert';
+        }
+        return this.qualityIcon;
+    }
+
+    /** The link without its scheme: the rest is what tells links apart. */
+    protected get shortUrl(): string {
+        return this.job.url.replace(/^https?:\/\/(www\.)?/, '');
     }
 
     protected get isAudio(): boolean {

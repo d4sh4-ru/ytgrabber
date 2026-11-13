@@ -1,91 +1,95 @@
-<div class="job-card" [class.job-card--error]="isError">
+<article
+    class="job-card card"
+    [class.job-card--warning]="isLoginRequired"
+    [class.job-card--error]="isError && !isLoginRequired"
+>
     <div class="job-card__header">
-        <p class="job-card__title" [title]="displayTitle">{{ displayTitle }}</p>
+        <div class="job-card__kind" [attr.data-tone]="tone">
+            <app-icon [name]="kindIcon" [size]="18" />
+        </div>
+        <div class="job-card__heading">
+            <p class="job-card__title" [title]="displayTitle">{{ displayTitle }}</p>
+            @if (job.title) {
+                <p class="job-card__url" [title]="job.url">{{ shortUrl }}</p>
+            }
+        </div>
         <div class="job-card__actions">
-            @if (isLoginRequired && job.site) {
-                <button type="button" class="btn btn--primary" (click)="onLogin()">
-                    {{ loginButtonLabel }}
-                </button>
-            }
-            @if (isError) {
-                <button type="button" class="btn" (click)="onRetry()">Повторить</button>
-            }
             <button type="button" class="btn btn--danger" (click)="onRemove()">
                 {{ removeButtonLabel }}
             </button>
+            @if (isError) {
+                <button type="button" class="btn" (click)="onRetry()">
+                    <app-icon name="retry" [size]="16" />
+                    Повторить
+                </button>
+            }
         </div>
     </div>
 
     @if (isProcessing) {
         <div class="job-card__processing">
-            <span class="job-card__spinner"></span>
-            <span>Обработка...</span>
+            <span class="spinner"></span>
+            <span>Обработка…</span>
         </div>
-    } @else {
-        @for (track of job.tracks; track track.filename) {
-            <div class="job-card__track">
-                <div class="job-card__track-header">
-                    <span>{{ trackLabel(track.kind) }}</span>
-                    <span>{{ trackPercent(track.progress) }}%</span>
+    } @else if (job.tracks.length > 0 && !isError) {
+        <div class="job-card__tracks">
+            @for (track of job.tracks; track track.filename) {
+                <div class="job-card__track">
+                    <div class="job-card__track-header">
+                        <span>{{ trackLabel(track.kind) }}</span>
+                        <span class="job-card__percent">{{ trackPercent(track.progress) }}%</span>
+                    </div>
+                    <div
+                        class="progress"
+                        role="progressbar"
+                        aria-valuemin="0"
+                        aria-valuemax="100"
+                        [attr.aria-valuenow]="trackPercent(track.progress)"
+                        [attr.aria-label]="trackLabel(track.kind)"
+                    >
+                        <div
+                            class="progress__bar"
+                            [class.progress__bar--done]="trackPercent(track.progress) === 100"
+                            [style.width.%]="trackPercent(track.progress)"
+                        ></div>
+                    </div>
                 </div>
-                <progress
-                    class="job-card__progress"
-                    [value]="trackPercent(track.progress)"
-                    max="100"
-                ></progress>
-            </div>
-        }
-    }
-
-    <div class="job-card__footer">
-        <span class="job-card__meta">
-            @if (qualityLabel) {
-                <span class="job-card__quality" [title]="'Формат загрузки: ' + qualityLabel">
-                    <app-icon [name]="qualityIcon" [size]="12" />
-                    {{ qualityLabel }}
-                </span>
             }
-            <span class="job-card__status">
-                {{ statusLabel }}
-                @if (job.accountUsed) {
-                    · через аккаунт {{ job.site }}
-                }
-            </span>
-        </span>
-        @if (job.title) {
-            <span class="job-card__url" [title]="job.url">{{ job.url }}</span>
-        }
-    </div>
+        </div>
+    }
 
     @if (isLoginRequired) {
-        <p class="job-card__login">{{ loginHint }}</p>
-    }
-
-    @if (isError && job.error) {
+        <div class="job-card__login">
+            <p class="job-card__login-text">{{ loginHint }}</p>
+            @if (job.site) {
+                <button type="button" class="btn btn--primary" (click)="onLogin()">
+                    {{ loginButtonLabel }}
+                </button>
+            }
+        </div>
+    } @else if (isError && job.error) {
         <div class="job-card__error">
             <div class="job-card__error-summary">
+                <app-icon class="job-card__error-icon" name="alert" [size]="16" />
+                <pre class="job-card__error-text">{{ job.error }}</pre>
                 @if (hasErrorDetails) {
                     <button
                         type="button"
-                        class="job-card__error-toggle"
+                        class="btn btn--ghost btn--icon job-card__error-toggle"
                         [attr.aria-expanded]="isErrorExpanded"
                         [attr.aria-controls]="errorDetailsId"
                         [attr.aria-label]="errorToggleLabel"
                         [title]="errorToggleLabel"
                         (click)="toggleErrorDetails()"
                     >
-                        <app-icon name="alert" [size]="14" />
                         <app-icon
                             name="chevron-down"
                             class="job-card__error-chevron"
                             [class.job-card__error-chevron--open]="isErrorExpanded"
-                            [size]="12"
+                            [size]="16"
                         />
                     </button>
-                } @else {
-                    <span class="job-card__error-icon"><app-icon name="alert" [size]="14" /></span>
                 }
-                <pre class="job-card__error-text">{{ job.error }}</pre>
             </div>
             @if (hasErrorDetails) {
                 <pre
@@ -96,4 +100,20 @@
             }
         </div>
     }
-</div>
+
+    <div class="job-card__footer">
+        @if (qualityLabel) {
+            <span class="chip job-card__quality" [title]="'Формат загрузки: ' + qualityLabel">
+                <app-icon [name]="qualityIcon" [size]="13" />
+                {{ qualityLabel }}
+            </span>
+        }
+        <span class="chip" [class]="statusChipClass">
+            <span class="dot"></span>
+            <span class="job-card__status">{{ statusLabel }}</span>
+        </span>
+        @if (job.accountUsed) {
+            <span class="job-card__account">через аккаунт {{ job.site }}</span>
+        }
+    </div>
+</article>

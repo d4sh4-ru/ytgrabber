@@ -2,10 +2,12 @@ import {
     ChangeDetectionStrategy,
     ChangeDetectorRef,
     Component,
+    EventEmitter,
     inject,
     Input,
     OnDestroy,
     OnInit,
+    Output,
 } from '@angular/core';
 import {
     AbstractControl,
@@ -20,6 +22,7 @@ import { DownloadQuality, DownloadService } from '../../services/download.servic
 import { NotificationService } from '../../services/notification.service';
 import { model } from '../../api/models';
 import { JobListComponent } from '../job-list/job-list.component';
+import { IconComponent } from '../icon/icon.component';
 
 const URL_LIKE_PATTERN = /^(https?:\/\/)?([\w-]+\.)+[a-zA-Z]{2,}([/?#]\S*)?$/;
 
@@ -43,7 +46,7 @@ const QUALITY_OPTIONS: readonly QualityOption[] = [
 @Component({
     selector: 'app-download-form',
     standalone: true,
-    imports: [ReactiveFormsModule, JobListComponent],
+    imports: [ReactiveFormsModule, JobListComponent, IconComponent],
     templateUrl: './download-form.component.html',
     styleUrl: './download-form.component.scss',
     changeDetection: ChangeDetectionStrategy.OnPush,
@@ -58,7 +61,16 @@ export class DownloadFormComponent implements OnInit, OnDestroy {
     @Input()
     public jobs: model.DownloadJob[] = [];
 
+    /** The empty state links to Settings → Accounts. */
+    @Output()
+    public readonly settingsRequested = new EventEmitter<void>();
+
     public readonly qualityOptions = QUALITY_OPTIONS;
+
+    /** Shown in the empty state; touch screens hide it. */
+    protected readonly pasteShortcut = /Mac|iPhone|iPad/.test(navigator.userAgent)
+        ? '⌘V'
+        : 'Ctrl+V';
 
     public readonly urlControl = new FormControl<string>('', {
         nonNullable: true,
