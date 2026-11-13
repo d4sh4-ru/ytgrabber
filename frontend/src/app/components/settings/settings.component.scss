@@ -1,24 +1,179 @@
 @use '../../../styles/variables' as v;
 
+// Sections in a column; on a wide window a list of them on the left,
+// staying put while the page scrolls. At 720px it would take too much.
 :host {
-    display: flex;
-    flex-direction: column;
-    gap: 16px;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+
+    @media (min-width: 960px) {
+        grid-template-columns: 168px minmax(0, 1fr);
+        gap: 24px;
+    }
 }
 
 .settings {
-    &__section {
-        display: flex;
-        flex-direction: column;
-        gap: 8px;
-        padding: 12px;
-        border: 1px solid v.$border-subtle;
-        border-radius: v.$radius-md;
-        background: v.$bg-surface;
+    &__nav {
+        display: none;
+
+        @media (min-width: 960px) {
+            position: sticky;
+            top: 82px;
+            display: flex;
+            flex-direction: column;
+            gap: 1px;
+            align-self: start;
+            margin-top: 50px;
+        }
     }
 
-    &__section--danger {
-        border-color: rgba(v.$error, 0.5);
+    &__nav-item {
+        padding: 5px 8px;
+        border: none;
+        border-radius: 6px;
+        background: none;
+        color: v.$text-secondary;
+        font: inherit;
+        font-size: 13px;
+        text-align: left;
+        cursor: pointer;
+
+        &:hover {
+            background: v.$bg-elevated;
+            color: v.$text-primary;
+        }
+
+        &--warning {
+            color: v.$warning;
+        }
+    }
+
+    &__body {
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+        min-width: 0;
+    }
+
+    &__title {
+        margin-bottom: 6px;
+    }
+
+    &__inline {
+        margin-left: 6px;
+    }
+
+    &__concurrency {
+        width: 80px;
+    }
+
+    &__field {
+        display: flex;
+        gap: 6px;
+
+        .input {
+            flex: 1;
+            min-width: 0;
+        }
+
+        @include v.touch {
+            .btn {
+                height: v.$touch-target;
+            }
+        }
+    }
+
+    &__tool {
+        gap: 4px;
+    }
+
+    &__purpose {
+        font-size: 12px;
+    }
+
+    &__missing {
+        color: v.$error;
+    }
+
+    &__install {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+        max-width: 420px;
+        margin-top: 4px;
+        font-size: 12px;
+    }
+
+    &__install-head {
+        display: flex;
+        justify-content: space-between;
+        gap: 8px;
+    }
+
+    &__output {
+        margin: 0 0 14px;
+        padding: 12px 14px;
+        border: 1px solid v.$border-subtle;
+        border-radius: 10px;
+        background: v.$bg-primary;
+        font-family: v.$font-mono;
+        font-size: 12px;
+        white-space: pre-wrap;
+        word-break: break-word;
+    }
+
+    &__notes {
+        max-height: 160px;
+        margin: 0;
+        overflow-y: auto;
+        font-family: inherit;
+        font-size: 13px;
+    }
+
+    &__info {
+        display: grid;
+        grid-template-columns: 110px minmax(0, 1fr);
+        gap: 8px 16px;
+        margin: 0;
+        padding: 6px 0 16px;
+        font-size: 13px;
+
+        dt {
+            color: v.$text-faint;
+        }
+
+        dd {
+            min-width: 0;
+            margin: 0;
+        }
+
+        @include v.narrow {
+            grid-template-columns: 1fr;
+            gap: 2px;
+
+            dd {
+                margin-bottom: 8px;
+            }
+        }
+    }
+
+    &__update {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        padding-bottom: 16px;
+    }
+
+    &__update-row {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 10px 16px;
+    }
+
+    // Opens the release page in the browser: reads as a link.
+    &__link {
+        color: v.$accent-text;
     }
 
     &__reset-list {
@@ -26,212 +181,5 @@
         padding-left: 20px;
         color: v.$text-secondary;
         font-size: 13px;
-    }
-
-    &__heading-row {
-        display: flex;
-        flex-wrap: wrap;
-        align-items: center;
-        justify-content: space-between;
-        gap: 8px;
-    }
-
-    &__heading {
-        margin: 0;
-        font-size: 14px;
-        font-weight: 600;
-    }
-
-    &__row,
-    &__tool {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        gap: 12px;
-
-        // Phones: the buttons go under the label instead of squeezing it.
-        @include v.narrow {
-            flex-wrap: wrap;
-            gap: 8px;
-        }
-    }
-
-    &__tool {
-        padding: 8px 0;
-        border-top: 1px solid v.$border-subtle;
-
-        &--missing strong {
-            color: v.$error;
-        }
-    }
-
-    &__label {
-        display: flex;
-        flex-direction: column;
-        gap: 2px;
-        min-width: 0;
-        font-size: 13px;
-    }
-
-    &__buttons {
-        display: flex;
-        flex-shrink: 0;
-        flex-wrap: wrap;
-        gap: 6px;
-
-        @include v.narrow {
-            margin-left: auto;
-        }
-    }
-
-    &__path {
-        overflow: hidden;
-        color: v.$text-secondary;
-        font-size: 12px;
-        text-overflow: ellipsis;
-        white-space: nowrap;
-
-        // Phones have no tooltip to show the rest: the whole path, wrapped.
-        @include v.narrow {
-            overflow: visible;
-            white-space: normal;
-            overflow-wrap: anywhere;
-        }
-    }
-
-    &__proxy {
-        display: flex;
-        flex-direction: column;
-        gap: 6px;
-    }
-
-    &__proxy-field {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 6px;
-    }
-
-    &__input {
-        flex: 1 1 220px;
-        min-width: 0;
-        padding: 6px 8px;
-        border: 1px solid v.$border-subtle;
-        border-radius: v.$radius-sm;
-        background: v.$bg-primary;
-        color: v.$text-primary;
-        font-size: 13px;
-
-        @include v.touch {
-            min-height: v.$touch-target;
-        }
-    }
-
-    &__muted {
-        color: v.$text-secondary;
-        font-size: 12px;
-    }
-
-    &__install {
-        font-size: 12px;
-    }
-
-    &__progress {
-        width: 100%;
-        max-width: 280px;
-        height: 4px;
-        accent-color: v.$accent;
-    }
-
-    &__inline {
-        margin-left: 6px;
-    }
-
-    &__update {
-        display: flex;
-        flex-direction: column;
-        gap: 6px;
-        padding-top: 8px;
-        border-top: 1px solid v.$border-subtle;
-    }
-
-    &__notes {
-        max-height: 200px;
-        overflow-y: auto;
-    }
-
-    &__check {
-        display: flex;
-        align-items: center;
-        gap: 6px;
-        font-size: 13px;
-        cursor: pointer;
-
-        @include v.touch {
-            min-height: v.$touch-target;
-        }
-    }
-
-    &__hint {
-        margin: 0;
-    }
-
-    &__ok {
-        color: v.$success;
-        font-size: 12px;
-    }
-
-    &__problem {
-        color: v.$error;
-        font-size: 12px;
-    }
-
-    &__select {
-        padding: 4px 8px;
-        border: 1px solid v.$border-subtle;
-        border-radius: v.$radius-sm;
-        background: v.$bg-elevated;
-        color: v.$text-primary;
-
-        @include v.touch {
-            min-height: v.$touch-target;
-        }
-    }
-
-    &__output {
-        margin: 0;
-        padding: 8px;
-        border-radius: v.$radius-sm;
-        background: v.$bg-primary;
-        font-size: 12px;
-        white-space: pre-wrap;
-        word-break: break-word;
-    }
-
-    &__info {
-        display: grid;
-        grid-template-columns: max-content 1fr;
-        gap: 4px 12px;
-        margin: 0;
-        font-size: 13px;
-
-        @include v.narrow {
-            grid-template-columns: 1fr;
-            gap: 0;
-
-            dd {
-                margin-bottom: 6px;
-                overflow-wrap: anywhere;
-            }
-        }
-
-        dt {
-            color: v.$text-secondary;
-        }
-
-        dd {
-            min-width: 0;
-            margin: 0;
-            overflow: hidden;
-        }
     }
 }

@@ -1,87 +1,96 @@
-<section class="people__section">
-    <div class="people__heading-row">
-        <h2 class="people__heading">Устройства</h2>
-        <button type="button" class="btn" (click)="onAddDevice()">+ Войти на другом</button>
+<section id="s-devices" class="section">
+    <div class="section__head">
+        <h2 class="section__title">Устройства</h2>
+        <button type="button" class="btn" (click)="onAddDevice()">
+            <app-icon name="plus" [size]="16" />
+            Войти на другом
+        </button>
     </div>
-    <p class="people__muted">
-        Вы вошли как <strong>{{ userName }}</strong
+    <p class="section__desc">
+        Вы вошли как <strong class="people__me">{{ userName }}</strong
         >{{ isAdmin ? ' (администратор)' : '' }}. Отзовите устройство, если оно потеряно: оно сразу
         выйдет.
     </p>
     @for (device of devices; track device.id) {
-        <div class="people__row">
-            <div class="people__label">
+        <div class="section__row">
+            <div class="section__label">
                 <span>
-                    <strong>{{ device.name }}</strong>
+                    {{ device.name }}
                     @if (device.current) {
-                        <span class="people__tag">это устройство</span>
+                        <span class="tag">это устройство</span>
                     }
                 </span>
-                <span class="people__muted">{{ lastSeenLabel(device.lastSeenAt) }}</span>
+                <span class="section__faint">{{ lastSeenLabel(device.lastSeenAt) }}</span>
             </div>
-            <button type="button" class="btn btn--danger" (click)="onRevokeRequested(device)">
-                {{ device.current ? 'Выйти' : 'Отозвать' }}
-            </button>
+            <div class="section__actions">
+                <button type="button" class="btn btn--danger" (click)="onRevokeRequested(device)">
+                    {{ device.current ? 'Выйти' : 'Отозвать' }}
+                </button>
+            </div>
         </div>
     }
-    <form class="people__token" (submit)="onCreateToken($event)">
-        <input
-            class="people__input"
-            type="text"
-            maxlength="60"
-            placeholder="Токен для скрипта: название"
-            [value]="tokenName"
-            (input)="onTokenNameInput($event)"
-        />
-        <button
-            type="submit"
-            class="btn people__icon-btn"
-            title="Создать токен"
-            aria-label="Создать токен"
-            [disabled]="!tokenName.trim()"
-        >
-            <app-icon name="plus" [size]="18" />
-        </button>
-    </form>
-    @if (apiToken) {
-        <div class="people__secret">
-            <span class="people__muted"
-                >Скопируйте токен сейчас: он больше не будет показан. Заголовок
-                <code>Authorization: Bearer &lt;токен&gt;</code>.</span
+    <div class="section__row section__row--stack">
+        <form class="people__field" (submit)="onCreateToken($event)">
+            <input
+                class="input"
+                type="text"
+                maxlength="60"
+                aria-label="Название токена"
+                placeholder="Токен для скрипта: название"
+                [value]="tokenName"
+                (input)="onTokenNameInput($event)"
+            />
+            <button
+                type="submit"
+                class="btn btn--icon"
+                title="Создать токен"
+                aria-label="Создать токен"
+                [disabled]="!tokenName.trim()"
             >
-            <div class="people__field">
-                <input
-                    class="people__input people__mono"
-                    readonly
-                    [value]="apiToken"
-                    (focus)="onSelectAll($event)"
-                />
-                @if (canCopy) {
-                    <button
-                        type="button"
-                        class="btn people__icon-btn"
-                        title="Скопировать токен"
-                        aria-label="Скопировать токен"
-                        (click)="onCopy(apiToken)"
-                    >
-                        <app-icon name="copy" [size]="18" />
+                <app-icon name="plus" [size]="18" />
+            </button>
+        </form>
+        @if (apiToken) {
+            <div class="people__secret">
+                <span
+                    >Скопируйте токен сейчас: он больше не будет показан. Заголовок
+                    <code class="mono">Authorization: Bearer &lt;токен&gt;</code>.</span
+                >
+                <div class="people__field">
+                    <input
+                        class="input input--mono"
+                        readonly
+                        aria-label="Токен"
+                        [value]="apiToken"
+                        (focus)="onSelectAll($event)"
+                    />
+                    @if (canCopy) {
+                        <button
+                            type="button"
+                            class="btn btn--icon"
+                            title="Скопировать токен"
+                            aria-label="Скопировать токен"
+                            (click)="onCopy(apiToken)"
+                        >
+                            <app-icon name="copy" [size]="18" />
+                        </button>
+                    }
+                    <button type="button" class="btn btn--primary" (click)="onTokenShown()">
+                        Готово
                     </button>
-                }
+                </div>
             </div>
-            <div class="people__buttons people__buttons--end">
-                <button type="button" class="btn" (click)="onTokenShown()">Готово</button>
-            </div>
-        </div>
-    }
+        }
+    </div>
 </section>
 
 @if (isAdmin) {
-    <section class="people__section">
-        <div class="people__heading-row">
-            <h2 class="people__heading">Пользователи</h2>
-            <div class="people__buttons">
+    <section id="s-users" class="section">
+        <div class="section__head">
+            <h2 class="section__title">Пользователи</h2>
+            <div class="people__invite">
                 <select
-                    class="people__select"
+                    class="input people__role"
                     aria-label="Роль приглашённого"
                     [value]="inviteRole"
                     (change)="onInviteRoleChange($event)"
@@ -89,31 +98,41 @@
                     <option value="user">пользователь</option>
                     <option value="admin">администратор</option>
                 </select>
-                <button type="button" class="btn" (click)="onInvite()">+ Пригласить</button>
+                <button type="button" class="btn" (click)="onInvite()">
+                    <app-icon name="plus" [size]="16" />
+                    Пригласить
+                </button>
             </div>
         </div>
-        <p class="people__muted">
+        <p class="section__desc">
             У каждого своя очередь, библиотека и подключённые сайты. Администраторы ещё приглашают
             людей и управляют программами и настройками сервера.
         </p>
         @for (user of users; track user.id) {
-            <div class="people__row">
-                <div class="people__label">
+            <div class="section__row">
+                <span
+                    class="people__avatar"
+                    aria-hidden="true"
+                    [style.background]="avatarTone(user.name).background"
+                    [style.color]="avatarTone(user.name).foreground"
+                    >{{ initial(user.name) }}</span
+                >
+                <div class="section__label">
                     <span>
-                        <strong>{{ user.name }}</strong>
-                        <span class="people__muted"> · {{ roleLabel(user.role) }}</span>
+                        <span class="section__name">{{ user.name }}</span>
+                        <span class="section__muted"> · {{ roleLabel(user.role) }}</span>
                         @if (user.current) {
-                            <span class="people__tag">вы</span>
+                            <span class="tag">вы</span>
                         }
                     </span>
-                    <span class="people__muted"
+                    <span class="section__faint"
                         >{{ devicesLabel(user.devices) }} ·
                         {{ lastSeenLabel(user.lastSeenAt) }}</span
                     >
                 </div>
                 @if (!user.current) {
-                    <div class="people__buttons">
-                        <button type="button" class="btn" (click)="onLinkUser(user)">
+                    <div class="section__actions">
+                        <button type="button" class="btn btn--ghost" (click)="onLinkUser(user)">
                             Код входа
                         </button>
                         <button
@@ -131,52 +150,71 @@
 }
 
 @if (shownCode; as shown) {
-    <div class="people__backdrop" (click)="onCodeClosed()">
+    <div class="backdrop people__backdrop" (click)="onCodeClosed()">
         <div
             class="people__dialog"
             role="dialog"
             aria-modal="true"
+            [attr.aria-label]="shown.title"
             (click)="$event.stopPropagation()"
         >
-            <div class="people__heading-row">
-                <h2 class="people__heading">{{ shown.title }}</h2>
+            <div class="people__dialog-head">
+                <h2 class="section__title">{{ shown.title }}</h2>
                 <button
                     type="button"
-                    class="btn people__icon-btn people__close"
+                    class="btn btn--ghost btn--icon"
                     title="Закрыть"
                     aria-label="Закрыть"
                     (click)="onCodeClosed()"
                 >
-                    <app-icon name="close" [size]="16" />
+                    <app-icon name="close" [size]="18" />
                 </button>
             </div>
-            <p class="people__muted">{{ shown.hint }}</p>
-            <img class="people__qr" [src]="shown.qrUrl" alt="QR-код ссылки" />
-            <div class="people__code">{{ shown.code }}</div>
+            <p class="section__muted people__hint">{{ shown.hint }}</p>
+            <div class="people__qr-frame">
+                <img class="people__qr" [src]="shown.qrUrl" alt="QR-код ссылки" />
+            </div>
+            <div class="people__code-row">
+                <span class="people__code">{{ shown.code }}</span>
+                @if (canCopy) {
+                    <button
+                        type="button"
+                        class="btn btn--ghost btn--icon"
+                        title="Скопировать код"
+                        aria-label="Скопировать код"
+                        (click)="onCopy(shown.code)"
+                    >
+                        <app-icon name="copy" [size]="18" />
+                    </button>
+                }
+            </div>
             <div class="people__field">
                 <input
-                    class="people__input"
+                    class="input input--mono"
                     readonly
+                    aria-label="Ссылка для входа"
                     [value]="shown.url"
                     (focus)="onSelectAll($event)"
                 />
                 @if (canCopy) {
                     <button
                         type="button"
-                        class="btn people__icon-btn"
+                        class="btn btn--icon"
                         title="Скопировать ссылку"
                         aria-label="Скопировать ссылку"
                         (click)="onCopy(shown.url)"
                     >
-                        <app-icon name="copy" [size]="18" />
+                        <app-icon name="link" [size]="18" />
                     </button>
                 }
             </div>
-            <p class="people__muted">Действует до {{ expiresLabel(shown.expiresAt) }}.</p>
-            <!-- Phones: the cross and the copy icon do the same, so no footer. -->
-            <div class="people__buttons people__buttons--end people__dialog-footer">
+            <p class="section__faint people__expires">
+                Действует до {{ expiresLabel(shown.expiresAt) }}.
+            </p>
+            <!-- Phones: the cross and the copy icons do the same, so no footer. -->
+            <div class="people__dialog-footer">
                 @if (canCopy) {
-                    <button type="button" class="btn" (click)="onCopy(shown.url)">
+                    <button type="button" class="btn btn--ghost" (click)="onCopy(shown.url)">
                         Скопировать ссылку
                     </button>
                 }

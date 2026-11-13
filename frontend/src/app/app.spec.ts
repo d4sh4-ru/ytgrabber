@@ -238,7 +238,7 @@ describe('App', () => {
 
         const compiled = fixture.nativeElement as HTMLElement;
         expect(compiled.querySelectorAll('app-job-card').length).toBe(2);
-        expect(compiled.querySelector('.app__tab-badge')?.textContent?.trim()).toBe('1');
+        expect(compiled.querySelector('.topbar__badge')?.textContent?.trim()).toBe('1');
 
         downloadService.jobRemoved$.next('a');
         fixture.detectChanges();

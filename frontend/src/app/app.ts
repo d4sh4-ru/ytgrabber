@@ -129,6 +129,14 @@ export class App implements OnInit, OnDestroy {
         return this.serverStatus.error || this.serverStatus.warning || '';
     }
 
+    /** Next to the dot in the top bar. */
+    protected get serverStatusLabel(): string {
+        if (this.serverStatus.error) {
+            return 'Нет связи';
+        }
+        return this.serverStatus.connected ? 'На связи' : 'Подключение…';
+    }
+
     protected get isUpdateBannerVisible(): boolean {
         return !!this.update?.available && !this.isUpdateDismissed && this.activeTab !== 'settings';
     }

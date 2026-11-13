@@ -14,9 +14,8 @@ import { NotificationService } from '../../services/notification.service';
 import { MediaSessionService } from '../../services/media-session.service';
 import { PlaybackService } from '../../services/playback.service';
 import { formatDuration } from '../../shared/format-duration';
+import { CoverTone, coverTone } from '../../shared/cover-tone';
 import { IconComponent } from '../icon/icon.component';
-
-const VOLUME_STORAGE_KEY = 'ytgrabber.volume';
 
 @Component({
     selector: 'app-audio-player-bar',
@@ -44,8 +43,10 @@ export class AudioPlayerBarComponent implements OnInit, OnDestroy {
     protected currentTime = 0;
     protected duration = 0;
 
-    // --- Volume ---
-    protected volume = readStoredVolume();
+    /** Colours for a track without a cover image. */
+    protected get tone(): CoverTone {
+        return coverTone(this.currentTrack?.title ?? '');
+    }
 
     protected get progressPercent(): number {
         return this.duration > 0 ? (this.currentTime / this.duration) * 100 : 0;
@@ -114,7 +115,6 @@ export class AudioPlayerBarComponent implements OnInit, OnDestroy {
     protected onLoadedMetadata(): void {
         const audioElement = this.audioElementRef?.nativeElement;
         if (audioElement) {
-            audioElement.volume = this.volume;
             this.duration = audioElement.duration;
             if (this.currentTrack) {
                 this.mediaSessionService.attach(audioElement, {
@@ -178,27 +178,5 @@ export class AudioPlayerBarComponent implements OnInit, OnDestroy {
         if (audioElement && this.currentTrack && this.duration > 0) {
             void this.playbackService.stop(this.currentTrack.id, audioElement.currentTime);
         }
-    }
-
-    // --- Volume ---
-    protected onVolumeChange(event: Event): void {
-        this.volume = Number((event.target as HTMLInputElement).value);
-        if (this.audioElementRef) {
-            this.audioElementRef.nativeElement.volume = this.volume;
-        }
-        try {
-            localStorage.setItem(VOLUME_STORAGE_KEY, String(this.volume));
-        } catch {
-            // Storage unavailable: the volume just isn't remembered.
-        }
-    }
-}
-
-function readStoredVolume(): number {
-    try {
-        const stored = Number(localStorage.getItem(VOLUME_STORAGE_KEY));
-        return Number.isFinite(stored) && stored > 0 && stored <= 1 ? stored : 1;
-    } catch {
-        return 1;
     }
 }

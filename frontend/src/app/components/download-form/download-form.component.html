@@ -1,28 +1,91 @@
-<form class="download-form" (submit)="onSubmit($event)">
-    <input
-        class="download-form__input"
-        type="text"
-        [placeholder]="placeholder"
-        [formControl]="urlControl"
-        [class._invalid]="isInvalid"
-    />
-    <select class="download-form__quality" [formControl]="qualityControl">
-        @for (option of qualityOptions; track option.value) {
-            <option [value]="option.value">{{ option.label }}</option>
-        }
-    </select>
-    <button class="download-form__submit" type="submit" [disabled]="isSubmitting">Добавить</button>
-</form>
-@if (hasAccounts) {
-    <label
-        class="download-form__option"
-        title="Для публичных видео: подключённый аккаунт сайта не используется"
-    >
-        <input type="checkbox" [formControl]="withoutAccountControl" />
-        Скачать без аккаунта
-    </label>
-}
+<h1 class="page-title">Загрузки</h1>
 
-<div class="vertical-divider"></div>
+<form
+    class="download-form card"
+    [class.download-form--empty]="jobs.length === 0"
+    (submit)="onSubmit($event)"
+>
+    <div class="download-form__row">
+        <label class="download-form__url">
+            <app-icon class="download-form__url-icon" name="link" [size]="18" />
+            <input
+                class="input input--lg"
+                type="text"
+                aria-label="Ссылка"
+                [placeholder]="placeholder"
+                [formControl]="urlControl"
+                [class.input--error]="isInvalid"
+            />
+        </label>
+        <select
+            class="input input--lg download-form__quality"
+            aria-label="Качество"
+            [formControl]="qualityControl"
+        >
+            @for (option of qualityOptions; track option.value) {
+                <option [value]="option.value">{{ option.label }}</option>
+            }
+        </select>
+        <button
+            class="btn btn--primary btn--lg download-form__submit"
+            type="submit"
+            [disabled]="isSubmitting"
+        >
+            <app-icon name="plus" [size]="16" />
+            Добавить
+        </button>
+    </div>
+    @if (hasAccounts) {
+        <label class="download-form__option">
+            <input type="checkbox" [formControl]="withoutAccountControl" />
+            Скачать без аккаунта
+            <span class="download-form__hint">
+                · Для публичных видео: подключённый аккаунт сайта не используется</span
+            >
+        </label>
+    }
+</form>
+
+@if (jobs.length === 0) {
+    <div class="empty">
+        <div class="empty__icon"><app-icon name="download" [size]="32" /></div>
+        <p class="empty__title">Нет активных загрузок</p>
+        <p class="empty__text">
+            Вставьте ссылку в поле выше, выберите качество и нажмите «Добавить». Скачанное появится
+            в библиотеке.
+        </p>
+        <ol class="empty__steps card">
+            <li class="empty__step">
+                <span class="empty__num">1</span>
+                <span
+                    >Скопируйте ссылку на видео в браузере
+                    <span class="empty__faint">— YouTube и другие сайты</span></span
+                >
+            </li>
+            <li class="empty__step">
+                <span class="empty__num">2</span>
+                <span
+                    >Вставьте её в поле выше<span class="empty__shortcut"
+                        >: <kbd class="empty__kbd">{{ pasteShortcut }}</kbd></span
+                    ></span
+                >
+            </li>
+            <li class="empty__step">
+                <span class="empty__num">3</span>
+                <span
+                    >Для видео после входа подключите сайт в
+                    <button type="button" class="empty__link" (click)="settingsRequested.emit()">
+                        Настройках → Аккаунты
+                    </button></span
+                >
+            </li>
+        </ol>
+    </div>
+} @else {
+    <div class="queue-heading">
+        <h2 class="queue-heading__title">Очередь</h2>
+        <span class="queue-heading__count">{{ jobs.length }}</span>
+    </div>
+}
 
 <app-job-list [jobs]="jobs"></app-job-list>

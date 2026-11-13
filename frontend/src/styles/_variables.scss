@@ -1,23 +1,54 @@
-$bg-primary: #121212; // фон приложения
-$bg-surface: #1c1c1e; // фон карточек, панелей
-$bg-elevated: #242426; // модалки, поповеры
+// ---- Colours ----
+//
+// Every colour is a CSS custom property set in styles/_theme.scss, which
+// swaps the dark and light values by prefers-color-scheme. These names
+// only point at them, so a value here can't go through Sass colour
+// functions such as rgba($x, 0.5): use the *-soft / *-border tokens.
 
-$border-subtle: #2e2e30;
+$bg-primary: var(--bg); // фон приложения
+$bg-surface: var(--surface); // фон карточек, панелей
+$bg-elevated: var(--raised); // кнопки, поля, поповеры
 
-$text-primary: #e8e8e8;
-$text-secondary: #9a9a9d;
+$border-subtle: var(--border);
+$border-strong: var(--border-strong);
 
-$accent: #3b82f6;
-$accent-hover: #2563eb;
+$text-primary: var(--text);
+$text-secondary: var(--text-muted);
+$text-faint: var(--text-faint);
 
-$error: #f87171;
-$success: #4ade80;
+// Fill for primary buttons, progress, badges; text on it is $on-accent.
+$accent: var(--accent);
+$accent-hover: var(--accent-hover);
+// Accent-coloured text and icons on the page background.
+$accent-text: var(--accent-text);
+$accent-soft: var(--accent-soft);
+$accent-border: var(--accent-border);
+$on-accent: var(--on-accent);
 
-$radius-sm: 4px;
-$radius-md: 6px;
+// Text and icons; fills use $danger-fill with $on-accent text.
+$error: var(--danger);
+$danger-fill: var(--danger-fill);
+$danger-soft: var(--danger-soft);
+$danger-border: var(--danger-border);
+
+$success: var(--success);
+$success-soft: var(--success-soft);
+
+$warning: var(--warning);
+$warning-soft: var(--warning-soft);
+$warning-border: var(--warning-border);
+// Fill for the "!" badge; text on it is $on-warning.
+$warning-fill: var(--warning-fill);
+$on-warning: var(--on-warning);
+
+$overlay: var(--overlay); // behind dialogs
+$shadow: var(--shadow); // raised panels: toasts, the audio bar
+
+$radius-sm: 8px;
+$radius-md: 12px;
 
 $font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-$warning: #fbbf24;
+$font-mono: ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
 
 // ---- Phones ----
 

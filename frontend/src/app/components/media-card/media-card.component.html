@@ -1,19 +1,31 @@
 <div
     class="media-card"
     [class.media-card--missing]="item.fileMissing"
+    [class.media-card--current]="isCurrent"
     role="button"
     tabindex="0"
     (click)="onOpen()"
     (keydown.enter)="onOpen()"
 >
-    <div class="media-card__cover">
+    <div
+        class="media-card__cover"
+        [style.background]="item.thumbnailUrl ? null : tone.background"
+        [style.color]="item.thumbnailUrl ? null : tone.foreground"
+    >
         @if (item.thumbnailUrl) {
             <img class="media-card__image" [src]="thumbnailSrc" [alt]="item.title" loading="lazy" />
-        } @else if (isAudio) {
-            <span class="media-card__icon"><app-icon name="music" [size]="32" /></span>
+        } @else {
+            <app-icon [name]="isAudio ? 'music' : 'video'" [size]="28" />
         }
         @if (item.fileMissing) {
-            <span class="media-card__badge">Файл не найден</span>
+            <span class="media-card__badge">
+                <app-icon name="alert" [size]="12" />
+                Файл не найден
+            </span>
+        } @else {
+            <span class="media-card__play" aria-hidden="true">
+                <app-icon name="play" [size]="18" />
+            </span>
         }
         @if (watchedPercent; as percent) {
             <div class="media-card__watched" [title]="watchedTitle">
@@ -25,16 +37,16 @@
                 @if (isDesktop) {
                     <button
                         type="button"
-                        class="btn"
+                        class="media-card__action"
                         title="Показать в папке"
                         aria-label="Показать в папке"
                         (click)="onReveal($event)"
                     >
-                        <app-icon name="folder" />
+                        <app-icon name="folder" [size]="15" />
                     </button>
                 } @else {
                     <a
-                        class="btn"
+                        class="media-card__action"
                         [title]="isDesktopApp ? 'Скачать на компьютер' : 'Скачать на устройство'"
                         [attr.aria-label]="
                             isDesktopApp ? 'Скачать на компьютер' : 'Скачать на устройство'
@@ -43,18 +55,18 @@
                         [href]="downloadUrl"
                         (click)="onDownload($event)"
                     >
-                        <app-icon name="download" />
+                        <app-icon name="download" [size]="15" />
                     </a>
                 }
             }
             <button
                 type="button"
-                class="btn btn--danger"
+                class="media-card__action media-card__action--danger"
                 title="Удалить"
                 aria-label="Удалить"
                 (click)="onDelete($event)"
             >
-                <app-icon name="trash" />
+                <app-icon name="trash" [size]="15" />
             </button>
         </div>
     </div>

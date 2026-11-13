@@ -1,4 +1,5 @@
 @use 'variables' as v;
+@use 'theme';
 
 * {
     box-sizing: border-box;
@@ -47,78 +48,504 @@ body::before {
 }
 
 // ---- Shared controls ----
+//
+// One primary action per block: .btn--primary. Everything else is a
+// plain .btn or a quiet .btn--ghost; .btn--danger is quiet until hovered,
+// .btn--danger-outline is red all along, .btn--destructive (a red fill)
+// only confirms what can't be undone.
 
 .btn {
     display: inline-flex;
+    flex: none;
     align-items: center;
     justify-content: center;
     gap: 6px;
-    padding: 5px 10px;
-    border: 1px solid v.$border-subtle;
+    height: 34px;
+    padding: 0 14px;
+    border: 1px solid v.$border-strong;
     border-radius: v.$radius-sm;
     background: v.$bg-elevated;
     color: v.$text-primary;
-    font-size: 12px;
+    font-size: 13px;
+    font-weight: 500;
+    line-height: 1;
     white-space: nowrap;
+    text-decoration: none;
     cursor: pointer;
 
     &:hover:not(:disabled) {
-        border-color: v.$accent;
+        border-color: v.$text-faint;
     }
 
     &:disabled {
-        opacity: 0.5;
+        opacity: 0.45;
         cursor: default;
     }
 
     &--primary {
         border-color: v.$accent;
         background: v.$accent;
-        // Dark text, not $text-primary: white-on-$accent only hits ~3.7:1
-        // contrast, below the WCAG AA 4.5:1 floor for normal-size text.
-        color: v.$bg-primary;
-        font-weight: 600;
+        color: v.$on-accent;
 
         &:hover:not(:disabled) {
-            background: v.$accent-hover;
             border-color: v.$accent-hover;
+            background: v.$accent-hover;
         }
     }
 
-    &--destructive {
-        border-color: v.$error;
-        background: v.$error;
-        color: v.$bg-primary;
-        font-weight: 600;
-
-        &:hover:not(:disabled) {
-            border-color: v.$error;
-            filter: brightness(0.9);
-        }
+    &--ghost,
+    &--danger {
+        border-color: transparent;
+        background: transparent;
+        color: v.$text-secondary;
     }
 
-    // A square button holding just an icon.
-    &--icon {
-        padding: 4px;
+    &--ghost:hover:not(:disabled) {
+        border-color: transparent;
+        background: v.$bg-elevated;
+        color: v.$text-primary;
     }
 
     &--danger:hover:not(:disabled) {
-        border-color: v.$error;
+        border-color: transparent;
+        background: v.$danger-soft;
         color: v.$error;
     }
 
     // Red without a hover, for what touch screens should see as dangerous.
     &--danger-outline {
-        border-color: v.$error;
+        border-color: v.$danger-border;
+        background: transparent;
         color: v.$error;
+
+        &:hover:not(:disabled) {
+            border-color: v.$error;
+            background: v.$danger-soft;
+        }
+    }
+
+    &--destructive {
+        border-color: v.$danger-fill;
+        background: v.$danger-fill;
+        color: v.$on-accent;
+
+        &:hover:not(:disabled) {
+            border-color: v.$danger-fill;
+            filter: brightness(0.92);
+        }
+    }
+
+    // A square button holding just an icon.
+    &--icon {
+        width: 34px;
+        padding: 0;
+    }
+
+    &--lg {
+        height: 44px;
+        padding: 0 18px;
+        border-radius: 10px;
+        font-size: 14px;
+
+        &.btn--icon {
+            width: 44px;
+            padding: 0;
+        }
     }
 
     @include v.touch {
         min-width: v.$touch-target;
         min-height: v.$touch-target;
-        padding: 8px 12px;
+        padding: 0 14px;
+        font-size: 14px;
+
+        &--icon {
+            padding: 0;
+        }
+    }
+}
+
+// The heading of a tab's page. Phones have the app title instead.
+.page-title {
+    margin: 0;
+    font-size: 24px;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+
+    @include v.narrow {
+        display: none;
+    }
+}
+
+// ---- Settings sections ----
+//
+// A card with a heading row, an optional description and rows split by
+// lines: the label on the left, its buttons on the right. Shared by the
+// settings page and the components it holds (people, server, accounts).
+
+.section {
+    display: flex;
+    flex-direction: column;
+    padding: 20px 22px 8px;
+    border: 1px solid v.$border-subtle;
+    border-radius: v.$radius-md;
+    background: v.$bg-surface;
+    // Clear of the sticky top bar when the section nav scrolls here.
+    scroll-margin-top: 76px;
+
+    @include v.narrow {
+        padding: 16px 16px 4px;
+    }
+
+    &--danger {
+        border-color: v.$danger-border;
+    }
+
+    // No line above a lone row.
+    & > .section__row:first-child {
+        padding: 6px 0 14px;
+        border-top: 0;
+    }
+
+    &__head {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 8px;
+        min-height: 34px;
+        margin-bottom: 6px;
+    }
+
+    &__title {
+        flex: 1;
+        margin: 0;
+        font-size: 15px;
+        font-weight: 600;
+    }
+
+    &__desc {
+        max-width: 600px;
+        margin: 0 0 10px;
+        color: v.$text-secondary;
+        font-size: 13px;
+    }
+
+    &__row {
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        padding: 13px 0;
+        border-top: 1px solid v.$border-subtle;
+
+        // Phones: the buttons go under the label instead of squeezing it.
+        @include v.narrow {
+            flex-wrap: wrap;
+            gap: 10px 12px;
+        }
+
+        &--top {
+            align-items: flex-start;
+        }
+
+        &--stack {
+            flex-direction: column;
+            align-items: stretch;
+            gap: 10px;
+        }
+    }
+
+    // No line right under the heading, nor above a lone row.
+    &__head + &__row {
+        border-top: 0;
+    }
+
+    &__label {
+        display: flex;
+        flex: 1 1 220px;
+        flex-direction: column;
+        gap: 2px;
+        min-width: 0;
+    }
+
+    &__name {
+        font-weight: 600;
+    }
+
+    &__actions {
+        display: flex;
+        flex: none;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 6px;
+
+        @include v.narrow {
+            margin-left: auto;
+        }
+    }
+
+    // A group inside a section: "На этом компьютере", "Обновления".
+    &__sub {
+        padding: 16px 0 8px;
+        border-top: 1px solid v.$border-subtle;
+        color: v.$text-faint;
+        font-size: 12px;
+        font-weight: 600;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+    }
+
+    &__muted {
+        color: v.$text-secondary;
+        font-size: 13px;
+    }
+
+    &__faint {
+        color: v.$text-faint;
+        font-size: 12px;
+    }
+
+    &__path {
+        display: block;
+        overflow: hidden;
+        color: v.$text-faint;
+        font-family: v.$font-mono;
+        font-size: 12.5px;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+
+        // Phones have no tooltip to show the rest: the whole path, wrapped.
+        @include v.narrow {
+            overflow: visible;
+            white-space: normal;
+            overflow-wrap: anywhere;
+        }
+    }
+
+    // A state with its dot: "вход есть", "На связи", "Не найден".
+    &__state {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 12px;
+
+        &--ok {
+            color: v.$success;
+        }
+
+        &--problem {
+            color: v.$error;
+        }
+    }
+}
+
+// "это устройство", "вы".
+.tag {
+    margin-left: 6px;
+    padding: 1px 7px;
+    border-radius: 999px;
+    background: v.$accent-soft;
+    color: v.$accent-text;
+    font-size: 11px;
+    font-weight: 500;
+    white-space: nowrap;
+}
+
+// A checkbox with its label.
+.check {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    cursor: pointer;
+
+    input {
+        flex: none;
+        width: 16px;
+        height: 16px;
+        margin: 0;
+        accent-color: v.$accent;
+    }
+
+    @include v.touch {
+        min-height: v.$touch-target;
         font-size: 14px;
     }
+}
+
+.card {
+    border: 1px solid v.$border-subtle;
+    border-radius: v.$radius-md;
+    background: v.$bg-surface;
+}
+
+// A short label: quality, status, a tag.
+.chip {
+    display: inline-flex;
+    flex: none;
+    align-items: center;
+    gap: 5px;
+    height: 22px;
+    padding: 0 8px;
+    border-radius: 999px;
+    background: v.$bg-elevated;
+    color: v.$text-secondary;
+    font-size: 12px;
+    font-weight: 500;
+    white-space: nowrap;
+
+    &--accent {
+        background: v.$accent-soft;
+        color: v.$accent-text;
+    }
+
+    &--success {
+        background: v.$success-soft;
+        color: v.$success;
+    }
+
+    &--warning {
+        background: v.$warning-soft;
+        color: v.$warning;
+    }
+
+    &--danger {
+        background: v.$danger-soft;
+        color: v.$error;
+    }
+}
+
+// A status dot in the current text colour.
+.dot {
+    flex: none;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: currentColor;
+}
+
+.input {
+    width: 100%;
+    height: 40px;
+    padding: 0 12px;
+    border: 1px solid v.$border-strong;
+    border-radius: v.$radius-sm;
+    background: v.$bg-primary;
+    color: v.$text-primary;
+    font-family: inherit;
+    font-size: 14px;
+    outline: none;
+
+    &::placeholder {
+        color: v.$text-faint;
+    }
+
+    &:focus {
+        border-color: v.$accent;
+    }
+
+    &--lg {
+        height: 44px;
+        border-radius: 10px;
+    }
+
+    &--mono {
+        font-family: v.$font-mono;
+        font-size: 13px;
+    }
+
+    &--error,
+    &--error:focus {
+        border-color: v.$error;
+
+        &::placeholder {
+            color: v.$error;
+        }
+    }
+}
+
+// The arrow is a fixed grey that reads on both themes.
+select.input {
+    padding-right: 34px;
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%238a8d95' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+    background-position: right 10px center;
+    background-repeat: no-repeat;
+    background-size: 16px;
+    cursor: pointer;
+}
+
+.progress {
+    height: 4px;
+    overflow: hidden;
+    border-radius: 2px;
+    background: v.$bg-elevated;
+
+    &__bar {
+        height: 100%;
+        border-radius: 2px;
+        background: v.$accent;
+        transition: width 0.2s;
+
+        &--done {
+            background: v.$success;
+        }
+    }
+}
+
+.spinner {
+    flex: none;
+    width: 16px;
+    height: 16px;
+    border: 2px solid v.$border-strong;
+    border-top-color: v.$accent;
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+// Two or three options side by side, one chosen.
+.segmented {
+    display: inline-flex;
+    gap: 2px;
+    padding: 3px;
+    border-radius: 10px;
+    background: v.$bg-elevated;
+
+    &__item {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        height: 30px;
+        padding: 0 14px;
+        border: none;
+        border-radius: 7px;
+        background: transparent;
+        color: v.$text-secondary;
+        font-family: inherit;
+        font-size: 13px;
+        font-weight: 500;
+        cursor: pointer;
+
+        &--active {
+            background: v.$bg-surface;
+            color: v.$text-primary;
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+        }
+
+        @include v.touch {
+            height: 38px;
+        }
+    }
+}
+
+.mono {
+    font-family: v.$font-mono;
+    font-size: 12.5px;
 }
 
 // iOS Safari zooms into any field with text under 16px.
@@ -143,33 +570,63 @@ body::before {
     display: flex;
     flex-wrap: wrap;
     align-items: center;
-    justify-content: space-between;
-    gap: 8px;
-    padding: 10px 12px;
+    gap: 8px 12px;
+    padding: 10px 10px 10px 14px;
     border: 1px solid v.$border-subtle;
     border-radius: v.$radius-md;
     background: v.$bg-surface;
     font-size: 13px;
 
-    &--error {
-        flex-direction: column;
-        align-items: flex-start;
-        border-color: v.$error;
-        color: v.$error;
+    &__icon {
+        display: inline-flex;
+        flex: none;
     }
 
-    &--warning {
-        border-color: v.$warning;
-    }
-
-    &--info {
-        border-color: v.$accent;
+    &__text {
+        flex: 1 1 240px;
+        min-width: 0;
     }
 
     &__actions {
         display: flex;
         flex-wrap: wrap;
         gap: 6px;
+        margin-left: auto;
+    }
+
+    &--info {
+        border-color: v.$accent-border;
+        background: v.$accent-soft;
+
+        .banner__icon {
+            color: v.$accent-text;
+        }
+    }
+
+    &--warning {
+        border-color: v.$warning-border;
+        background: v.$warning-soft;
+
+        .banner__icon {
+            color: v.$warning;
+        }
+    }
+
+    &--error {
+        border-color: v.$danger-border;
+        background: v.$danger-soft;
+
+        .banner__icon {
+            color: v.$error;
+        }
+    }
+
+    // Phones: the buttons go under the text, to the right.
+    @include v.narrow {
+        &__actions {
+            width: 100%;
+            justify-content: flex-end;
+        }
     }
 }
 
@@ -182,5 +639,5 @@ body::before {
     justify-content: center;
     padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom)
         env(safe-area-inset-left);
-    background: rgba(v.$bg-primary, 0.75);
+    background: v.$overlay;
 }
