@@ -16,6 +16,7 @@ import {
 } from '../../shared/device-download';
 import { formatDuration } from '../../shared/format-duration';
 import { bypassServiceWorker } from '../../shared/media-url';
+import { CoverTone, coverTone } from '../../shared/cover-tone';
 import { ConfirmDialogComponent } from '../confirm-dialog/confirm-dialog.component';
 import { IconComponent } from '../icon/icon.component';
 
@@ -31,6 +32,10 @@ import { IconComponent } from '../icon/icon.component';
 export class MediaCardComponent {
     @Input({ required: true })
     public item!: model.VideoRecord;
+
+    /** Playing in the audio bar now. */
+    @Input()
+    public isCurrent = false;
 
     @Output()
     public readonly opened = new EventEmitter<model.VideoRecord>();
@@ -52,6 +57,11 @@ export class MediaCardComponent {
 
     /** The warning shown before a download over mobile data; null when none. */
     protected downloadWarning: string | null = null;
+
+    /** Colours for a cover without an image. */
+    protected get tone(): CoverTone {
+        return coverTone(this.item.title);
+    }
 
     protected get durationLabel(): string | null {
         return this.item.durationSeconds > 0 ? formatDuration(this.item.durationSeconds) : null;

@@ -1,56 +1,79 @@
 @use '../../../styles/variables' as v;
 
+// Desktop: a bar along the window's bottom edge. Phones: a card floating
+// above the tab bar, the title and buttons on top, the slider under them.
 :host {
-    margin: 0 auto;
-    padding: 0 max(12px, env(safe-area-inset-right)) 0 max(12px, env(safe-area-inset-left));
     position: fixed;
-    left: 0;
     right: 0;
-    bottom: max(12px, env(safe-area-inset-bottom));
+    bottom: 0;
+    left: 0;
     z-index: 10;
 
-    // Phones: just above the tab bar.
     @include v.narrow {
-        padding: 0 max(8px, env(safe-area-inset-right)) 0 max(8px, env(safe-area-inset-left));
+        right: max(8px, env(safe-area-inset-right));
         bottom: calc(#{v.$bottom-nav-height} + env(safe-area-inset-bottom) + 8px);
+        left: max(8px, env(safe-area-inset-left));
     }
 }
 
-.audio-player-bar {
-    max-width: 720px;
-    margin: 0 auto;
-
-    border-radius: v.$radius-md * 2;
-
-    display: flex;
+.audio-bar {
+    display: grid;
+    grid-template-areas: 'cover toggle title scrubber close';
+    grid-template-columns: auto auto minmax(0, 220px) minmax(0, 1fr) auto;
     align-items: center;
-    gap: 12px;
-    height: 68px;
-    padding: 0 16px;
+    gap: 14px;
+    height: 72px;
+    padding: 0 max(12px, env(safe-area-inset-right)) env(safe-area-inset-bottom)
+        max(20px, env(safe-area-inset-left));
+    box-sizing: content-box;
     border-top: 1px solid v.$border-subtle;
-    background: v.$bg-elevated;
+    background: v.$bg-surface;
+    box-shadow: 0 -12px 32px rgba(0, 0, 0, 0.22);
 
     @include v.narrow {
-        gap: 10px;
-        padding: 0 8px 0 10px;
+        grid-template-areas:
+            'cover title toggle close'
+            'scrubber scrubber scrubber scrubber';
+        grid-template-columns: auto minmax(0, 1fr) auto auto;
+        gap: 6px 10px;
+        height: auto;
+        padding: 10px 6px 8px 10px;
+        border: 1px solid v.$border-subtle;
+        border-radius: 14px;
         box-shadow: v.$shadow;
     }
 
-    &__toggle {
-        flex-shrink: 0;
-        width: 32px;
-        height: 32px;
-        border: 1px solid v.$border-subtle;
-        border-radius: 50%;
-        background: v.$bg-surface;
-        color: v.$text-primary;
-        display: inline-flex;
+    &__cover {
+        grid-area: cover;
+        display: flex;
         align-items: center;
         justify-content: center;
+        width: 40px;
+        height: 40px;
+        border-radius: v.$radius-sm;
+        object-fit: cover;
+
+        @include v.narrow {
+            width: 36px;
+            height: 36px;
+        }
+    }
+
+    &__toggle {
+        grid-area: toggle;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 38px;
+        height: 38px;
+        border: 0;
+        border-radius: 50%;
+        background: v.$accent;
+        color: v.$on-accent;
         cursor: pointer;
 
         &:hover {
-            border-color: v.$accent;
+            background: v.$accent-hover;
         }
 
         @include v.touch {
@@ -59,58 +82,88 @@
         }
     }
 
-    &__cover {
-        flex-shrink: 0;
-        width: 44px;
-        height: 44px;
-        border-radius: v.$radius-sm;
-        object-fit: cover;
-
-        @include v.narrow {
-            display: none;
-        }
-    }
-
-    &__body {
-        flex: 1;
-        min-width: 0;
-    }
-
     &__title {
-        margin: 0 0 4px;
-        font-size: 13px;
-        font-weight: 600;
-        white-space: nowrap;
+        grid-area: title;
+        margin: 0;
         overflow: hidden;
+        font-size: 13px;
+        font-weight: 500;
         text-overflow: ellipsis;
+        white-space: nowrap;
     }
 
     &__scrubber {
+        grid-area: scrubber;
         display: flex;
         align-items: center;
-        gap: 8px;
+        gap: 10px;
+        min-width: 0;
+
+        @include v.narrow {
+            padding-right: 4px;
+        }
     }
 
     &__time {
-        flex-shrink: 0;
-        min-width: 32px;
-        color: v.$text-secondary;
-        font-size: 11px;
+        flex: none;
+        color: v.$text-faint;
+        font-size: 12px;
+        font-variant-numeric: tabular-nums;
     }
 
+    // The played part in the accent colour, the rest a track line.
     &__range {
         flex: 1;
-        accent-color: v.$accent;
+        min-width: 80px;
+        height: 4px;
+        margin: 0;
+        border-radius: 2px;
+        background: linear-gradient(
+            to right,
+            v.$accent var(--progress, 0%),
+            v.$border-strong var(--progress, 0%)
+        );
+        outline: none;
+        appearance: none;
+        cursor: pointer;
+
+        &::-webkit-slider-thumb {
+            width: 12px;
+            height: 12px;
+            border: 0;
+            border-radius: 50%;
+            background: v.$text-primary;
+            appearance: none;
+        }
+
+        &::-moz-range-thumb {
+            width: 12px;
+            height: 12px;
+            border: 0;
+            border-radius: 50%;
+            background: v.$text-primary;
+        }
+
+        &:focus-visible {
+            outline: 2px solid v.$accent;
+            outline-offset: 4px;
+        }
+
+        // A bigger thumb for a finger, on a taller hit area.
+        @include v.touch {
+            box-sizing: content-box;
+            height: 4px;
+            padding: 12px 0;
+            background-clip: content-box;
+
+            &::-webkit-slider-thumb {
+                width: 18px;
+                height: 18px;
+            }
+        }
     }
 
-    &__volume {
-        flex-shrink: 0;
-        width: 80px;
-        accent-color: v.$accent;
-
-        // Phones have volume buttons, and iOS ignores the volume property anyway.
-        @include v.narrow {
-            display: none;
-        }
+    &__close {
+        grid-area: close;
     }
 }

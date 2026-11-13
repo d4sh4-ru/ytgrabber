@@ -6,6 +6,8 @@ import {
     Input,
     Output,
 } from '@angular/core';
+import { AsyncPipe } from '@angular/common';
+import { map, Observable } from 'rxjs';
 import { model } from '../../api/models';
 import { Transport } from '../../api/transport';
 import { DownloadService } from '../../services/download.service';
@@ -13,6 +15,7 @@ import { NotificationService } from '../../services/notification.service';
 import { AudioPlayerService } from '../../services/audio-player.service';
 import { MediaCardComponent } from '../media-card/media-card.component';
 import { bypassServiceWorker } from '../../shared/media-url';
+import { IconComponent } from '../icon/icon.component';
 import {
     ConfirmDialogComponent,
     ConfirmDialogResult,
@@ -23,7 +26,7 @@ type LibraryGroup = 'video' | 'audio';
 @Component({
     selector: 'app-library',
     standalone: true,
-    imports: [MediaCardComponent, ConfirmDialogComponent],
+    imports: [AsyncPipe, MediaCardComponent, ConfirmDialogComponent, IconComponent],
     templateUrl: './library.component.html',
     styleUrl: './library.component.scss',
     changeDetection: ChangeDetectionStrategy.OnPush,
@@ -42,6 +45,14 @@ export class LibraryComponent {
 
     @Output()
     public readonly videoSelected = new EventEmitter<model.VideoRecord>();
+
+    /** The empty library's button: to the Downloads tab. */
+    @Output()
+    public readonly addRequested = new EventEmitter<void>();
+
+    /** The track in the audio bar: its card is outlined. */
+    protected readonly currentTrackId$: Observable<string | null> =
+        this.audioPlayerService.currentTrack$.pipe(map((track) => track?.id ?? null));
 
     // --- Grouping ---
     protected activeGroup: LibraryGroup = 'video';

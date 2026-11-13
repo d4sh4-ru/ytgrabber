@@ -254,6 +254,7 @@
                             <app-library
                                 [items]="library"
                                 (videoSelected)="onVideoSelected($event)"
+                                (addRequested)="setTab('add')"
                             />
                         }
                         @case ('settings') {

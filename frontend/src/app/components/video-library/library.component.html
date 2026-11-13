@@ -1,31 +1,53 @@
-<nav class="video-library__tabs">
-    <button
-        type="button"
-        class="video-library__tab"
-        [class.video-library__tab--active]="activeGroup === 'video'"
-        (click)="setGroup('video')"
-    >
-        Видео ({{ videoItems.length }})
-    </button>
-    <button
-        type="button"
-        class="video-library__tab"
-        [class.video-library__tab--active]="activeGroup === 'audio'"
-        (click)="setGroup('audio')"
-    >
-        Аудио ({{ audioItems.length }})
-    </button>
-</nav>
+<div class="library__header">
+    <h1 class="page-title library__title">Библиотека</h1>
+    <nav class="segmented" aria-label="Тип медиа">
+        <button
+            type="button"
+            class="segmented__item"
+            [class.segmented__item--active]="activeGroup === 'video'"
+            [attr.aria-pressed]="activeGroup === 'video'"
+            (click)="setGroup('video')"
+        >
+            Видео <span class="library__count">({{ videoItems.length }})</span>
+        </button>
+        <button
+            type="button"
+            class="segmented__item"
+            [class.segmented__item--active]="activeGroup === 'audio'"
+            [attr.aria-pressed]="activeGroup === 'audio'"
+            (click)="setGroup('audio')"
+        >
+            Аудио <span class="library__count">({{ audioItems.length }})</span>
+        </button>
+    </nav>
+</div>
 
 @if (visibleItems.length === 0) {
-    <p class="video-library__empty">
-        {{ activeGroup === 'video' ? 'Нет скачанных видео' : 'Нет скачанного аудио' }}
-    </p>
+    <div class="library__empty">
+        <div class="library__empty-art" aria-hidden="true">
+            <span class="library__empty-frame library__empty-frame--left"></span>
+            <span class="library__empty-frame library__empty-frame--right"></span>
+            <span class="library__empty-frame library__empty-frame--front">
+                <app-icon [name]="activeGroup === 'video' ? 'video' : 'music'" [size]="22" />
+            </span>
+        </div>
+        <p class="library__empty-title">
+            {{ activeGroup === 'video' ? 'Нет скачанных видео' : 'Нет скачанного аудио' }}
+        </p>
+        <p class="library__empty-text">
+            Вставьте ссылку на вкладке «Загрузки» — скачанное появится здесь.
+        </p>
+        <button type="button" class="btn" (click)="addRequested.emit()">
+            <app-icon name="plus" [size]="16" />
+            Добавить ссылку
+        </button>
+    </div>
 } @else {
-    <div class="video-library__grid">
+    <div class="library__grid">
         @for (item of visibleItems; track item.id) {
             <app-media-card
                 [item]="item"
+                [isCurrent]="item.id === (currentTrackId$ | async)"
                 (opened)="onOpened($event)"
                 (revealed)="onRevealed($event)"
                 (deleteRequested)="onDeleteRequested($event)"
