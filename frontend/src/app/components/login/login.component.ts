@@ -11,6 +11,7 @@ import {
 import type { CodeCheck } from '../../api/session';
 import { Transport } from '../../api/transport';
 import { signInCodeFromScan } from '../../shared/sign-in-code';
+import { IconComponent } from '../icon/icon.component';
 import { canScanQr, QrScannerComponent } from '../qr-scanner/qr-scanner.component';
 import { SessionService } from '../../services/session.service';
 import { guessDeviceName } from '../../shared/device-name';
@@ -27,7 +28,7 @@ type LoginStep = 'code' | 'details';
 @Component({
     selector: 'app-login',
     standalone: true,
-    imports: [QrScannerComponent],
+    imports: [QrScannerComponent, IconComponent],
     templateUrl: './login.component.html',
     styleUrl: './login.component.scss',
     changeDetection: ChangeDetectionStrategy.OnPush,
@@ -78,6 +79,12 @@ export class LoginComponent implements OnInit {
             default:
                 return 'YT Grabber';
         }
+    }
+
+    /** The code from step 1 in the chip on step 2; a long setup code shortened. */
+    protected get codeLabel(): string {
+        const code = this.code.trim();
+        return code.length > 14 ? `${code.slice(0, 6)}…${code.slice(-4)}` : code.toUpperCase();
     }
 
     // --- Lifecycle ---
