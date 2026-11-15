@@ -29,6 +29,8 @@ import { SessionService } from './services/session.service';
 import { InstallOffer, InstallService } from './services/install.service';
 import { SHARE_PATH, sharedLink } from './shared/shared-link';
 import { ConnectionService } from './services/connection.service';
+import { AudioPlayerService, AudioTrack } from './services/audio-player.service';
+import { scrollToSection } from './shared/scroll-to-section';
 import type { RemoteStatus } from './api/connection';
 
 type AppTab = 'add' | 'library' | 'settings';
@@ -59,6 +61,7 @@ export class App implements OnInit, OnDestroy {
     private readonly toolInstallService = inject(ToolInstallService);
     private readonly updateService = inject(UpdateService);
     private readonly playbackService = inject(PlaybackService);
+    private readonly audioPlayerService = inject(AudioPlayerService);
     private readonly notificationService = inject(NotificationService);
     private readonly changeDetectorRef = inject(ChangeDetectorRef);
     private readonly transport = inject(Transport);
@@ -105,6 +108,7 @@ export class App implements OnInit, OnDestroy {
     protected isInstallingUpdate = false;
 
     // --- Library ---
+    protected isAudioBarShown = false;
     protected library: model.VideoRecord[] = [];
     protected selectedVideo: model.VideoRecord | null = null;
 
@@ -240,6 +244,14 @@ export class App implements OnInit, OnDestroy {
         this.activeTab = tab;
     }
 
+    /** "Настройки → Аккаунты" from the empty Downloads tab. */
+    protected onOpenAccounts(): void {
+        this.setTab('settings');
+        // Renders the settings now, so the section is there to scroll to.
+        this.changeDetectorRef.detectChanges();
+        scrollToSection('s-accounts');
+    }
+
     /** Opens the download form with what the share sheet brought. */
     private takeSharedLink(): void {
         if (location.pathname !== SHARE_PATH) {
@@ -306,6 +318,14 @@ export class App implements OnInit, OnDestroy {
                 location.reload();
             }
         });
+
+        // Room under the content for the audio bar only while it's shown.
+        this.audioPlayerService.currentTrack$
+            .pipe(takeUntil(this.destroy$))
+            .subscribe((track: AudioTrack | null): void => {
+                this.isAudioBarShown = track !== null;
+                this.changeDetectorRef.markForCheck();
+            });
 
         this.connectionService.status$
             .pipe(takeUntil(this.destroy$))

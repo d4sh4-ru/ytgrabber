@@ -25,12 +25,21 @@
     }
 
     &__section {
-        // Room for the fixed audio player bar.
-        padding-bottom: 88px;
+        // .app__main has its own padding below.
+        padding-bottom: 0;
 
-        // ...and on phones for the tab bar under it.
+        // Phones: clear of the tab bar.
         @include v.narrow {
-            padding-bottom: calc(88px + #{v.$bottom-nav-height} + env(safe-area-inset-bottom));
+            padding-bottom: calc(#{v.$bottom-nav-height} + env(safe-area-inset-bottom) + 16px);
+        }
+
+        // ...and of the audio bar above it, while one is playing.
+        &--player {
+            padding-bottom: 88px;
+
+            @include v.narrow {
+                padding-bottom: calc(100px + #{v.$bottom-nav-height} + env(safe-area-inset-bottom));
+            }
         }
     }
 }

@@ -251,6 +251,11 @@ body::before {
             flex-direction: column;
             align-items: stretch;
             gap: 10px;
+
+            // In a column the label's 220px basis would be its height.
+            .section__label {
+                flex: none;
+            }
         }
     }
 
