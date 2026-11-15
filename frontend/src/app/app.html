@@ -241,13 +241,13 @@
                     }
                 }
 
-                <section class="app__section">
+                <section class="app__section" [class.app__section--player]="isAudioBarShown">
                     @switch (activeTab) {
                         @case ('add') {
                             <app-download-form
                                 [jobs]="jobs"
                                 [sharedUrl]="sharedUrl"
-                                (settingsRequested)="setTab('settings')"
+                                (settingsRequested)="onOpenAccounts()"
                             />
                         }
                         @case ('library') {
