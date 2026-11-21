@@ -13,6 +13,7 @@ import { ShareService } from '../../services/share.service';
 import { pluralRu } from '../../shared/format-relative-time';
 import { ConfirmDialogComponent } from '../confirm-dialog/confirm-dialog.component';
 
+const DAY_MS = 24 * 60 * 60 * 1000;
 const HOUR_MS = 60 * 60 * 1000;
 const MINUTE_MS = 60 * 1000;
 
@@ -40,10 +41,15 @@ export class SharesComponent implements OnInit, OnDestroy {
 
     // --- Lifecycle ---
     public ngOnInit(): void {
-        this.shareService.changed$
+        this.shareService.shares$
             .pipe(takeUntil(this.destroy$))
-            .subscribe((): void => void this.refresh());
-        void this.refresh();
+            .subscribe((shares: VideoShare[]): void => {
+                this.shares = shares;
+                this.changeDetectorRef.markForCheck();
+            });
+        this.shareService.refresh().catch((error: unknown): void => {
+            this.notificationService.error(error);
+        });
     }
 
     public ngOnDestroy(): void {
@@ -68,6 +74,10 @@ export class SharesComponent implements OnInit, OnDestroy {
 
     private leftLabel(expiresAt: string): string {
         const left = new Date(expiresAt).getTime() - Date.now();
+        if (left >= 2 * DAY_MS) {
+            const days = Math.floor(left / DAY_MS);
+            return `ещё ${days} ${pluralRu(days, 'день', 'дня', 'дней')}`;
+        }
         if (left >= HOUR_MS) {
             const hours = Math.floor(left / HOUR_MS);
             return `ещё ${hours} ${pluralRu(hours, 'час', 'часа', 'часов')}`;
@@ -98,16 +108,6 @@ export class SharesComponent implements OnInit, OnDestroy {
             this.notificationService.error(error);
         }
         this.isRevoking = false;
-        this.changeDetectorRef.markForCheck();
-    }
-
-    // --- List ---
-    private async refresh(): Promise<void> {
-        try {
-            this.shares = await this.shareService.getShares();
-        } catch (error: unknown) {
-            this.notificationService.error(error);
-        }
         this.changeDetectorRef.markForCheck();
     }
 }

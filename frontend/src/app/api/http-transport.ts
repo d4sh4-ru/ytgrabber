@@ -1,7 +1,7 @@
 import createClient, { Client } from 'openapi-fetch';
 import { filter, map, Observable, Subject } from 'rxjs';
 import type { paths } from './openapi';
-import type { CodeCheck, SessionInfo, SignInRequest } from './session';
+import type { CodeCheck, SessionInfo, ShareTerm, SignInRequest } from './session';
 import type { Transport } from './transport';
 
 /** Typed client for the server's API, generated from internal/server/openapi.json. */
@@ -91,10 +91,11 @@ const CALLS: Readonly<Record<string, Call>> = {
 
     // Links to single videos: the admin's, server only.
     GetShares: (api) => api.GET('/shares'),
-    CreateShare: (api, [videoId, withCode, allowDownload]) =>
+    CreateShare: (api, [videoId, term, withCode, allowDownload]) =>
         api.POST('/shares', {
             body: {
                 videoId: String(videoId),
+                term: term as ShareTerm,
                 withCode: withCode === true,
                 allowDownload: allowDownload === true,
             },

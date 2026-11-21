@@ -27,6 +27,12 @@
                 <app-icon name="play" [size]="18" />
             </span>
         }
+        @if (isShared && canShare) {
+            <span class="media-card__shared" title="Видео доступно по ссылке">
+                <app-icon name="link" [size]="12" />
+                По ссылке
+            </span>
+        }
         @if (watchedPercent; as percent) {
             <div class="media-card__watched" [title]="watchedTitle">
                 <div class="media-card__watched-bar" [style.width.%]="percent"></div>
@@ -62,8 +68,9 @@
                     <button
                         type="button"
                         class="media-card__action"
-                        title="Поделиться ссылкой"
-                        aria-label="Поделиться ссылкой"
+                        [class.media-card__action--shared]="isShared"
+                        [title]="isShared ? 'Ссылка на видео' : 'Поделиться ссылкой'"
+                        [attr.aria-label]="isShared ? 'Ссылка на видео' : 'Поделиться ссылкой'"
                         (click)="onShare($event)"
                     >
                         <app-icon name="link" [size]="15" />

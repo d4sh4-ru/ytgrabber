@@ -35,5 +35,5 @@ export type VideoShare = components['schemas']['model.Share'];
 
 export type ShareRequest = paths['/shares']['post']['requestBody']['content']['application/json'];
 
-/** A new link: its path and code are shown this once. */
-export type NewShare = Json<paths['/shares']['post']['responses'][200]>;
+/** How long a link works. */
+export type ShareTerm = NonNullable<ShareRequest['term']>;

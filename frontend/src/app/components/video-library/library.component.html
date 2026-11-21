@@ -49,6 +49,7 @@
                 [item]="item"
                 [isCurrent]="item.id === (currentTrackId$ | async)"
                 [canShare]="(canShare$ | async) === true"
+                [isShared]="shareOf(shares$ | async, item) !== null"
                 (opened)="onOpened($event)"
                 (revealed)="onRevealed($event)"
                 (deleteRequested)="onDeleteRequested($event)"
@@ -71,5 +72,9 @@
 }
 
 @if (sharing) {
-    <app-share-dialog [video]="sharing" (closed)="onShareClosed()" />
+    <app-share-dialog
+        [video]="sharing"
+        [share]="shareOf(shares$ | async, sharing)"
+        (closed)="onShareClosed()"
+    />
 }

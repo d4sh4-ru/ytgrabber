@@ -41,6 +41,10 @@ export class MediaCardComponent {
     @Input()
     public canShare = false;
 
+    /** The video has a link that works: the button shows and deletes it. */
+    @Input()
+    public isShared = false;
+
     @Output()
     public readonly opened = new EventEmitter<model.VideoRecord>();
 

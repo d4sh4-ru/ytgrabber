@@ -23,11 +23,11 @@ import (
 // Links to single videos: an admin makes one for a video of their own
 // library, and anyone who has it watches the video on a page of its own
 // (/s/<token>), without signing in and without seeing anything else of
-// the server. A link lasts a day; it may also ask for a six-digit code,
-// sent apart from the link.
+// the server. A link lasts the term chosen for it; it may also ask for a
+// six-digit code, sent apart from the link. A video has at most one link
+// that works: sharing it again shows that one, as it was made.
 const (
 	sharePrefix = "/s/"
-	shareTTL    = 24 * time.Hour
 	shareCookie = "ytg_share"
 	// A six-digit code is only safe while guessing it is slow: after
 	// shareMaxFailures wrong codes within shareLockout the link takes
@@ -38,19 +38,23 @@ const (
 	maxShareForm     = 1 << 10
 )
 
-type shareRequest struct {
-	VideoID string `json:"videoId"`
-	// WithCode makes the link ask for a code, returned once in the response.
-	WithCode      bool `json:"withCode"`
-	AllowDownload bool `json:"allowDownload"`
+// shareTerms are the terms a link can be made for; "day" if none is given.
+var shareTerms = map[string]time.Duration{
+	"hour":  time.Hour,
+	"day":   24 * time.Hour,
+	"week":  7 * 24 * time.Hour,
+	"month": 30 * 24 * time.Hour,
 }
 
-type newShareResponse struct {
-	Share *model.Share `json:"share"`
-	// Path is the link without the server's address: /s/<token>. It is
-	// shown this once, like Code: the server keeps only their hashes.
-	Path string `json:"path"`
-	Code string `json:"code,omitempty"`
+const defaultShareTerm = "day"
+
+type shareRequest struct {
+	VideoID string `json:"videoId"`
+	// Term is how long the link works.
+	Term string `json:"term,omitempty" enum:"hour,day,week,month"`
+	// WithCode makes the link ask for a six-digit code.
+	WithCode      bool `json:"withCode"`
+	AllowDownload bool `json:"allowDownload"`
 }
 
 // shareGuard remembers wrong codes per link and the browsers that
@@ -142,6 +146,8 @@ func randomDigits(n int) string {
 
 // --- The admin's API ---
 
+// createShare makes a link to a video, or returns the one it already
+// has, unchanged: a link someone was sent shouldn't change under them.
 func (s *Server) createShare(r *http.Request, body *shareRequest) (any, error) {
 	db, err := s.auth.users()
 	if err != nil {
@@ -155,28 +161,42 @@ func (s *Server) createShare(r *http.Request, body *shareRequest) (any, error) {
 	if video.MediaKind != model.MediaVideo {
 		return nil, badRequest("поделиться можно только видео")
 	}
+	term := body.Term
+	if term == "" {
+		term = defaultShareTerm
+	}
+	ttl, ok := shareTerms[term]
+	if !ok {
+		return nil, badRequest("неизвестный срок ссылки")
+	}
 
 	now := s.auth.now()
+	if existing, err := db.ShareForVideo(user.ID, video.ID, now); err == nil {
+		return withPath(existing), nil
+	} else if !errors.Is(err, storage.ErrShareNotFound) {
+		return nil, err
+	}
+
 	token := randomToken()
 	share := &model.Share{
 		ID:            uuid.NewString(),
 		UserID:        user.ID,
 		VideoID:       video.ID,
 		Title:         video.Title,
+		Token:         token,
 		AllowDownload: body.AllowDownload,
 		CreatedAt:     timestamp(now),
-		ExpiresAt:     timestamp(now.Add(shareTTL)),
+		ExpiresAt:     timestamp(now.Add(ttl)),
 	}
-	response := newShareResponse{Share: share, Path: sharePrefix + token}
 	if body.WithCode {
-		response.Code = randomDigits(shareCodeDigits)
-		share.CodeHash = shareCodeHash(token, response.Code)
+		share.Code = randomDigits(shareCodeDigits)
+		share.CodeHash = shareCodeHash(token, share.Code)
 		share.HasCode = true
 	}
-	if err := db.CreateShare(share, hashSecret(token), now.Add(shareTTL)); err != nil {
+	if err := db.CreateShare(share, hashSecret(token), now.Add(ttl)); err != nil {
 		return nil, fmt.Errorf("не удалось создать ссылку: %w", err)
 	}
-	return response, nil
+	return withPath(share), nil
 }
 
 func (s *Server) listShares(r *http.Request) (any, error) {
@@ -184,7 +204,20 @@ func (s *Server) listShares(r *http.Request) (any, error) {
 	if err != nil {
 		return nil, err
 	}
-	return db.ListShares(identityOf(r).user.ID, s.auth.now())
+	shares, err := db.ListShares(identityOf(r).user.ID, s.auth.now())
+	for _, share := range shares {
+		withPath(share)
+	}
+	return shares, err
+}
+
+// withPath fills in the link's path; links made before 2.3 have none.
+func withPath(share *model.Share) *model.Share {
+	share.Path = ""
+	if share.Token != "" {
+		share.Path = sharePrefix + share.Token
+	}
+	return share
 }
 
 func (s *Server) removeShare(r *http.Request) (any, error) {
@@ -314,7 +347,7 @@ func (s *Server) enterShareCode(w http.ResponseWriter, r *http.Request) {
 
 	expires, err := time.Parse(time.RFC3339, share.ExpiresAt)
 	if err != nil {
-		expires = now.Add(shareTTL)
+		expires = now.Add(shareTerms[defaultShareTerm])
 	}
 	http.SetCookie(w, &http.Cookie{
 		Name:     shareCookie,
@@ -362,17 +395,38 @@ func sharePageHeaders(next http.Handler) http.Handler {
 	})
 }
 
-// timeLeft says how long a link lasts, in hours or, at the end, minutes.
+// timeLeft says how long a link lasts: in days, hours or, at the end,
+// minutes.
 func timeLeft(expiresAt string, now time.Time) string {
 	expires, err := time.Parse(time.RFC3339, expiresAt)
 	if err != nil {
 		return ""
 	}
 	left := expires.Sub(now)
-	if left >= time.Hour {
-		return fmt.Sprintf("ещё %d ч", int(left.Hours()))
+	switch {
+	case left >= 48*time.Hour:
+		days := int(left.Hours() / 24)
+		return fmt.Sprintf("ещё %d %s", days, pluralRu(days, "день", "дня", "дней"))
+	case left >= time.Hour:
+		hours := int(left.Hours())
+		return fmt.Sprintf("ещё %d %s", hours, pluralRu(hours, "час", "часа", "часов"))
+	default:
+		minutes := max(1, int(left.Minutes()))
+		return fmt.Sprintf("ещё %d %s", minutes, pluralRu(minutes, "минуту", "минуты", "минут"))
 	}
-	return fmt.Sprintf("ещё %d мин", max(1, int(left.Minutes())))
+}
+
+// pluralRu picks the Russian form for n: 1 день, 2 дня, 5 дней.
+func pluralRu(n int, one, few, many string) string {
+	switch lastTwo := n % 100; {
+	case lastTwo >= 11 && lastTwo <= 14:
+		return many
+	case lastTwo%10 == 1:
+		return one
+	case lastTwo%10 >= 2 && lastTwo%10 <= 4:
+		return few
+	}
+	return many
 }
 
 // isShareNotFound lets the API answer 404 for a link that is gone.

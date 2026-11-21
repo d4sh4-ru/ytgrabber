@@ -406,8 +406,8 @@ export interface paths {
         get: operations['getShares'];
         put?: never;
         /**
-         * Ссылка на видео для тех, у кого нет входа (сутки)
-         * @description Страница видео открывается по пути из ответа (/s/<токен>) без входа. С withCode она сначала спрашивает шестизначный код из ответа; после 5 неверных кодов ссылка 15 минут не принимает ни одного. Путь и код показываются один раз: сервер хранит только их хеши.
+         * Ссылка на видео для тех, у кого нет входа
+         * @description Страница видео открывается по path из ответа (/s/<токен>) без входа и действует term (час, сутки, неделю или месяц; по умолчанию сутки). С withCode она сначала спрашивает шестизначный code из ответа; после 5 неверных кодов ссылка 15 минут не принимает ни одного. У видео не больше одной действующей ссылки: если она уже есть, возвращается она, без изменений, а параметры запроса не применяются.
          */
         post: operations['postShares'];
         delete?: never;
@@ -658,10 +658,12 @@ export interface components {
         };
         'model.Share': {
             allowDownload: boolean;
+            code?: string;
             createdAt: string;
             expiresAt: string;
             hasCode: boolean;
             id: string;
+            path: string;
             title: string;
             videoId: string;
             views: number;
@@ -2001,6 +2003,8 @@ export interface operations {
             content: {
                 'application/json': {
                     allowDownload: boolean;
+                    /** @enum {string} */
+                    term?: 'hour' | 'day' | 'week' | 'month';
                     videoId: string;
                     withCode: boolean;
                 };
@@ -2013,11 +2017,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    'application/json': {
-                        code?: string;
-                        path: string;
-                        share: components['schemas']['model.Share'];
-                    };
+                    'application/json': components['schemas']['model.Share'];
                 };
             };
             /** @description Ошибка; текст для пользователя */

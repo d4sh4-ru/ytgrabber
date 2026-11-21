@@ -67,6 +67,31 @@
         padding: 4px 0;
     }
 
+    &__term {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px 12px;
+        font-size: 13px;
+    }
+
+    // Deleting asks once more, in place of the buttons.
+    &__confirm {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        padding: 12px 14px;
+        border: 1px solid v.$border-subtle;
+        border-radius: 10px;
+        background: v.$bg-elevated;
+        font-size: 13px;
+
+        .share__footer {
+            margin-top: 0;
+        }
+    }
+
     // The QR code on white, as scanners expect, in either theme.
     &__qr-frame {
         align-self: center;
@@ -122,5 +147,9 @@
         justify-content: flex-end;
         gap: 8px;
         margin-top: 4px;
+
+        &--split {
+            justify-content: space-between;
+        }
     }
 }

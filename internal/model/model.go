@@ -207,19 +207,26 @@ type Code struct {
 }
 
 // Share is a link that shows one video of an admin's library to anyone
-// who has it, without signing in. Its token, and the code it may ask
-// for, are kept only as hashes: the link is shown once, when made.
+// who has it, without signing in. A video has at most one link that
+// works: sharing it again shows the same one.
 type Share struct {
 	ID      string `json:"id"`
 	UserID  string `json:"-"`
 	VideoID string `json:"videoId"`
 	// Title is the video's, read along with the link.
-	Title         string `json:"title"`
+	Title string `json:"title"`
+	// Path is the link without the server's address, /s/<token>; empty
+	// for links made before 2.3, which kept only the token's hash.
+	Path string `json:"path"`
+	// Code is what the link asks for when HasCode; empty for links made
+	// before 2.3 even then.
+	Code          string `json:"code,omitempty"`
 	HasCode       bool   `json:"hasCode"`
 	AllowDownload bool   `json:"allowDownload"`
 	// Views counts the times the page was opened (after the code).
 	Views     int    `json:"views"`
 	CreatedAt string `json:"createdAt"`
 	ExpiresAt string `json:"expiresAt"`
+	Token     string `json:"-"`
 	CodeHash  string `json:"-"`
 }

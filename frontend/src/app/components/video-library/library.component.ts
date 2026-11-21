@@ -7,13 +7,16 @@ import {
     Output,
 } from '@angular/core';
 import { AsyncPipe } from '@angular/common';
-import { map, Observable } from 'rxjs';
+import { filter, map, Observable } from 'rxjs';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { model } from '../../api/models';
+import type { VideoShare } from '../../api/session';
 import { Transport } from '../../api/transport';
 import { DownloadService } from '../../services/download.service';
 import { NotificationService } from '../../services/notification.service';
 import { AudioPlayerService } from '../../services/audio-player.service';
 import { SessionService } from '../../services/session.service';
+import { ShareService } from '../../services/share.service';
 import { MediaCardComponent } from '../media-card/media-card.component';
 import { bypassServiceWorker } from '../../shared/media-url';
 import { IconComponent } from '../icon/icon.component';
@@ -45,6 +48,7 @@ export class LibraryComponent {
     private readonly notificationService = inject(NotificationService);
     private readonly audioPlayerService = inject(AudioPlayerService);
     private readonly sessionService = inject(SessionService);
+    private readonly shareService = inject(ShareService);
     /** The desktop may keep the file on disk; a server always deletes it. */
     protected readonly isDesktop = inject(Transport).isDesktop;
 
@@ -74,6 +78,8 @@ export class LibraryComponent {
     protected readonly canShare$: Observable<boolean> = this.sessionService.isAdmin$.pipe(
         map((isAdmin: boolean): boolean => isAdmin && !this.isDesktop),
     );
+    /** The admin's links: a card with one shows it. */
+    protected readonly shares$: Observable<VideoShare[]> = this.shareService.shares$;
     protected sharing: model.VideoRecord | null = null;
 
     protected get videoItems(): model.VideoRecord[] {
@@ -86,6 +92,19 @@ export class LibraryComponent {
 
     protected get visibleItems(): model.VideoRecord[] {
         return this.activeGroup === 'video' ? this.videoItems : this.audioItems;
+    }
+
+    public constructor() {
+        this.canShare$
+            .pipe(
+                filter((canShare: boolean): boolean => canShare),
+                takeUntilDestroyed(),
+            )
+            .subscribe((): void => {
+                this.shareService.refresh().catch((error: unknown): void => {
+                    this.notificationService.error(error);
+                });
+            });
     }
 
     // --- Grouping ---
@@ -128,6 +147,13 @@ export class LibraryComponent {
 
     protected onShareClosed(): void {
         this.sharing = null;
+    }
+
+    protected shareOf(
+        shares: readonly VideoShare[] | null,
+        item: model.VideoRecord,
+    ): VideoShare | null {
+        return this.shareService.shareOf(shares ?? [], item.id);
     }
 
     // --- Deletion ---
