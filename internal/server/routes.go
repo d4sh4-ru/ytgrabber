@@ -223,6 +223,24 @@ func (s *Server) routes() []route {
 			handle: s.removeUser,
 		},
 
+		// Links to single videos: the admin's.
+		{
+			method: "GET", path: "/shares", summary: "Мои ссылки на видео, которые ещё действуют", admin: true,
+			response: []*model.Share{}, handle: s.listShares,
+		},
+		{
+			method: "POST", path: "/shares", summary: "Ссылка на видео для тех, у кого нет входа (сутки)", admin: true,
+			request: &shareRequest{}, response: newShareResponse{}, handle: jsonBody(s.createShare),
+			doc: "Страница видео открывается по пути из ответа (/s/<токен>) без входа. " +
+				"С withCode она сначала спрашивает шестизначный код из ответа; " +
+				"после 5 неверных кодов ссылка 15 минут не принимает ни одного. " +
+				"Путь и код показываются один раз: сервер хранит только их хеши.",
+		},
+		{
+			method: "DELETE", path: "/shares/{id}", summary: "Отозвать ссылку", admin: true,
+			handle: s.removeShare,
+		},
+
 		{
 			method: "GET", path: "/events", summary: "События (WebSocket)", raw: s.serveEvents,
 			doc: "WebSocket. Каждое сообщение — JSON {\"name\": ..., \"data\": ...}: " +

@@ -1,0 +1,36 @@
+<section id="s-shares" class="section">
+    <div class="section__head"><h2 class="section__title">Ссылки на видео</h2></div>
+    <p class="section__desc">
+        Ссылки, которые открывают одно видео без входа. Каждая действует сутки; создать новую можно
+        в библиотеке, кнопкой на обложке.
+    </p>
+    @for (share of shares; track share.id) {
+        <div class="section__row">
+            <div class="section__label">
+                <span class="section__name">{{ share.title }}</span>
+                <span class="section__faint">{{ detailsLabel(share) }}</span>
+            </div>
+            <div class="section__actions">
+                <button type="button" class="btn btn--danger" (click)="onRevoke(share)">
+                    Отозвать
+                </button>
+            </div>
+        </div>
+    } @empty {
+        <div class="section__row">
+            <span class="section__muted">Действующих ссылок нет.</span>
+        </div>
+    }
+</section>
+
+@if (shareToRevoke; as share) {
+    <app-confirm-dialog
+        [title]="'Отозвать ссылку на «' + share.title + '»?'"
+        message="Она сразу перестанет открываться. Чтобы снова поделиться видео, понадобится новая ссылка."
+        [confirmLabel]="isRevoking ? 'Отзыв…' : 'Отозвать'"
+        [danger]="true"
+        [busy]="isRevoking"
+        (confirmed)="onRevokeConfirmed()"
+        (cancelled)="onRevokeCancelled()"
+    />
+}

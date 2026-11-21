@@ -42,6 +42,7 @@ type Config struct {
 type Server struct {
 	app    *core.App
 	auth   *auth
+	shares *shareGuard
 	Events *Hub
 	webDir string
 	// whoIs says whose data a request works with.
@@ -56,6 +57,7 @@ func New(app *core.App, cfg Config) (*Server, error) {
 	return &Server{
 		app:    app,
 		auth:   newAuth(app, events, cfg.SetupCode),
+		shares: newShareGuard(),
 		Events: events,
 		webDir: cfg.WebDir,
 		whoIs:  requestUser,
@@ -85,6 +87,10 @@ func (s *Server) Handler() http.Handler {
 	}
 	mux.Handle("GET /api/v1/openapi.json", http.HandlerFunc(serveSpec))
 	mux.Handle("GET "+mediaPrefix, protect(core.MediaHandler(s.app, s.userOf)))
+	// Links to single videos: public, each guarded by its own token.
+	mux.Handle("GET "+sharePrefix+"{token}", sharePageHeaders(http.HandlerFunc(s.serveSharePage)))
+	mux.Handle("POST "+sharePrefix+"{token}", sharePageHeaders(http.HandlerFunc(s.enterShareCode)))
+	mux.Handle("GET "+sharePrefix+"{token}/{name}", http.HandlerFunc(s.serveShareMedia))
 
 	mux.Handle("/api/", http.NotFoundHandler())
 	if s.webDir != "" {
@@ -206,7 +212,7 @@ func apiHandler(h func(*http.Request) (any, error)) http.Handler {
 }
 
 func isNotFound(err error) bool {
-	return core.IsNotFound(err) || errors.Is(err, storage.ErrUserNotFound) || errors.Is(err, storage.ErrDeviceNotFound)
+	return core.IsNotFound(err) || errors.Is(err, storage.ErrUserNotFound) || errors.Is(err, storage.ErrDeviceNotFound) || isShareNotFound(err)
 }
 
 type httpError struct {

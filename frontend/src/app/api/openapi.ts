@@ -395,6 +395,44 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    '/shares': {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Мои ссылки на видео, которые ещё действуют */
+        get: operations['getShares'];
+        put?: never;
+        /**
+         * Ссылка на видео для тех, у кого нет входа (сутки)
+         * @description Страница видео открывается по пути из ответа (/s/<токен>) без входа. С withCode она сначала спрашивает шестизначный код из ответа; после 5 неверных кодов ссылка 15 минут не принимает ни одного. Путь и код показываются один раз: сервер хранит только их хеши.
+         */
+        post: operations['postShares'];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    '/shares/{id}': {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Отозвать ссылку */
+        delete: operations['deleteSharesId'];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     '/tools': {
         parameters: {
             query?: never;
@@ -617,6 +655,16 @@ export interface components {
             /** @enum {string} */
             kind: 'video' | 'audio';
             progress: number;
+        };
+        'model.Share': {
+            allowDownload: boolean;
+            createdAt: string;
+            expiresAt: string;
+            hasCode: boolean;
+            id: string;
+            title: string;
+            videoId: string;
+            views: number;
         };
         'model.User': {
             createdAt: string;
@@ -1878,6 +1926,188 @@ export interface operations {
             };
             /** @description Только для администратора */
             403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': {
+                        error: string;
+                    };
+                };
+            };
+        };
+    };
+    getShares: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': components['schemas']['model.Share'][];
+                };
+            };
+            /** @description Ошибка; текст для пользователя */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': {
+                        error: string;
+                    };
+                };
+            };
+            /** @description Нужен вход */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': {
+                        error: string;
+                    };
+                };
+            };
+            /** @description Только для администратора */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': {
+                        error: string;
+                    };
+                };
+            };
+        };
+    };
+    postShares: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                'application/json': {
+                    allowDownload: boolean;
+                    videoId: string;
+                    withCode: boolean;
+                };
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': {
+                        code?: string;
+                        path: string;
+                        share: components['schemas']['model.Share'];
+                    };
+                };
+            };
+            /** @description Ошибка; текст для пользователя */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': {
+                        error: string;
+                    };
+                };
+            };
+            /** @description Нужен вход */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': {
+                        error: string;
+                    };
+                };
+            };
+            /** @description Только для администратора */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': {
+                        error: string;
+                    };
+                };
+            };
+        };
+    };
+    deleteSharesId: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Готово */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Ошибка; текст для пользователя */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': {
+                        error: string;
+                    };
+                };
+            };
+            /** @description Нужен вход */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': {
+                        error: string;
+                    };
+                };
+            };
+            /** @description Только для администратора */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    'application/json': {
+                        error: string;
+                    };
+                };
+            };
+            /** @description Нет такой записи (или она другого пользователя) */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };

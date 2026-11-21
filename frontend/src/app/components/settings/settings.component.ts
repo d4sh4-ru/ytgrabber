@@ -30,6 +30,7 @@ import { SessionService } from '../../services/session.service';
 import { LocalAccountsComponent } from '../local-accounts/local-accounts.component';
 import { ServerConnectionComponent } from '../server-connection/server-connection.component';
 import { PeopleComponent } from '../people/people.component';
+import { SharesComponent } from '../shares/shares.component';
 import { IconComponent } from '../icon/icon.component';
 
 /** A link in the section list beside the settings (wide windows only). */
@@ -54,6 +55,7 @@ type ResetStep = 'idle' | 'choose' | 'confirm';
         ConfirmDialogComponent,
         AccountConnectDialogComponent,
         PeopleComponent,
+        SharesComponent,
         ServerConnectionComponent,
         LocalAccountsComponent,
     ],
@@ -153,6 +155,7 @@ export class SettingsComponent implements OnInit, OnDestroy {
             sections.push({ id: 's-devices', label: 'Устройства' });
             if (this.isAdmin) {
                 sections.push({ id: 's-users', label: 'Пользователи' });
+                sections.push({ id: 's-shares', label: 'Ссылки на видео' });
             }
         }
         sections.push(

@@ -48,9 +48,11 @@
             <app-media-card
                 [item]="item"
                 [isCurrent]="item.id === (currentTrackId$ | async)"
+                [canShare]="(canShare$ | async) === true"
                 (opened)="onOpened($event)"
                 (revealed)="onRevealed($event)"
                 (deleteRequested)="onDeleteRequested($event)"
+                (shareRequested)="onShareRequested($event)"
             />
         }
     </div>
@@ -66,4 +68,8 @@
         (confirmed)="onDeleteConfirmed($event)"
         (cancelled)="onDeleteCancelled()"
     />
+}
+
+@if (sharing) {
+    <app-share-dialog [video]="sharing" (closed)="onShareClosed()" />
 }

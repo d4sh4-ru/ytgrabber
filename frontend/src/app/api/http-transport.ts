@@ -89,6 +89,18 @@ const CALLS: Readonly<Record<string, Call>> = {
     CreateUserLink: (api, args) => api.POST('/users/{id}/link', { params: idOf(args) }),
     RemoveUser: (api, args) => api.DELETE('/users/{id}', { params: idOf(args) }),
 
+    // Links to single videos: the admin's, server only.
+    GetShares: (api) => api.GET('/shares'),
+    CreateShare: (api, [videoId, withCode, allowDownload]) =>
+        api.POST('/shares', {
+            body: {
+                videoId: String(videoId),
+                withCode: withCode === true,
+                allowDownload: allowDownload === true,
+            },
+        }),
+    RemoveShare: (api, args) => api.DELETE('/shares/{id}', { params: idOf(args) }),
+
     GetAccounts: (api) => api.GET('/accounts'),
     CheckAccount: (api, args) => api.POST('/accounts/{id}/check', { params: idOf(args) }),
     RemoveAccount: (api, args) => api.DELETE('/accounts/{id}', { params: idOf(args) }),

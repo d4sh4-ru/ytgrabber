@@ -6,6 +6,8 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+
+	"ytgrabber/internal/model"
 )
 
 const mediaRoutePrefix = "/media/"
@@ -49,7 +51,13 @@ func (h mediaHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		http.NotFound(w, r)
 		return
 	}
+	ServeMedia(w, r, video, name, true)
+}
 
+// ServeMedia answers with video's file or, for a name starting with
+// "thumbnail", its cover; ?download=1 makes the file an attachment if
+// downloads are allowed.
+func ServeMedia(w http.ResponseWriter, r *http.Request, video *model.VideoRecord, name string, allowDownload bool) {
 	path := video.FilePath
 	if strings.HasPrefix(name, "thumbnail") {
 		path = video.ThumbnailPath
@@ -73,7 +81,7 @@ func (h mediaHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	name = filepath.Base(path)
-	if r.URL.Query().Get("download") == "1" {
+	if allowDownload && r.URL.Query().Get("download") == "1" {
 		// FormatMediaType writes non-ASCII names as filename*=utf-8''…
 		// (RFC 2231/5987), so Cyrillic titles survive the download.
 		w.Header().Set("Content-Disposition", mime.FormatMediaType("attachment", map[string]string{"filename": name}))

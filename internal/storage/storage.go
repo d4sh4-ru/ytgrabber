@@ -35,6 +35,7 @@ var migrations = []func(tx *sql.Tx, env MigrationEnv) error{
 	migrateJobErrorDetails,
 	migrateUsers,
 	migrateUserDevices,
+	migrateShares,
 }
 
 // migrateUsers gives jobs, library entries (with their playback
@@ -425,9 +426,20 @@ func (d *DB) SavePosition(user string, id string, seconds float64) error {
 	return err
 }
 
+// DeleteVideo removes user's entry id and the links that share it.
 func (d *DB) DeleteVideo(user string, id string) error {
-	_, err := d.conn.Exec(`DELETE FROM videos WHERE id = ? AND user_id = ?`, id, user)
-	return err
+	tx, err := d.conn.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+	if _, err := tx.Exec(`DELETE FROM videos WHERE id = ? AND user_id = ?`, id, user); err != nil {
+		return err
+	}
+	if _, err := tx.Exec(`DELETE FROM shares WHERE video_id = ? AND user_id = ?`, id, user); err != nil {
+		return err
+	}
+	return tx.Commit()
 }
 
 // IsFileReferenced reports whether any library entry uses path as its media

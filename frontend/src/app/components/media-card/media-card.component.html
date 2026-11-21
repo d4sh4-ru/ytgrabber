@@ -58,6 +58,17 @@
                         <app-icon name="download" [size]="15" />
                     </a>
                 }
+                @if (canShare && !isAudio) {
+                    <button
+                        type="button"
+                        class="media-card__action"
+                        title="Поделиться ссылкой"
+                        aria-label="Поделиться ссылкой"
+                        (click)="onShare($event)"
+                    >
+                        <app-icon name="link" [size]="15" />
+                    </button>
+                }
             }
             <button
                 type="button"
