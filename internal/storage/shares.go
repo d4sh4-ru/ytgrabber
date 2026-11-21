@@ -27,14 +27,24 @@ CREATE INDEX shares_by_user ON shares(user_id);`)
 	return err
 }
 
+// migrateShareTokens keeps a link's token and code, so sharing a video
+// again shows the same link. Links made before can't be shown again:
+// only the token's hash was kept.
+func migrateShareTokens(tx *sql.Tx, _ MigrationEnv) error {
+	_, err := tx.Exec(`
+ALTER TABLE shares ADD COLUMN token TEXT NOT NULL DEFAULT '';
+ALTER TABLE shares ADD COLUMN code TEXT NOT NULL DEFAULT '';`)
+	return err
+}
+
 var ErrShareNotFound = errors.New("ссылка не найдена или истекла")
 
-const shareColumns = `s.id, s.user_id, s.video_id, v.title, s.code_hash, s.allow_download, s.views, s.created_at, s.expires_at`
+const shareColumns = `s.id, s.user_id, s.video_id, v.title, s.token, s.code, s.code_hash, s.allow_download, s.views, s.created_at, s.expires_at`
 
 func scanShare(scanner interface{ Scan(...any) error }) (*model.Share, error) {
 	share := &model.Share{}
 	var expires int64
-	err := scanner.Scan(&share.ID, &share.UserID, &share.VideoID, &share.Title, &share.CodeHash,
+	err := scanner.Scan(&share.ID, &share.UserID, &share.VideoID, &share.Title, &share.Token, &share.Code, &share.CodeHash,
 		&share.AllowDownload, &share.Views, &share.CreatedAt, &expires)
 	share.HasCode = share.CodeHash != ""
 	share.ExpiresAt = time.Unix(expires, 0).UTC().Format(time.RFC3339)
@@ -47,9 +57,9 @@ func (d *DB) CreateShare(share *model.Share, tokenHash string, expiresAt time.Ti
 		return errNoOwner
 	}
 	_, err := d.conn.Exec(
-		`INSERT INTO shares (id, token_hash, user_id, video_id, code_hash, allow_download, created_at, expires_at)
-		 VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-		share.ID, tokenHash, share.UserID, share.VideoID, share.CodeHash, share.AllowDownload, share.CreatedAt, expiresAt.Unix())
+		`INSERT INTO shares (id, token_hash, token, code, user_id, video_id, code_hash, allow_download, created_at, expires_at)
+		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		share.ID, tokenHash, share.Token, share.Code, share.UserID, share.VideoID, share.CodeHash, share.AllowDownload, share.CreatedAt, expiresAt.Unix())
 	return err
 }
 
@@ -59,6 +69,19 @@ func (d *DB) ShareByToken(tokenHash string, now time.Time) (*model.Share, error)
 	share, err := scanShare(d.conn.QueryRow(
 		`SELECT `+shareColumns+` FROM shares s JOIN videos v ON v.id = s.video_id AND v.user_id = s.user_id
 		 WHERE s.token_hash = ? AND s.expires_at > ?`, tokenHash, now.Unix()))
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, ErrShareNotFound
+	}
+	return share, err
+}
+
+// ShareForVideo is the link that works for user's video id, the newest
+// if there are several (made before a video had at most one).
+func (d *DB) ShareForVideo(user string, videoID string, now time.Time) (*model.Share, error) {
+	share, err := scanShare(d.conn.QueryRow(
+		`SELECT `+shareColumns+` FROM shares s JOIN videos v ON v.id = s.video_id AND v.user_id = s.user_id
+		 WHERE s.user_id = ? AND s.video_id = ? AND s.expires_at > ? ORDER BY s.created_at DESC LIMIT 1`,
+		user, videoID, now.Unix()))
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, ErrShareNotFound
 	}

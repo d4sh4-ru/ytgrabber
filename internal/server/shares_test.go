@@ -1,6 +1,7 @@
 package server
 
 import (
+	"fmt"
 	"io"
 	"net/http"
 	"net/url"
@@ -32,14 +33,14 @@ func (f *fixture) addVideo(token string, id string, kind model.MediaKind) {
 	}
 }
 
-func (f *fixture) share(body string) newShareResponse {
+func (f *fixture) share(body string) model.Share {
 	f.t.Helper()
 	resp := f.do("POST", "/api/v1/shares", f.token, strings.NewReader(body))
 	if resp.StatusCode != http.StatusOK {
 		data, _ := io.ReadAll(resp.Body)
 		f.t.Fatalf("sharing %s: %d %s", body, resp.StatusCode, data)
 	}
-	return decode[newShareResponse](f.t, resp)
+	return decode[model.Share](f.t, resp)
 }
 
 // visit is a browser without a session: it sends only the cookies given
@@ -72,7 +73,7 @@ func TestShareWithoutCode(t *testing.T) {
 	f.addVideo(f.token, "v1", model.MediaVideo)
 
 	created := f.share(`{"videoId":"v1"}`)
-	if created.Code != "" || created.Share.HasCode || !strings.HasPrefix(created.Path, "/s/") {
+	if created.Code != "" || created.HasCode || !strings.HasPrefix(created.Path, "/s/") {
 		t.Fatalf("created: %+v", created)
 	}
 
@@ -111,7 +112,7 @@ func TestShareWithoutCode(t *testing.T) {
 	}
 
 	// Revoked: gone at once, page and file alike.
-	f.do("DELETE", "/api/v1/shares/"+created.Share.ID, f.token, nil)
+	f.do("DELETE", "/api/v1/shares/"+created.ID, f.token, nil)
 	for _, path := range []string{created.Path, created.Path + "/file.mp4"} {
 		if resp, _ := f.visit("GET", path, nil); resp.StatusCode != http.StatusNotFound {
 			t.Errorf("%s after revoking: %d", path, resp.StatusCode)
@@ -168,7 +169,8 @@ func TestShareWithCode(t *testing.T) {
 	}
 
 	// The cookie opens this link only.
-	other := f.share(`{"videoId":"v1","withCode":true}`)
+	f.addVideo(f.token, "v2", model.MediaVideo)
+	other := f.share(`{"videoId":"v2","withCode":true}`)
 	if resp, _ := f.visit("GET", other.Path+"/file.mp4", nil, cookie); resp.StatusCode != http.StatusNotFound {
 		t.Errorf("another link with this cookie: %d", resp.StatusCode)
 	}
@@ -210,7 +212,7 @@ func TestShareExpiresAndDiesWithVideo(t *testing.T) {
 		t.Errorf("link to a deleted video: %d", resp.StatusCode)
 	}
 
-	later := time.Now().Add(shareTTL + time.Minute)
+	later := time.Now().Add(shareTerms[defaultShareTerm] + time.Minute)
 	f.srv.auth.now = func() time.Time { return later }
 	if resp, _ := f.visit("GET", expiring.Path, nil); resp.StatusCode != http.StatusNotFound {
 		t.Errorf("expired link: %d", resp.StatusCode)
@@ -236,6 +238,63 @@ func TestShareRules(t *testing.T) {
 	} {
 		if resp := f.do("POST", "/api/v1/shares", req.token, strings.NewReader(req.body)); resp.StatusCode != req.status {
 			t.Errorf("%s: %d, want %d", req.body, resp.StatusCode, req.status)
+		}
+	}
+}
+
+// Sharing a video again shows the link it has, as it was made; the
+// request's options don't change it.
+func TestShareAgainIsTheSameLink(t *testing.T) {
+	f := newFixture(t)
+	f.addVideo(f.token, "v1", model.MediaVideo)
+	first := f.share(`{"videoId":"v1","term":"week","withCode":true}`)
+	again := f.share(`{"videoId":"v1","term":"hour","allowDownload":true}`)
+	if again.ID != first.ID || again.Path != first.Path || again.Code != first.Code ||
+		!again.HasCode || again.AllowDownload || again.ExpiresAt != first.ExpiresAt {
+		t.Errorf("shared again:\n%+v\nfirst:\n%+v", again, first)
+	}
+	if shares := decode[[]model.Share](t, f.do("GET", "/api/v1/shares", f.token, nil)); len(shares) != 1 ||
+		shares[0].Path != first.Path || shares[0].Code != first.Code {
+		t.Errorf("listed: %+v", shares)
+	}
+
+	// Revoked, the video can be shared anew.
+	f.do("DELETE", "/api/v1/shares/"+first.ID, f.token, nil)
+	if fresh := f.share(`{"videoId":"v1"}`); fresh.ID == first.ID || fresh.Path == first.Path || fresh.HasCode {
+		t.Errorf("after revoking: %+v", fresh)
+	}
+}
+
+func TestShareTerm(t *testing.T) {
+	f := newFixture(t)
+	for i, term := range []string{"hour", "day", "week", "month"} {
+		id := fmt.Sprintf("v%d", i)
+		f.addVideo(f.token, id, model.MediaVideo)
+		before := time.Now()
+		created := f.share(fmt.Sprintf(`{"videoId":%q,"term":%q}`, id, term))
+		expires, err := time.Parse(time.RFC3339, created.ExpiresAt)
+		if want := before.Add(shareTerms[term]); err != nil || expires.Sub(want).Abs() > 2*time.Second {
+			t.Errorf("%s: expires %s, want about %s", term, created.ExpiresAt, want.UTC().Format(time.RFC3339))
+		}
+	}
+	f.addVideo(f.token, "x", model.MediaVideo)
+	if resp := f.do("POST", "/api/v1/shares", f.token, strings.NewReader(`{"videoId":"x","term":"year"}`)); resp.StatusCode != http.StatusBadRequest {
+		t.Errorf("unknown term: %d", resp.StatusCode)
+	}
+}
+
+func TestTimeLeft(t *testing.T) {
+	now := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
+	for left, want := range map[time.Duration]string{
+		30 * 24 * time.Hour: "ещё 30 дней",
+		7 * 24 * time.Hour:  "ещё 7 дней",
+		47 * time.Hour:      "ещё 47 часов",
+		21 * time.Hour:      "ещё 21 час",
+		3 * time.Hour:       "ещё 3 часа",
+		90 * time.Second:    "ещё 1 минуту",
+	} {
+		if got := timeLeft(now.Add(left).Format(time.RFC3339), now); got != want {
+			t.Errorf("%s left: %q, want %q", left, got, want)
 		}
 	}
 }

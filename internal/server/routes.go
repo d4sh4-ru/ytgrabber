@@ -229,12 +229,13 @@ func (s *Server) routes() []route {
 			response: []*model.Share{}, handle: s.listShares,
 		},
 		{
-			method: "POST", path: "/shares", summary: "Ссылка на видео для тех, у кого нет входа (сутки)", admin: true,
-			request: &shareRequest{}, response: newShareResponse{}, handle: jsonBody(s.createShare),
-			doc: "Страница видео открывается по пути из ответа (/s/<токен>) без входа. " +
-				"С withCode она сначала спрашивает шестизначный код из ответа; " +
-				"после 5 неверных кодов ссылка 15 минут не принимает ни одного. " +
-				"Путь и код показываются один раз: сервер хранит только их хеши.",
+			method: "POST", path: "/shares", summary: "Ссылка на видео для тех, у кого нет входа", admin: true,
+			request: &shareRequest{}, response: &model.Share{}, handle: jsonBody(s.createShare),
+			doc: "Страница видео открывается по path из ответа (/s/<токен>) без входа и действует term " +
+				"(час, сутки, неделю или месяц; по умолчанию сутки). С withCode она сначала спрашивает " +
+				"шестизначный code из ответа; после 5 неверных кодов ссылка 15 минут не принимает ни одного. " +
+				"У видео не больше одной действующей ссылки: если она уже есть, возвращается она, " +
+				"без изменений, а параметры запроса не применяются.",
 		},
 		{
 			method: "DELETE", path: "/shares/{id}", summary: "Отозвать ссылку", admin: true,

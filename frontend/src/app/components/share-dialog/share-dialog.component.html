@@ -7,7 +7,7 @@
         (click)="$event.stopPropagation()"
     >
         <div class="share__head">
-            <h2 class="section__title">Поделиться видео</h2>
+            <h2 class="section__title">{{ share ? 'Ссылка на видео' : 'Поделиться видео' }}</h2>
             <button
                 type="button"
                 class="btn btn--ghost btn--icon"
@@ -20,67 +20,122 @@
         </div>
         <p class="share__title" [title]="video.title">{{ video.title }}</p>
 
-        @if (shown; as link) {
-            <p class="section__muted share__hint">
-                @if (link.code) {
-                    Отправьте ссылку и код разными сообщениями: без кода видео не откроется.
-                } @else {
-                    Видео откроет любой, у кого есть ссылка, — без входа.
-                }
-            </p>
-            <div class="share__qr-frame">
-                <img class="share__qr" [src]="link.qrUrl" alt="QR-код ссылки" />
-            </div>
-            <div class="share__field">
-                <input
-                    class="input input--mono"
-                    readonly
-                    aria-label="Ссылка на видео"
-                    [value]="link.url"
-                    (focus)="onSelectAll($event)"
-                />
-                @if (canCopy) {
-                    <button
-                        type="button"
-                        class="btn btn--icon"
-                        title="Скопировать ссылку"
-                        aria-label="Скопировать ссылку"
-                        (click)="onCopy(link.url)"
-                    >
-                        <app-icon name="link" [size]="18" />
-                    </button>
-                }
-            </div>
-            @if (link.code) {
-                <div class="share__code-row">
-                    <span class="section__muted">Код</span>
-                    <span class="share__code">{{ link.code }}</span>
+        @if (share; as link) {
+            @if (url) {
+                <p class="section__muted share__hint">
+                    @if (link.hasCode) {
+                        Отправьте ссылку и код разными сообщениями: без кода видео не откроется.
+                    } @else {
+                        Видео откроет любой, у кого есть ссылка, — без входа.
+                    }
+                </p>
+                <div class="share__qr-frame">
+                    <img class="share__qr" [src]="qrUrl" alt="QR-код ссылки" />
+                </div>
+                <div class="share__field">
+                    <input
+                        class="input input--mono"
+                        readonly
+                        aria-label="Ссылка на видео"
+                        [value]="url"
+                        (focus)="onSelectAll($event)"
+                    />
                     @if (canCopy) {
                         <button
                             type="button"
-                            class="btn btn--ghost btn--icon"
-                            title="Скопировать код"
-                            aria-label="Скопировать код"
-                            (click)="onCopy(link.code)"
+                            class="btn btn--icon"
+                            title="Скопировать ссылку"
+                            aria-label="Скопировать ссылку"
+                            (click)="onCopy(url)"
                         >
-                            <app-icon name="copy" [size]="18" />
+                            <app-icon name="link" [size]="18" />
                         </button>
                     }
                 </div>
+                @if (link.code) {
+                    <div class="share__code-row">
+                        <span class="section__muted">Код</span>
+                        <span class="share__code">{{ link.code }}</span>
+                        @if (canCopy) {
+                            <button
+                                type="button"
+                                class="btn btn--ghost btn--icon"
+                                title="Скопировать код"
+                                aria-label="Скопировать код"
+                                (click)="onCopy(link.code)"
+                            >
+                                <app-icon name="copy" [size]="18" />
+                            </button>
+                        }
+                    </div>
+                }
+            } @else {
+                <p class="section__muted share__hint">
+                    Ссылку создали в прошлой версии: сервер хранил только её отпечаток, поэтому
+                    показать её снова нельзя. Удалите её, чтобы создать новую.
+                </p>
             }
             <p class="section__faint share__expires">
-                Действует до {{ expiresLabel(link.expiresAt) }}. Ссылку и код больше не покажем —
-                отозвать её можно в настройках.
+                Действует до {{ expiresLabel(link.expiresAt) }} ·
+                {{ link.hasCode ? 'с кодом' : 'без кода' }} ·
+                {{ link.allowDownload ? 'можно скачать' : 'без скачивания' }}. Чтобы изменить
+                параметры, удалите ссылку и создайте новую.
             </p>
-            <div class="share__footer">
-                <button type="button" class="btn btn--primary" (click)="onClose()">Готово</button>
-            </div>
+
+            @if (isConfirmingDelete) {
+                <div class="share__confirm" role="alert">
+                    <span>Ссылка сразу перестанет открываться у всех, кому её отправили.</span>
+                    <div class="share__footer">
+                        <button
+                            type="button"
+                            class="btn btn--ghost"
+                            [disabled]="isDeleting"
+                            (click)="onDeleteCancelled()"
+                        >
+                            Отмена
+                        </button>
+                        <button
+                            type="button"
+                            class="btn btn--destructive"
+                            [disabled]="isDeleting"
+                            (click)="onDeleteConfirmed()"
+                        >
+                            {{ isDeleting ? 'Удаление…' : 'Удалить ссылку' }}
+                        </button>
+                    </div>
+                </div>
+            } @else {
+                <div class="share__footer share__footer--split">
+                    <button type="button" class="btn btn--danger" (click)="onDelete()">
+                        Удалить ссылку
+                    </button>
+                    <button type="button" class="btn btn--primary" (click)="onClose()">
+                        Готово
+                    </button>
+                </div>
+            }
         } @else {
             <p class="section__muted share__hint">
                 Ссылка откроет страницу только с этим видео, без входа и без доступа к остальному.
-                Она действует сутки.
+                Параметры потом не меняются: чтобы их изменить, ссылку удаляют и создают новую.
             </p>
             <div class="share__options">
+                <div class="share__term">
+                    <span class="section__muted">Срок</span>
+                    <div class="segmented" role="group" aria-label="Срок ссылки">
+                        @for (option of terms; track option.term) {
+                            <button
+                                type="button"
+                                class="segmented__item"
+                                [class.segmented__item--active]="term === option.term"
+                                [attr.aria-pressed]="term === option.term"
+                                (click)="onTermChange(option.term)"
+                            >
+                                {{ option.label }}
+                            </button>
+                        }
+                    </div>
+                </div>
                 <label class="check">
                     <input
                         type="checkbox"

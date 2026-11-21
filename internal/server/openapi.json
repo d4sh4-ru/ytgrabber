@@ -268,6 +268,9 @@
           "allowDownload": {
             "type": "boolean"
           },
+          "code": {
+            "type": "string"
+          },
           "createdAt": {
             "type": "string"
           },
@@ -278,6 +281,9 @@
             "type": "boolean"
           },
           "id": {
+            "type": "string"
+          },
+          "path": {
             "type": "string"
           },
           "title": {
@@ -294,6 +300,7 @@
           "id",
           "videoId",
           "title",
+          "path",
           "hasCode",
           "allowDownload",
           "views",
@@ -2334,7 +2341,7 @@
         "summary": "Мои ссылки на видео, которые ещё действуют"
       },
       "post": {
-        "description": "Страница видео открывается по пути из ответа (/s/\u003cтокен\u003e) без входа. С withCode она сначала спрашивает шестизначный код из ответа; после 5 неверных кодов ссылка 15 минут не принимает ни одного. Путь и код показываются один раз: сервер хранит только их хеши.",
+        "description": "Страница видео открывается по path из ответа (/s/\u003cтокен\u003e) без входа и действует term (час, сутки, неделю или месяц; по умолчанию сутки). С withCode она сначала спрашивает шестизначный code из ответа; после 5 неверных кодов ссылка 15 минут не принимает ни одного. У видео не больше одной действующей ссылки: если она уже есть, возвращается она, без изменений, а параметры запроса не применяются.",
         "operationId": "postShares",
         "requestBody": {
           "content": {
@@ -2343,6 +2350,15 @@
                 "properties": {
                   "allowDownload": {
                     "type": "boolean"
+                  },
+                  "term": {
+                    "enum": [
+                      "hour",
+                      "day",
+                      "week",
+                      "month"
+                    ],
+                    "type": "string"
                   },
                   "videoId": {
                     "type": "string"
@@ -2367,22 +2383,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "properties": {
-                    "code": {
-                      "type": "string"
-                    },
-                    "path": {
-                      "type": "string"
-                    },
-                    "share": {
-                      "$ref": "#/components/schemas/model.Share"
-                    }
-                  },
-                  "required": [
-                    "share",
-                    "path"
-                  ],
-                  "type": "object"
+                  "$ref": "#/components/schemas/model.Share"
                 }
               }
             },
@@ -2443,7 +2444,7 @@
             "description": "Только для администратора"
           }
         },
-        "summary": "Ссылка на видео для тех, у кого нет входа (сутки)"
+        "summary": "Ссылка на видео для тех, у кого нет входа"
       }
     },
     "/shares/{id}": {

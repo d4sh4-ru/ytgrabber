@@ -36,6 +36,7 @@ var migrations = []func(tx *sql.Tx, env MigrationEnv) error{
 	migrateUsers,
 	migrateUserDevices,
 	migrateShares,
+	migrateShareTokens,
 }
 
 // migrateUsers gives jobs, library entries (with their playback

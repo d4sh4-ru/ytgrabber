@@ -8,22 +8,21 @@ import {
     Output,
 } from '@angular/core';
 import { model } from '../../api/models';
+import type { ShareTerm, VideoShare } from '../../api/session';
 import { NotificationService } from '../../services/notification.service';
 import { PeopleService } from '../../services/people.service';
 import { ShareService } from '../../services/share.service';
 import { IconComponent } from '../icon/icon.component';
 
-/** A link made, as the dialog shows it: once, since the server keeps only hashes. */
-interface ShownShare {
-    readonly url: string;
-    readonly qrUrl: string;
-    readonly code: string;
-    readonly expiresAt: string;
+interface TermOption {
+    readonly term: ShareTerm;
+    readonly label: string;
 }
 
 /**
- * Makes a link to one video for someone without an account: first the
- * options (a code, downloading), then the link, its QR code and the code.
+ * A video's link for someone without an account. A video without one
+ * gets the options first (term, code, downloading); a video that has one
+ * shows it as it was made, to send again or to delete.
  */
 @Component({
     selector: 'app-share-dialog',
@@ -44,19 +43,46 @@ export class ShareDialogComponent {
     @Input({ required: true })
     public video!: model.VideoRecord;
 
+    /** The video's link that works, if it has one. */
+    @Input()
+    public share: VideoShare | null = null;
+
     @Output()
     public readonly closed = new EventEmitter<void>();
 
     // --- Options ---
+    protected readonly terms: readonly TermOption[] = [
+        { term: 'hour', label: 'Час' },
+        { term: 'day', label: 'Сутки' },
+        { term: 'week', label: 'Неделя' },
+        { term: 'month', label: 'Месяц' },
+    ];
+    protected term: ShareTerm = 'day';
     protected withCode = true;
     protected allowDownload = false;
     protected isCreating = false;
 
-    // --- Result ---
-    protected shown: ShownShare | null = null;
+    // --- Link ---
     protected readonly canCopy = typeof navigator.clipboard?.writeText === 'function';
 
+    // --- Deleting ---
+    protected isConfirmingDelete = false;
+    protected isDeleting = false;
+
+    /** The link's full address; empty for a link made before it could be shown again. */
+    protected get url(): string {
+        return this.share?.path ? this.shareService.shareUrl(this.share.path) : '';
+    }
+
+    protected get qrUrl(): string {
+        return this.peopleService.qrUrl(this.url);
+    }
+
     // --- Options ---
+    protected onTermChange(term: ShareTerm): void {
+        this.term = term;
+    }
+
     protected onWithCodeChange(event: Event): void {
         this.withCode = (event.target as HTMLInputElement).checked;
     }
@@ -68,18 +94,12 @@ export class ShareDialogComponent {
     protected async onCreate(): Promise<void> {
         this.isCreating = true;
         try {
-            const created = await this.shareService.createShare(
+            this.share = await this.shareService.createShare(
                 this.video.id,
+                this.term,
                 this.withCode,
                 this.allowDownload,
             );
-            const url = this.shareService.shareUrl(created.path);
-            this.shown = {
-                url,
-                qrUrl: this.peopleService.qrUrl(url),
-                code: created.code ?? '',
-                expiresAt: created.share.expiresAt,
-            };
         } catch (error: unknown) {
             this.notificationService.error(error);
         }
@@ -87,7 +107,7 @@ export class ShareDialogComponent {
         this.changeDetectorRef.markForCheck();
     }
 
-    // --- Result ---
+    // --- Link ---
     protected expiresLabel(iso: string): string {
         return new Date(iso).toLocaleString('ru-RU', {
             day: 'numeric',
@@ -110,6 +130,31 @@ export class ShareDialogComponent {
 
     protected onSelectAll(event: Event): void {
         (event.target as HTMLInputElement).select();
+    }
+
+    // --- Deleting ---
+    protected onDelete(): void {
+        this.isConfirmingDelete = true;
+    }
+
+    protected onDeleteCancelled(): void {
+        this.isConfirmingDelete = false;
+    }
+
+    protected async onDeleteConfirmed(): Promise<void> {
+        if (!this.share) {
+            return;
+        }
+        this.isDeleting = true;
+        try {
+            await this.shareService.removeShare(this.share.id);
+            this.notificationService.info('Ссылка удалена');
+            this.closed.emit();
+        } catch (error: unknown) {
+            this.notificationService.error(error);
+        }
+        this.isDeleting = false;
+        this.changeDetectorRef.markForCheck();
     }
 
     protected onClose(): void {
