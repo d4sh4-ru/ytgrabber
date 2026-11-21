@@ -37,6 +37,10 @@ export class MediaCardComponent {
     @Input()
     public isCurrent = false;
 
+    /** An admin on a server may make a link to a video for someone without an account. */
+    @Input()
+    public canShare = false;
+
     @Output()
     public readonly opened = new EventEmitter<model.VideoRecord>();
 
@@ -45,6 +49,9 @@ export class MediaCardComponent {
 
     @Output()
     public readonly deleteRequested = new EventEmitter<model.VideoRecord>();
+
+    @Output()
+    public readonly shareRequested = new EventEmitter<model.VideoRecord>();
 
     private readonly connectionService = inject(ConnectionService);
 
@@ -124,6 +131,11 @@ export class MediaCardComponent {
 
     protected onDownloadCancelled(): void {
         this.downloadWarning = null;
+    }
+
+    protected onShare(event: Event): void {
+        event.stopPropagation();
+        this.shareRequested.emit(this.item);
     }
 
     protected onDelete(event: Event): void {

@@ -205,3 +205,21 @@ type Code struct {
 	CreatedBy string
 	ExpiresAt time.Time
 }
+
+// Share is a link that shows one video of an admin's library to anyone
+// who has it, without signing in. Its token, and the code it may ask
+// for, are kept only as hashes: the link is shown once, when made.
+type Share struct {
+	ID      string `json:"id"`
+	UserID  string `json:"-"`
+	VideoID string `json:"videoId"`
+	// Title is the video's, read along with the link.
+	Title         string `json:"title"`
+	HasCode       bool   `json:"hasCode"`
+	AllowDownload bool   `json:"allowDownload"`
+	// Views counts the times the page was opened (after the code).
+	Views     int    `json:"views"`
+	CreatedAt string `json:"createdAt"`
+	ExpiresAt string `json:"expiresAt"`
+	CodeHash  string `json:"-"`
+}

@@ -13,9 +13,11 @@ import { Transport } from '../../api/transport';
 import { DownloadService } from '../../services/download.service';
 import { NotificationService } from '../../services/notification.service';
 import { AudioPlayerService } from '../../services/audio-player.service';
+import { SessionService } from '../../services/session.service';
 import { MediaCardComponent } from '../media-card/media-card.component';
 import { bypassServiceWorker } from '../../shared/media-url';
 import { IconComponent } from '../icon/icon.component';
+import { ShareDialogComponent } from '../share-dialog/share-dialog.component';
 import {
     ConfirmDialogComponent,
     ConfirmDialogResult,
@@ -26,7 +28,13 @@ type LibraryGroup = 'video' | 'audio';
 @Component({
     selector: 'app-library',
     standalone: true,
-    imports: [AsyncPipe, MediaCardComponent, ConfirmDialogComponent, IconComponent],
+    imports: [
+        AsyncPipe,
+        MediaCardComponent,
+        ConfirmDialogComponent,
+        IconComponent,
+        ShareDialogComponent,
+    ],
     templateUrl: './library.component.html',
     styleUrl: './library.component.scss',
     changeDetection: ChangeDetectionStrategy.OnPush,
@@ -36,6 +44,7 @@ export class LibraryComponent {
     private readonly downloadService = inject(DownloadService);
     private readonly notificationService = inject(NotificationService);
     private readonly audioPlayerService = inject(AudioPlayerService);
+    private readonly sessionService = inject(SessionService);
     /** The desktop may keep the file on disk; a server always deletes it. */
     protected readonly isDesktop = inject(Transport).isDesktop;
 
@@ -59,6 +68,13 @@ export class LibraryComponent {
 
     // --- Deletion ---
     protected pendingDelete: model.VideoRecord | null = null;
+
+    // --- Sharing ---
+    /** Links lead to a server: an admin there may make them, the local desktop has none. */
+    protected readonly canShare$: Observable<boolean> = this.sessionService.isAdmin$.pipe(
+        map((isAdmin: boolean): boolean => isAdmin && !this.isDesktop),
+    );
+    protected sharing: model.VideoRecord | null = null;
 
     protected get videoItems(): model.VideoRecord[] {
         return this.items.filter((item) => item.mediaKind !== 'audio');
@@ -103,6 +119,15 @@ export class LibraryComponent {
         } catch (error: unknown) {
             this.notificationService.error(error);
         }
+    }
+
+    // --- Sharing ---
+    protected onShareRequested(item: model.VideoRecord): void {
+        this.sharing = item;
+    }
+
+    protected onShareClosed(): void {
+        this.sharing = null;
     }
 
     // --- Deletion ---

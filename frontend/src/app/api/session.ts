@@ -29,3 +29,11 @@ export type UserRole = User['role'];
 
 /** A user as the admin's list shows them. */
 export type UserInfo = Json<paths['/users']['get']['responses'][200]>[number];
+
+/** A link that shows one video of the admin's library without signing in. */
+export type VideoShare = components['schemas']['model.Share'];
+
+export type ShareRequest = paths['/shares']['post']['requestBody']['content']['application/json'];
+
+/** A new link: its path and code are shown this once. */
+export type NewShare = Json<paths['/shares']['post']['responses'][200]>;

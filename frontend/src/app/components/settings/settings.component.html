@@ -20,6 +20,9 @@
 
     @if (!isDesktop) {
         <app-people />
+        @if (isAdmin) {
+            <app-shares />
+        }
     }
 
     <section id="s-downloads" class="section">
