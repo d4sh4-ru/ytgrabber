@@ -139,9 +139,15 @@ func TestShareWithCode(t *testing.T) {
 		t.Errorf("file without code: %d", resp.StatusCode)
 	}
 
+	// A wrong code comes back as a redirect, so reloading doesn't resend the form.
 	resp, _ = f.visit("POST", created.Path, url.Values{"code": {"000000x"}})
-	if resp.StatusCode != http.StatusForbidden || len(resp.Cookies()) != 0 {
-		t.Errorf("wrong code: %d %v", resp.StatusCode, resp.Cookies())
+	wrong := resp.Header.Get("Location")
+	if resp.StatusCode != http.StatusSeeOther || wrong != created.Path+"?code=wrong" || len(resp.Cookies()) != 0 {
+		t.Errorf("wrong code: %d %q %v", resp.StatusCode, wrong, resp.Cookies())
+	}
+	if resp, page := f.visit("GET", wrong, nil); resp.StatusCode != http.StatusOK ||
+		!strings.Contains(page, "Код не подходит") || strings.Contains(page, "<video") {
+		t.Errorf("page after a wrong code: %d", resp.StatusCode)
 	}
 
 	resp, _ = f.visit("POST", created.Path, url.Values{"code": {created.Code}})
@@ -178,8 +184,12 @@ func TestShareCodeLockout(t *testing.T) {
 	for range shareMaxFailures {
 		f.visit("POST", created.Path, url.Values{"code": {"wrong"}})
 	}
-	if resp, _ := f.visit("POST", created.Path, url.Values{"code": {created.Code}}); resp.StatusCode != http.StatusTooManyRequests {
-		t.Fatalf("right code while locked: %d", resp.StatusCode)
+	if resp, _ := f.visit("POST", created.Path, url.Values{"code": {created.Code}}); len(resp.Cookies()) != 0 {
+		t.Fatalf("right code while locked opened the link: %d", resp.StatusCode)
+	}
+	if resp, page := f.visit("GET", created.Path, nil); resp.StatusCode != http.StatusTooManyRequests ||
+		!strings.Contains(page, "Слишком много") {
+		t.Errorf("page while locked: %d", resp.StatusCode)
 	}
 
 	now = now.Add(shareLockout + time.Second)

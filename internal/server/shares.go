@@ -252,7 +252,7 @@ func (s *Server) serveSharePage(w http.ResponseWriter, r *http.Request) {
 	}
 	base := sharePrefix + r.PathValue("token")
 	if !s.unlocked(r, share) {
-		s.renderShare(w, http.StatusOK, sharePage{Title: video.Title, Base: base, AskCode: true})
+		s.askShareCode(w, r, share, sharePage{Title: video.Title, Base: base, AskCode: true})
 		return
 	}
 	if db, err := s.auth.users(); err == nil {
@@ -270,26 +270,36 @@ func (s *Server) serveSharePage(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-// enterShareCode takes the code form. The right code sets a cookie for
-// this link only and leads back to the page.
-func (s *Server) enterShareCode(w http.ResponseWriter, r *http.Request) {
-	share, video, err := s.resolveShare(r)
-	if err != nil {
-		s.renderShare(w, http.StatusNotFound, sharePage{Missing: true})
+// askShareCode shows the code form, saying why the last code didn't open
+// the link: the form's answers come back here as a redirect (see
+// enterShareCode), so reloading the page never sends the form again.
+func (s *Server) askShareCode(w http.ResponseWriter, r *http.Request, share *model.Share, page sharePage) {
+	if wait := s.shares.lockedFor(share.ID, s.auth.now()); wait > 0 {
+		page.Error = fmt.Sprintf("Слишком много неверных попыток. Попробуйте через %d мин.", int(wait.Minutes())+1)
+		s.renderShare(w, http.StatusTooManyRequests, page)
 		return
 	}
+	if r.URL.Query().Get("code") == "wrong" {
+		page.Error = "Код не подходит"
+	}
+	s.renderShare(w, http.StatusOK, page)
+}
+
+// enterShareCode takes the code form and always answers with a redirect
+// to the page (post/redirect/get): the right code sets a cookie for this
+// link only, a wrong one comes back as ?code=wrong.
+func (s *Server) enterShareCode(w http.ResponseWriter, r *http.Request) {
 	token := r.PathValue("token")
 	base := sharePrefix + token
-	page := sharePage{Title: video.Title, Base: base, AskCode: true}
-	if !share.HasCode {
+	share, _, err := s.resolveShare(r)
+	if err != nil || !share.HasCode {
 		http.Redirect(w, r, base, http.StatusSeeOther)
 		return
 	}
 
 	now := s.auth.now()
-	if wait := s.shares.lockedFor(share.ID, now); wait > 0 {
-		page.Error = fmt.Sprintf("Слишком много неверных попыток. Попробуйте через %d мин.", int(wait.Minutes())+1)
-		s.renderShare(w, http.StatusTooManyRequests, page)
+	if s.shares.lockedFor(share.ID, now) > 0 {
+		http.Redirect(w, r, base, http.StatusSeeOther)
 		return
 	}
 
@@ -298,8 +308,7 @@ func (s *Server) enterShareCode(w http.ResponseWriter, r *http.Request) {
 	given := shareCodeHash(token, code)
 	if subtle.ConstantTimeCompare([]byte(given), []byte(share.CodeHash)) != 1 {
 		s.shares.recordFailure(share.ID, now)
-		page.Error = "Код не подходит"
-		s.renderShare(w, http.StatusForbidden, page)
+		http.Redirect(w, r, base+"?code=wrong", http.StatusSeeOther)
 		return
 	}
 
